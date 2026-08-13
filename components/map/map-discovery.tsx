@@ -101,8 +101,15 @@ export function MapDiscovery({ clientId, initialMenus, initialPlaces }: Properti
   const didInitializeUrl = useRef(false)
   const mapSnapshot = useRef<HistorySnapshot | undefined>(undefined)
   const sharedEntrySource = useRef<"place_share" | "map_share" | undefined>(undefined)
+  const [didResolveEntry, setDidResolveEntry] = useState(false)
 
-  const requestLocation = useCallback(() => {
+  const requestLocation = useCallback((isUserRequested: boolean) => {
+    const source = sharedEntrySource.current
+    if (isUserRequested && source !== undefined)
+      captureProductAnalytics({
+        event: "shared_visit_explored",
+        properties: { source, action: "location" },
+      })
     setLocation(beginLocationRequest())
     if (navigator.geolocation === undefined) {
       const next = resolveLocationOutcome({ kind: "unsupported" })
@@ -159,7 +166,7 @@ export function MapDiscovery({ clientId, initialMenus, initialPlaces }: Properti
     )
   }, [clientId, view])
 
-  useEffect(() => requestLocation(), [requestLocation])
+  useEffect(() => requestLocation(false), [requestLocation])
   useEffect(() => loadSdk(), [loadSdk])
   useEffect(
     () => () => {
@@ -183,19 +190,20 @@ export function MapDiscovery({ clientId, initialMenus, initialPlaces }: Properti
             (candidate) => candidate.slug === shareState.slug && candidate.published,
           )
           if (place === undefined) {
+            sharedEntrySource.current = undefined
             setSelectedSlug(undefined)
             setLinkNotice("유효하지 않은 장소 링크를 기본 지도로 복구했습니다.")
             window.history.replaceState({}, "", "/")
             return
           }
           setSelectedSlug(place.slug)
-          sharedEntrySource.current = "place_share"
+          sharedEntrySource.current = shareState.source
           window.history.replaceState({}, "", canonicalizeShareUrl(window.location.href))
           return
         }
         case "map": {
           setSelectedSlug(undefined)
-          sharedEntrySource.current = "map_share"
+          sharedEntrySource.current = shareState.source
           mapSnapshot.current ??= readMapSnapshot()
           const browserSnapshot = window.history.state
           if (mapSnapshot.current === undefined && isHistorySnapshot(browserSnapshot)) {
@@ -219,6 +227,7 @@ export function MapDiscovery({ clientId, initialMenus, initialPlaces }: Properti
           return
         }
         case "fallback":
+          sharedEntrySource.current = undefined
           setSelectedSlug(undefined)
           if (window.location.search.length > 0) {
             setLinkNotice("유효하지 않은 공유 링크를 기본 지도로 복구했습니다.")
@@ -232,6 +241,7 @@ export function MapDiscovery({ clientId, initialMenus, initialPlaces }: Properti
     }
     recoverFromUrl()
     didInitializeUrl.current = true
+    setDidResolveEntry(true)
     window.addEventListener("popstate", recoverFromUrl)
     return () => window.removeEventListener("popstate", recoverFromUrl)
   }, [initialPlaces])
@@ -243,15 +253,22 @@ export function MapDiscovery({ clientId, initialMenus, initialPlaces }: Properti
     document.addEventListener("keydown", closeOnEscape)
     return () => document.removeEventListener("keydown", closeOnEscape)
   }, [clearSelection, selectedSlug])
-  useEffect(
-    () => captureProductAnalytics({ event: "map_viewed", properties: { source: "direct" } }),
-    [],
-  )
+  useEffect(() => {
+    if (!didResolveEntry) return
+    captureProductAnalytics({
+      event: "map_viewed",
+      properties: { source: sharedEntrySource.current ?? "direct" },
+    })
+  }, [didResolveEntry])
 
-  const visiblePlaces = useMemo(() => filterPlaces(places, filter), [filter, places])
+  const publishedPlaces = useMemo(() => places.filter((place) => place.published), [places])
+  const visiblePlaces = useMemo(
+    () => filterPlaces(publishedPlaces, filter),
+    [filter, publishedPlaces],
+  )
   const selectedPlace = useMemo(
-    () => places.find((place) => place.slug === selectedSlug && place.published),
-    [places, selectedSlug],
+    () => publishedPlaces.find((place) => place.slug === selectedSlug),
+    [publishedPlaces, selectedSlug],
   )
   const openPlace = (place: Place): void => {
     setLinkNotice(undefined)
@@ -284,7 +301,7 @@ export function MapDiscovery({ clientId, initialMenus, initialPlaces }: Properti
       setPlaces(
         payload.places.flatMap(({ slug }) => {
           const place = initialPlaces.find((candidate) => candidate.slug === slug)
-          return place ? [place] : []
+          return place?.published ? [place] : []
         }),
       )
       setCatalogState("ready")
@@ -342,7 +359,7 @@ export function MapDiscovery({ clientId, initialMenus, initialPlaces }: Properti
         <button
           aria-label="현재 위치 다시 찾기"
           className={styles["locate"]}
-          onClick={requestLocation}
+          onClick={() => requestLocation(true)}
           type="button"
         >
           <LocateIcon />

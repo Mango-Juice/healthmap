@@ -25,6 +25,7 @@ export default defineConfig({
     command: `pnpm dev --hostname 127.0.0.1 --port ${port}`,
     env: {
       ...process.env,
+      NEXT_PUBLIC_DISABLE_REACT_DEVTOOLS: "1",
       NEXT_PUBLIC_NAVER_MAP_CLIENT_ID:
         process.env["NEXT_PUBLIC_NAVER_MAP_CLIENT_ID"] ?? "test-client",
     },
