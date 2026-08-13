@@ -1,6 +1,13 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+  type KeyboardEvent as ReactKeyboardEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import { captureProductAnalytics } from "../../lib/analytics/browser"
 import type { Menu, Place } from "../../lib/domain/catalog"
 import { filterPlaces, type PlaceFilter } from "../../lib/domain/filter"
@@ -108,6 +115,7 @@ export function MapDiscovery({
   const mapSnapshot = useRef<HistorySnapshot | undefined>(undefined)
   const sharedEntrySource = useRef<"place_share" | "map_share" | undefined>(undefined)
   const selectionTrigger = useRef<HTMLElement | undefined>(undefined)
+  const selectedSlugRef = useRef<string | undefined>(undefined)
   const [didResolveEntry, setDidResolveEntry] = useState(false)
   const [isMobileDetail, setIsMobileDetail] = useState(false)
 
@@ -191,6 +199,10 @@ export function MapDiscovery({
   }, [])
 
   useEffect(() => {
+    selectedSlugRef.current = selectedSlug
+  }, [selectedSlug])
+
+  useEffect(() => {
     const query = window.matchMedia("(max-width: 767px)")
     const update = (): void => setIsMobileDetail(query.matches)
     update()
@@ -200,6 +212,7 @@ export function MapDiscovery({
 
   useEffect(() => {
     const recoverFromUrl = (): void => {
+      const wasSelected = selectedSlugRef.current !== undefined
       const shareState = parseShareUrl(window.location.href)
       switch (shareState.kind) {
         case "place": {
@@ -220,6 +233,7 @@ export function MapDiscovery({
         }
         case "map": {
           setSelectedSlug(undefined)
+          if (wasSelected) window.setTimeout(() => selectionTrigger.current?.focus())
           sharedEntrySource.current = shareState.source
           mapSnapshot.current ??= readMapSnapshot()
           const browserSnapshot = window.history.state
@@ -246,6 +260,7 @@ export function MapDiscovery({
         case "fallback":
           sharedEntrySource.current = undefined
           setSelectedSlug(undefined)
+          if (wasSelected) window.setTimeout(() => selectionTrigger.current?.focus())
           if (window.location.search.length > 0) {
             setLinkNotice("유효하지 않은 공유 링크를 기본 지도로 복구했습니다.")
             window.history.replaceState({}, "", "/")
@@ -352,6 +367,24 @@ export function MapDiscovery({
         aria-label="장소 상세"
         aria-modal="true"
         className={styles["detailSurface"]}
+        onKeyDown={(event: ReactKeyboardEvent<HTMLDivElement>) => {
+          if (event.key !== "Tab") return
+          const focusable = Array.from(
+            event.currentTarget.querySelectorAll<HTMLElement>(
+              "button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex='-1'])",
+            ),
+          ).filter((element) => element.getClientRects().length > 0)
+          const first = focusable[0]
+          const last = focusable[focusable.length - 1]
+          if (first === undefined || last === undefined) return
+          if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault()
+            last.focus()
+          } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault()
+            first.focus()
+          }
+        }}
         role="dialog"
       >
         {detail}

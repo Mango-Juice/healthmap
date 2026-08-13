@@ -1,5 +1,6 @@
 .detail {
   background: var(--hm-surface);
+  block-size: 100%;
   color: var(--hm-ink);
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
@@ -24,7 +25,9 @@
   font-size: var(--hm-type-heading);
   line-height: var(--hm-leading-heading);
   margin: var(--hm-space-1) 0 0;
-  overflow-wrap: anywhere;
+  line-break: strict;
+  overflow-wrap: break-word;
+  word-break: keep-all;
 }
 .header h2:focus-visible {
   outline: var(--hm-focus-ring) solid var(--hm-blue);
@@ -54,6 +57,10 @@
   flex: 0 0 auto;
   inline-size: var(--hm-icon-md);
 }
+.header button svg {
+  block-size: var(--hm-icon-md);
+  inline-size: var(--hm-icon-md);
+}
 .body h3 {
   font-size: var(--hm-type-label);
   margin: 0;
@@ -66,11 +73,18 @@
 }
 .notice {
   background: var(--hm-info-wash);
-  border: 1px solid var(--hm-info);
+  border: var(--hm-border-width) solid var(--hm-info);
   border-radius: var(--hm-radius-card);
   color: var(--hm-info);
   margin: 0;
   padding: var(--hm-space-3);
+}
+.notice,
+.address,
+.tags {
+  line-break: strict;
+  overflow-wrap: break-word;
+  word-break: keep-all;
 }
 .manual {
   display: grid;
@@ -82,7 +96,7 @@
   overflow-wrap: anywhere;
 }
 .actions {
-  border-block-start: 1px solid var(--hm-border);
+  border-block-start: var(--hm-border-width) solid var(--hm-border);
   display: grid;
   gap: var(--hm-space-2);
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -93,7 +107,10 @@
 }
 @media (max-width: 767px) {
   .actions {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .actions button:first-child {
+    grid-column: 1 / -1;
   }
 }
 @media (min-width: 768px) {

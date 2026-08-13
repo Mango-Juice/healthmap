@@ -6,7 +6,8 @@
   min-inline-size: 0;
   overflow-x: auto;
   padding: var(--hm-space-1);
-  scrollbar-width: none;
+  scrollbar-color: var(--hm-border-strong) transparent;
+  scrollbar-width: thin;
 }
 
 .visuallyHidden {
@@ -20,7 +21,12 @@
 }
 
 .filterRail::-webkit-scrollbar {
-  display: none;
+  block-size: var(--hm-space-1);
+}
+
+.filterRail::-webkit-scrollbar-thumb {
+  background: var(--hm-border-strong);
+  border-radius: var(--hm-radius-control);
 }
 
 .filterButton,

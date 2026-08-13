@@ -270,3 +270,52 @@ test("desktop manual fallback supports native marker, share, select, close, Esca
   await expect(page).toHaveURL(MAP_SHARE)
   await expect(page.getByTestId("map-view")).toHaveText(MAP_VIEW)
 })
+
+test("mobile detail is a contained dialog with an explicit recovery scroll and visible filter rail", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 812 })
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "share", { configurable: true, value: undefined })
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: () => Promise.reject(new DOMException("blocked")) },
+    })
+  })
+  await page.goto("/")
+
+  const rail = page.locator("fieldset")
+  await expect
+    .poll(() => rail.evaluate((element) => getComputedStyle(element).scrollbarWidth))
+    .not.toBe("none")
+
+  const marker = page.getByRole("button", { name: /새싹 네모식당/ })
+  await marker.click()
+  const dialog = page.getByRole("dialog", { name: "장소 상세" })
+  const close = page.getByRole("button", { name: "상세 닫기" })
+  await expect(dialog).toBeVisible()
+  await expect(close).toBeVisible()
+  await expect
+    .poll(() =>
+      close.evaluate((element) => {
+        const rect = element.getBoundingClientRect()
+        return rect.width >= 16 && rect.height >= 16
+      }),
+    )
+    .toBe(true)
+
+  await close.focus()
+  await page.keyboard.press("Shift+Tab")
+  await expect(page.getByRole("button", { name: "지도 공유" })).toBeFocused()
+
+  await page.getByRole("button", { name: "공유", exact: true }).click()
+  const body = page.getByTestId("place-detail-body")
+  await expect(page.getByLabel("공유 URL")).toBeVisible()
+  await body.evaluate((element) => {
+    element.scrollTop = element.scrollHeight
+  })
+  await expect(page.getByRole("button", { name: "URL 선택" })).toBeVisible()
+
+  await close.click()
+  await expect(marker).toBeFocused()
+})

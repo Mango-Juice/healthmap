@@ -20,6 +20,7 @@
   --hm-info-wash: #eaf4fa;
   --hm-shadow-control: 0 1px 2px rgba(13, 52, 37, 0.08), 0 4px 12px rgba(13, 52, 37, 0.06);
   --hm-shadow-marker: 0 2px 4px rgba(13, 52, 37, 0.16), 0 6px 14px rgba(13, 52, 37, 0.12);
+  --hm-shadow-detail: 0 1px 1px rgba(13, 52, 37, 0.1), 0 12px 32px rgba(13, 52, 37, 0.12);
   --hm-space-1: 4px;
   --hm-space-2: 8px;
   --hm-space-3: 12px;
@@ -45,9 +46,9 @@
   --hm-leading-heading: 28px;
   --hm-motion-press: 120ms;
   --hm-motion-micro: 180ms;
-  --hm-motion-detail: 240ms;
+  --hm-motion-standard: 240ms;
   --hm-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
-  --hm-sheet-max: 68%;
+  --hm-sheet-max: 52%;
   --hm-sheet-block-min: 272px;
   --hm-pane-wide: 360px;
   --hm-press-offset: 1px;
@@ -143,7 +144,7 @@
 }
 .filter fieldset {
   background: var(--hm-surface);
-  box-shadow: var(--hm-shadow-control);
+  box-shadow: var(--hm-shadow-detail);
 }
 .status,
 .location,
@@ -215,7 +216,7 @@
   min-block-size: var(--hm-sheet-block-min);
   overflow: hidden;
   position: absolute;
-  transition: transform var(--hm-motion-detail) var(--hm-ease-standard);
+  transition: transform var(--hm-motion-standard) var(--hm-ease-standard);
   z-index: var(--hm-layer-detail);
 }
 .markers {

@@ -121,7 +121,7 @@ export function PlaceDetail({ directionsTarget, menus, onClose, place, shareMap 
           <XIcon />
         </ActionButton>
       </header>
-      <div className={styles["body"]}>
+      <div className={styles["body"]} data-testid="place-detail-body">
         <p className={styles["address"]}>
           <LocateIcon />
           {place.address}
