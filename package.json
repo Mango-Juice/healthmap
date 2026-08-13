@@ -11,6 +11,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "data:audit": "vitest run --config vitest.data.config.ts && node scripts/data/audit-catalog.mjs",
+    "data:seed:generate": "node scripts/data/generate-seed.mjs",
     "start": "next start",
     "format": "biome check --write .",
     "typecheck": "tsc --noEmit",
