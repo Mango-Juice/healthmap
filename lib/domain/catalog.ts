@@ -59,6 +59,7 @@ const PlaceRowSchema = z
     primary_tag: z.string(),
     health_tags: z.array(z.string()),
     published: z.boolean(),
+    data_mode: z.enum(["production", "mock"]).default("production"),
   })
   .strict()
   .transform((row) =>
@@ -86,6 +87,7 @@ const MenuRowSchema = z
     verified_at: z.string(),
     display_order: z.number(),
     published: z.boolean(),
+    data_mode: z.enum(["production", "mock"]).default("production"),
   })
   .strict()
   .transform((row) =>
