@@ -1,0 +1,159 @@
+.alert {
+  align-items: start;
+  border: var(--hm-border-width) solid currentColor;
+  border-radius: var(--hm-radius-card);
+  display: grid;
+  gap: var(--hm-space-3);
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: var(--hm-space-4);
+}
+
+.alert.info {
+  background: var(--hm-info-wash);
+  color: var(--hm-info);
+}
+
+.alert.error {
+  background: var(--hm-error-wash);
+  color: var(--hm-error);
+}
+
+.alertIcon {
+  block-size: var(--hm-icon-md);
+  inline-size: var(--hm-icon-md);
+  margin-block-start: var(--hm-space-1);
+}
+
+.alertCopy {
+  display: grid;
+  gap: var(--hm-space-1);
+  min-inline-size: 0;
+  word-break: keep-all;
+}
+
+.alertCopy strong {
+  font-size: var(--hm-type-label);
+  line-height: var(--hm-leading-tight);
+}
+
+.alertCopy span {
+  color: var(--hm-ink);
+  font-size: var(--hm-type-caption);
+  line-height: var(--hm-leading-tight);
+  overflow-wrap: normal;
+}
+
+.alert > button {
+  grid-column: 2;
+  justify-self: start;
+}
+
+.skeleton {
+  align-items: center;
+  background: var(--hm-surface);
+  border: var(--hm-border-width) solid var(--hm-border);
+  border-radius: var(--hm-radius-card);
+  display: grid;
+  gap: var(--hm-space-4);
+  grid-template-columns: auto minmax(0, 1fr);
+  min-block-size: var(--hm-skeleton-block);
+  padding: var(--hm-space-4);
+}
+
+.skeletonIcon,
+.skeletonLine,
+.skeletonLineShort,
+.skeletonAction {
+  animation: skeleton-pulse var(--hm-motion-skeleton) var(--hm-ease-standard) infinite alternate;
+  background: var(--hm-border);
+  border-radius: var(--hm-radius-card);
+  display: block;
+}
+
+.skeletonIcon {
+  block-size: var(--hm-control-min);
+  inline-size: var(--hm-control-min);
+}
+
+.skeletonLines {
+  display: grid;
+  gap: var(--hm-space-3);
+}
+
+.skeletonLine {
+  block-size: var(--hm-space-4);
+  inline-size: min(100%, var(--hm-skeleton-line-wide));
+}
+
+.skeletonLineShort {
+  block-size: var(--hm-space-3);
+  inline-size: min(var(--hm-skeleton-line-short), var(--hm-skeleton-line-mid));
+}
+
+.skeletonAction {
+  block-size: var(--hm-control-min);
+  inline-size: min(100%, var(--hm-skeleton-action-wide));
+}
+
+@keyframes skeleton-pulse {
+  from {
+    opacity: var(--hm-skeleton-opacity-low);
+  }
+
+  to {
+    opacity: var(--hm-skeleton-opacity-high);
+  }
+}
+
+.emptyState {
+  align-items: center;
+  background: var(--hm-surface);
+  border: var(--hm-border-width) solid var(--hm-border);
+  border-radius: var(--hm-radius-card);
+  display: flex;
+  flex-direction: column;
+  gap: var(--hm-space-3);
+  justify-content: center;
+  min-block-size: var(--hm-empty-block);
+  padding: var(--hm-space-6);
+  text-align: center;
+}
+
+.emptyState strong {
+  font-size: var(--hm-type-subheading);
+  line-height: var(--hm-leading-body);
+}
+
+.emptyState p {
+  color: var(--hm-ink-muted);
+  font-size: var(--hm-type-body);
+  line-height: var(--hm-leading-body);
+  margin: 0;
+  max-inline-size: var(--hm-empty-copy-measure);
+  word-break: keep-all;
+}
+
+.emptyGlyph {
+  align-items: center;
+  background: var(--hm-green-100);
+  block-size: var(--hm-empty-glyph);
+  border-radius: var(--hm-radius-marker);
+  color: var(--hm-green-800);
+  display: inline-flex;
+  inline-size: var(--hm-empty-glyph);
+  justify-content: center;
+}
+
+.emptyGlyph svg {
+  block-size: var(--hm-icon-lg);
+  inline-size: var(--hm-icon-lg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonIcon,
+  .skeletonLine,
+  .skeletonLineShort,
+  .skeletonAction {
+    animation: none;
+  }
+}

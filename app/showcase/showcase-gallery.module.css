@@ -1,0 +1,102 @@
+.stateGrid {
+  display: grid;
+  gap: var(--hm-space-3);
+  grid-template-columns: repeat(auto-fit, minmax(min(var(--hm-state-column-min), 100%), 1fr));
+}
+
+.stateCell {
+  align-items: start;
+  background: var(--hm-surface);
+  border: var(--hm-border-width) solid var(--hm-border);
+  border-radius: var(--hm-radius-card);
+  display: grid;
+  gap: var(--hm-space-3);
+  min-inline-size: 0;
+  padding: var(--hm-space-4);
+}
+
+.stateCell > span,
+.feedbackCell > span,
+.markerGallery span {
+  color: var(--hm-ink-muted);
+  font-size: var(--hm-type-caption);
+  font-weight: var(--hm-weight-label);
+  line-height: var(--hm-leading-tight);
+}
+
+.stateCell button {
+  inline-size: 100%;
+}
+
+.stateCell [data-demo-state="hover"] button {
+  background: var(--hm-green-600);
+}
+
+.stateCell [data-demo-state="focus"] button {
+  outline: var(--hm-focus-ring) solid var(--hm-blue);
+  outline-offset: var(--hm-focus-ring);
+}
+
+.stateCell [data-demo-state="active"] button {
+  background: var(--hm-green-950);
+  filter: brightness(var(--hm-active-brightness));
+}
+
+.filterExamples {
+  background: var(--hm-surface-subtle);
+  border: var(--hm-border-width) solid var(--hm-border);
+  border-radius: var(--hm-radius-card);
+  display: grid;
+  gap: var(--hm-space-3);
+  min-inline-size: 0;
+  padding: var(--hm-space-4);
+}
+
+.markerGallery {
+  background: var(--hm-surface);
+  border: var(--hm-border-width) solid var(--hm-border);
+  border-radius: var(--hm-radius-card);
+  display: grid;
+  gap: var(--hm-space-3);
+  grid-template-columns: repeat(auto-fit, minmax(min(var(--hm-marker-column-min), 100%), 1fr));
+  padding: var(--hm-space-4);
+}
+
+.markerGallery > div {
+  align-items: center;
+  display: flex;
+  gap: var(--hm-space-2);
+  min-inline-size: 0;
+}
+
+.feedbackGrid {
+  display: grid;
+  gap: var(--hm-space-4);
+  grid-template-columns: repeat(auto-fit, minmax(min(var(--hm-feedback-column-min), 100%), 1fr));
+}
+
+.feedbackCell {
+  display: grid;
+  gap: var(--hm-space-3);
+  min-inline-size: 0;
+}
+
+.stressSection {
+  background: var(--hm-surface-subtle);
+  border: var(--hm-border-width) solid var(--hm-border);
+  border-radius: var(--hm-radius-card);
+  display: grid;
+  gap: var(--hm-space-4);
+  min-inline-size: 0;
+  padding: var(--hm-space-4);
+}
+
+.unbrokenText {
+  overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stateCell [data-demo-state="active"] button {
+    filter: none;
+  }
+}

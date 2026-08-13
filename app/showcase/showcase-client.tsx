@@ -15,6 +15,7 @@ import {
 } from "../../components/ui/health-map-primitives"
 import { MapShell } from "./map-shell"
 import styles from "./showcase.module.css"
+import galleryStyles from "./showcase-gallery.module.css"
 
 const buttonStates = [
   { label: "기본", state: "default" },
@@ -35,10 +36,10 @@ export function ShowcaseClient() {
           </div>
           <span>크기는 유지하고 상태만 바뀝니다.</span>
         </div>
-        <div className={styles["stateGrid"]}>
+        <div className={galleryStyles["stateGrid"]}>
           {buttonStates.map((item) => (
             <article
-              className={styles["stateCell"]}
+              className={galleryStyles["stateCell"]}
               data-testid={`state-${item.state}`}
               key={item.state}
             >
@@ -50,20 +51,20 @@ export function ShowcaseClient() {
               </div>
             </article>
           ))}
-          <article className={styles["stateCell"]} data-testid="state-disabled">
+          <article className={galleryStyles["stateCell"]} data-testid="state-disabled">
             <span>비활성</span>
             <ActionButton disabled leadingIcon={<NavigationIcon />} variant="primary">
               길찾기
             </ActionButton>
           </article>
-          <article className={styles["stateCell"]} data-testid="state-loading">
+          <article className={galleryStyles["stateCell"]} data-testid="state-loading">
             <span>로딩</span>
             <ActionButton loading variant="primary">
               길찾기
             </ActionButton>
           </article>
         </div>
-        <div className={styles["filterExamples"]}>
+        <div className={galleryStyles["filterExamples"]}>
           <FilterRail selected="vegetables" />
           <FilterRail disabled selected="all" />
         </div>
@@ -77,7 +78,7 @@ export function ShowcaseClient() {
           </div>
           <span>녹색 핀과 텍스트 이름에 작은 색상 노치를 더합니다.</span>
         </div>
-        <div className={styles["markerGallery"]}>
+        <div className={galleryStyles["markerGallery"]}>
           <div>
             <MapMarker category="vegetables" label="채소 중심 장소" />
             <span>채소</span>
@@ -109,8 +110,8 @@ export function ShowcaseClient() {
           </div>
           <span>복구 행동과 안정적인 높이를 함께 검증합니다.</span>
         </div>
-        <div className={styles["feedbackGrid"]}>
-          <article className={styles["feedbackCell"]} data-testid="state-info">
+        <div className={galleryStyles["feedbackGrid"]}>
+          <article className={galleryStyles["feedbackCell"]} data-testid="state-info">
             <span>안내</span>
             <StatusAlert
               description="현재 위치를 사용 중입니다. 지도 중심은 저장하지 않아요."
@@ -118,11 +119,11 @@ export function ShowcaseClient() {
               tone="info"
             />
           </article>
-          <article className={styles["feedbackCell"]} data-testid="state-loading-detail">
+          <article className={galleryStyles["feedbackCell"]} data-testid="state-loading-detail">
             <span>로딩</span>
             <SkeletonDetail />
           </article>
-          <article className={styles["feedbackCell"]} data-testid="state-error">
+          <article className={galleryStyles["feedbackCell"]} data-testid="state-error">
             <span>오류</span>
             <StatusAlert
               action={
@@ -135,7 +136,7 @@ export function ShowcaseClient() {
               tone="error"
             />
           </article>
-          <article className={styles["feedbackCell"]} data-testid="state-empty">
+          <article className={galleryStyles["feedbackCell"]} data-testid="state-empty">
             <span>빈 상태</span>
             <EmptyState
               description="다른 건강식 유형을 선택하면 주변 장소를 다시 보여 드릴게요."
@@ -147,7 +148,7 @@ export function ShowcaseClient() {
 
       <section
         aria-labelledby="stress-heading"
-        className={styles["stressSection"]}
+        className={galleryStyles["stressSection"]}
         data-testid="state-stress"
       >
         <div>
@@ -163,7 +164,7 @@ export function ShowcaseClient() {
           description={
             <>
               주변에서 지금 선택한 조건에 맞는 건강식 장소를 아직 찾지 못했어요.{" "}
-              <span className={styles["unbrokenText"]}>
+              <span className={galleryStyles["unbrokenText"]}>
                 https://example.com/this-is-an-intentionally-unbroken-accessibility-stress-string
               </span>
             </>

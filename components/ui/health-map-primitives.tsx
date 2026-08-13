@@ -1,5 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react"
-
+import feedbackStyles from "./health-map-feedback.module.css"
 import {
   AlertTriangleIcon,
   LeafIcon,
@@ -7,6 +7,7 @@ import {
   MapPinIcon,
   RotateCcwIcon,
 } from "./health-map-icons"
+import markerStyles from "./health-map-marker.module.css"
 import { CATEGORY_LABELS, FILTER_OPTIONS, type FilterValue } from "./health-map-options"
 import styles from "./health-map-primitives.module.css"
 
@@ -92,16 +93,16 @@ export function MapMarker({
     <button
       aria-label={`${label}, ${CATEGORY_LABELS[category]}`}
       aria-pressed={selected}
-      className={styles["markerTarget"]}
+      className={markerStyles["markerTarget"]}
       data-category={category}
       disabled={disabled}
       onClick={onSelect}
       type="button"
     >
-      <span className={styles["markerVisual"]}>
-        <MapPinIcon className={styles["markerPin"]} />
-        <LeafIcon className={styles["markerLeaf"]} />
-        <span aria-hidden="true" className={styles["markerNotch"]} />
+      <span className={markerStyles["markerVisual"]}>
+        <MapPinIcon className={markerStyles["markerPin"]} />
+        <LeafIcon className={markerStyles["markerLeaf"]} />
+        <span aria-hidden="true" className={markerStyles["markerNotch"]} />
       </span>
     </button>
   )
@@ -117,15 +118,15 @@ type StatusAlertProperties = {
 export function StatusAlert({ action, description, title, tone }: StatusAlertProperties) {
   return (
     <div
-      className={[styles["alert"], styles[tone]].join(" ")}
+      className={[feedbackStyles["alert"], feedbackStyles[tone]].join(" ")}
       role={tone === "error" ? "alert" : "status"}
     >
       {tone === "error" ? (
-        <AlertTriangleIcon className={styles["alertIcon"]} />
+        <AlertTriangleIcon className={feedbackStyles["alertIcon"]} />
       ) : (
-        <MapPinIcon className={styles["alertIcon"]} />
+        <MapPinIcon className={feedbackStyles["alertIcon"]} />
       )}
-      <div className={styles["alertCopy"]}>
+      <div className={feedbackStyles["alertCopy"]}>
         <strong>{title}</strong>
         <span>{description}</span>
       </div>
@@ -136,12 +137,12 @@ export function StatusAlert({ action, description, title, tone }: StatusAlertPro
 
 export function SkeletonDetail() {
   return (
-    <div aria-label="장소 정보를 불러오는 중" className={styles["skeleton"]} role="status">
-      <span aria-hidden="true" className={styles["skeletonIcon"]} />
-      <div aria-hidden="true" className={styles["skeletonLines"]}>
-        <span className={styles["skeletonLine"]} data-testid="skeleton-line" />
-        <span className={styles["skeletonLineShort"]} />
-        <span className={styles["skeletonAction"]} />
+    <div aria-label="장소 정보를 불러오는 중" className={feedbackStyles["skeleton"]} role="status">
+      <span aria-hidden="true" className={feedbackStyles["skeletonIcon"]} />
+      <div aria-hidden="true" className={feedbackStyles["skeletonLines"]}>
+        <span className={feedbackStyles["skeletonLine"]} data-testid="skeleton-line" />
+        <span className={feedbackStyles["skeletonLineShort"]} />
+        <span className={feedbackStyles["skeletonAction"]} />
       </div>
     </div>
   )
@@ -155,8 +156,8 @@ type EmptyStateProperties = {
 
 export function EmptyState({ action, description, title }: EmptyStateProperties) {
   return (
-    <div className={styles["emptyState"]}>
-      <span aria-hidden="true" className={styles["emptyGlyph"]}>
+    <div className={feedbackStyles["emptyState"]}>
+      <span aria-hidden="true" className={feedbackStyles["emptyGlyph"]}>
         <LeafIcon />
       </span>
       <strong>{title}</strong>

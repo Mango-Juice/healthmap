@@ -130,11 +130,48 @@ test("Given keyboard input, When filters and sheet controls are used, Then focus
   // When a close completion is interrupted by a marker selection
   await page.getByRole("button", { name: "상세 닫기" }).click()
   await page.getByRole("button", { name: "프로틴 키친 역삼점, 단백질" }).click()
-  await page.waitForTimeout(300)
+  await expect(page.getByRole("dialog", { name: "그린테이블 강남점" })).toHaveCSS(
+    "transform",
+    "matrix(1, 0, 0, 1, 0, 0)",
+  )
 
   // Then the stale close timer cannot expose a reopen control over the dialog
   await expect(page.getByRole("dialog", { name: "그린테이블 강남점" })).toBeVisible()
   await expect(page.getByRole("button", { name: "상세 열기" })).toHaveCount(0)
+})
+
+test("Given mobile focus entry, When the detail title receives focus, Then the design focus token is visible", async ({
+  page,
+}) => {
+  // Given
+  await page.setViewportSize({ width: 375, height: 812 })
+
+  // When
+  await page.goto("/showcase")
+
+  // Then
+  const title = page.locator("#showcase-place-title")
+  await expect(title).toBeFocused()
+  await expect(title).toHaveCSS("outline-color", "rgb(38, 105, 156)")
+  await expect(title).toHaveCSS("outline-style", "solid")
+  await expect(title).toHaveCSS("outline-width", "3px")
+})
+
+test("Given an open desktop detail pane, When Escape is pressed, Then the pane closes", async ({
+  page,
+}) => {
+  // Given
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto("/showcase")
+  const pane = page.getByRole("complementary", { name: "그린테이블 강남점" })
+  await expect(pane).toBeVisible()
+
+  // When
+  await page.keyboard.press("Escape")
+
+  // Then
+  await expect(pane).toHaveCount(0)
+  await expect(page.getByTestId("detail-closed-desktop")).toBeVisible()
 })
 
 test("Given reduced motion, When the showcase loads, Then transforms and pulses are removed", async ({
