@@ -1,0 +1,161 @@
+import { expect, test } from "@playwright/test"
+
+const viewports = [
+  { name: "mobile", width: 375, height: 812 },
+  { name: "tablet", width: 768, height: 1024 },
+  { name: "desktop", width: 1280, height: 800 },
+] as const
+
+for (const viewport of viewports) {
+  test(`Given the primitive showcase, When viewed at ${viewport.name}, Then every state fits and remains operable`, async ({
+    page,
+  }) => {
+    // Given
+    await page.setViewportSize(viewport)
+
+    // When
+    await page.goto("/showcase")
+
+    // Then
+    await expect(page.getByRole("heading", { level: 1, name: "프리미티브 쇼케이스" })).toBeVisible()
+    await expect(page.getByTestId("map-shell")).toBeVisible()
+    await expect(page.getByTestId("state-default")).toBeVisible()
+    await expect(page.getByTestId("state-hover")).toBeVisible()
+    await expect(page.getByTestId("state-focus")).toBeVisible()
+    await expect(page.getByTestId("state-active")).toBeVisible()
+    await expect(page.getByTestId("state-disabled")).toBeVisible()
+    await expect(page.getByTestId("state-loading")).toBeVisible()
+    await expect(page.getByTestId("state-error")).toBeVisible()
+    await expect(page.getByTestId("state-empty")).toBeVisible()
+    await expect(page.getByTestId("state-stress")).toContainText(
+      "https://example.com/this-is-an-intentionally-unbroken-accessibility-stress-string",
+    )
+
+    const overflow = await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    }))
+    expect(overflow.scrollWidth).toBe(overflow.clientWidth)
+
+    const undersizedTargets = await page.locator("main button:visible").evaluateAll((buttons) =>
+      buttons.flatMap((button) => {
+        const bounds = button.getBoundingClientRect()
+        return bounds.width < 44 || bounds.height < 44
+          ? [
+              {
+                label: button.getAttribute("aria-label") ?? button.textContent,
+                width: bounds.width,
+                height: bounds.height,
+              },
+            ]
+          : []
+      }),
+    )
+    expect(undersizedTargets).toEqual([])
+  })
+}
+
+test("Given the stress alert, When viewed at mobile width, Then the unbroken URL stays contained", async ({
+  page,
+}) => {
+  // Given
+  await page.setViewportSize({ width: 375, height: 812 })
+
+  // When
+  await page.goto("/showcase")
+
+  // Then
+  const url = page
+    .getByTestId("state-stress")
+    .getByText("https://example.com/this-is-an-intentionally-unbroken-accessibility-stress-string")
+  await expect(url).toBeAttached()
+  const geometry = await page.evaluate(() => ({
+    clientWidth: document.documentElement.clientWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+  }))
+  expect(geometry.scrollWidth).toBe(geometry.clientWidth)
+})
+
+test("Given keyboard input, When filters and sheet controls are used, Then focus and open state are explicit", async ({
+  page,
+}) => {
+  // Given
+  await page.setViewportSize({ width: 375, height: 812 })
+  await page.goto("/showcase")
+  await expect(page.locator("#showcase-place-title")).toBeFocused()
+  const closeDetail = page.getByRole("button", { name: "상세 닫기" })
+
+  // When
+  await closeDetail.focus()
+
+  // Then
+  await expect(closeDetail).toBeFocused()
+  const focusStyle = await closeDetail.evaluate((button) => {
+    const style = getComputedStyle(button)
+    return `${style.outlineStyle} ${style.outlineWidth} ${style.boxShadow}`
+  })
+  expect(focusStyle).not.toContain("none 0px none")
+
+  // When
+  await closeDetail.click()
+
+  // Then
+  await expect(page.getByTestId("detail-closed")).toBeVisible()
+  await expect(page.locator('[role="dialog"][aria-hidden="true"]')).toHaveAttribute(
+    "aria-hidden",
+    "true",
+  )
+
+  // When
+  await page.getByRole("button", { name: "상세 열기" }).click()
+
+  // Then
+  const detailDialog = page.getByRole("dialog", { name: "그린테이블 강남점" })
+  await expect(detailDialog).toBeVisible()
+  await expect(page.locator("#showcase-place-title")).toBeFocused()
+
+  // When
+  await page.keyboard.press("Escape")
+
+  // Then
+  const reopenDetail = page.getByRole("button", { name: "상세 열기" })
+  await expect(reopenDetail).toBeFocused()
+
+  // When
+  await page.getByRole("button", { name: "프로틴 키친 역삼점, 단백질" }).click()
+
+  // Then
+  await expect(page.getByRole("dialog", { name: "그린테이블 강남점" })).toBeVisible()
+
+  // When a close completion is interrupted by a marker selection
+  await page.getByRole("button", { name: "상세 닫기" }).click()
+  await page.getByRole("button", { name: "프로틴 키친 역삼점, 단백질" }).click()
+  await page.waitForTimeout(300)
+
+  // Then the stale close timer cannot expose a reopen control over the dialog
+  await expect(page.getByRole("dialog", { name: "그린테이블 강남점" })).toBeVisible()
+  await expect(page.getByRole("button", { name: "상세 열기" })).toHaveCount(0)
+})
+
+test("Given reduced motion, When the showcase loads, Then transforms and pulses are removed", async ({
+  page,
+}) => {
+  // Given
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await page.setViewportSize({ width: 375, height: 812 })
+
+  // When
+  await page.goto("/showcase")
+
+  // Then
+  const motion = await page.getByTestId("skeleton-line").evaluate((element) => {
+    const style = getComputedStyle(element)
+    return { animationName: style.animationName, transform: style.transform }
+  })
+  expect(motion.animationName).toBe("none")
+  expect(motion.transform).toBe("none")
+  const sheetMotion = await page
+    .getByRole("dialog", { name: "그린테이블 강남점" })
+    .evaluate((element) => getComputedStyle(element).transitionDuration)
+  expect(Number.parseFloat(sheetMotion)).toBeLessThanOrEqual(0.000_01)
+})

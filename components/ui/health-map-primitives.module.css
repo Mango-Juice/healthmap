@@ -1,0 +1,436 @@
+.filterRail {
+  border: 0;
+  display: flex;
+  gap: var(--hm-space-2);
+  max-inline-size: 100%;
+  min-inline-size: 0;
+  overflow-x: auto;
+  padding: var(--hm-space-1);
+  scrollbar-width: none;
+}
+
+.visuallyHidden {
+  block-size: 1px;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  inline-size: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+}
+
+.filterRail::-webkit-scrollbar {
+  display: none;
+}
+
+.filterButton,
+.actionButton,
+.markerTarget {
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  touch-action: manipulation;
+}
+
+.filterButton {
+  align-items: center;
+  background: var(--hm-surface);
+  border: var(--hm-border-width) solid var(--hm-border);
+  border-radius: var(--hm-radius-control);
+  color: var(--hm-ink-muted);
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: var(--hm-type-label);
+  font-weight: 600;
+  gap: var(--hm-space-2);
+  justify-content: center;
+  letter-spacing: 0;
+  line-height: var(--hm-leading-tight);
+  min-block-size: var(--hm-control-min);
+  padding: var(--hm-space-2) var(--hm-space-4);
+  transition:
+    background-color var(--hm-motion-micro) var(--hm-ease-standard),
+    border-color var(--hm-motion-micro) var(--hm-ease-standard),
+    color var(--hm-motion-micro) var(--hm-ease-standard),
+    transform var(--hm-motion-press) var(--hm-ease-out);
+  white-space: nowrap;
+}
+
+.filterButton:hover:not(:disabled) {
+  background: var(--hm-green-100);
+  border-color: var(--hm-green-300);
+  color: var(--hm-green-950);
+}
+
+.filterButton[aria-pressed="true"] {
+  background: var(--hm-green-800);
+  border-color: var(--hm-green-800);
+  color: var(--hm-surface);
+}
+
+.filterButton:active:not(:disabled),
+.markerTarget:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.actionButton:active:not(:disabled) {
+  filter: brightness(var(--hm-active-brightness));
+}
+
+.filterButton:disabled,
+.actionButton:disabled,
+.markerTarget:disabled {
+  cursor: not-allowed;
+  opacity: var(--hm-disabled-opacity);
+}
+
+.filterButton:focus-visible,
+.actionButton:focus-visible,
+.markerTarget:focus-visible {
+  outline: var(--hm-focus-ring) solid var(--hm-blue);
+  outline-offset: var(--hm-focus-ring);
+}
+
+.inlineIcon {
+  block-size: var(--hm-icon-sm);
+  inline-size: var(--hm-icon-sm);
+}
+
+.actionButton {
+  align-items: center;
+  border: var(--hm-border-width) solid transparent;
+  border-radius: var(--hm-radius-control);
+  display: inline-flex;
+  font-size: var(--hm-type-label);
+  font-weight: 700;
+  justify-content: center;
+  letter-spacing: 0;
+  line-height: var(--hm-leading-tight);
+  min-block-size: var(--hm-control-min);
+  min-inline-size: var(--hm-control-min);
+  padding: var(--hm-space-2) var(--hm-space-4);
+  transition:
+    background-color var(--hm-motion-micro) var(--hm-ease-standard),
+    border-color var(--hm-motion-micro) var(--hm-ease-standard),
+    color var(--hm-motion-micro) var(--hm-ease-standard),
+    transform var(--hm-motion-press) var(--hm-ease-out);
+}
+
+.buttonContent {
+  align-items: center;
+  display: inline-flex;
+  gap: var(--hm-space-2);
+  justify-content: center;
+}
+
+.buttonContent > svg {
+  block-size: var(--hm-icon-md);
+  flex: 0 0 auto;
+  inline-size: var(--hm-icon-md);
+}
+
+.primary {
+  background: var(--hm-green-800);
+  color: var(--hm-surface);
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--hm-green-600);
+}
+
+.secondary {
+  background: var(--hm-surface);
+  border-color: var(--hm-green-800);
+  color: var(--hm-green-950);
+}
+
+.secondary:hover:not(:disabled),
+.quiet:hover:not(:disabled) {
+  background: var(--hm-green-100);
+}
+
+.quiet {
+  background: var(--hm-surface);
+  border-color: var(--hm-border);
+  color: var(--hm-ink);
+}
+
+.danger {
+  background: var(--hm-error);
+  color: var(--hm-surface);
+}
+
+.spinner {
+  animation: spinner-turn var(--hm-motion-spinner) var(--hm-ease-standard) infinite;
+}
+
+@keyframes spinner-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.markerTarget {
+  align-items: center;
+  background: transparent;
+  block-size: var(--hm-control-min);
+  display: inline-flex;
+  inline-size: var(--hm-control-min);
+  justify-content: center;
+  padding: 0;
+  transition: transform var(--hm-motion-micro) var(--hm-ease-out);
+}
+
+.markerTarget:hover:not(:disabled),
+.markerTarget[aria-pressed="true"] {
+  transform: translateY(-2px);
+}
+
+.markerVisual {
+  align-items: center;
+  color: var(--hm-green-800);
+  display: inline-flex;
+  justify-content: center;
+  position: relative;
+}
+
+.markerTarget[aria-pressed="true"] .markerVisual {
+  filter: drop-shadow(var(--hm-shadow-marker));
+}
+
+.markerTarget[aria-pressed="true"] .markerVisual::after {
+  border: var(--hm-focus-ring) solid var(--hm-blue);
+  border-radius: var(--hm-radius-marker);
+  content: "";
+  inset: calc(-1 * var(--hm-marker-ring-gap));
+  position: absolute;
+}
+
+.markerPin {
+  block-size: var(--hm-marker-visual);
+  fill: var(--hm-green-800);
+  inline-size: var(--hm-marker-visual);
+  stroke: var(--hm-green-950);
+}
+
+.markerLeaf {
+  block-size: var(--hm-icon-sm);
+  color: var(--hm-surface);
+  inline-size: var(--hm-icon-sm);
+  inset-block-start: var(--hm-marker-leaf-offset);
+  position: absolute;
+}
+
+.markerNotch {
+  background: var(--marker-category-color);
+  border: var(--hm-marker-notch-border) solid var(--hm-surface);
+  border-radius: var(--hm-radius-marker);
+  block-size: var(--hm-space-3);
+  inline-size: var(--hm-space-3);
+  inset-block-end: var(--hm-space-1);
+  inset-inline-end: 0;
+  position: absolute;
+}
+
+.markerTarget[data-category="vegetables"] {
+  --marker-category-color: var(--hm-coral);
+}
+
+.markerTarget[data-category="protein"] {
+  --marker-category-color: var(--hm-blue);
+}
+
+.markerTarget[data-category="balanced"] {
+  --marker-category-color: var(--hm-amber);
+}
+
+.markerTarget[data-category="plant_based"] {
+  --marker-category-color: var(--hm-moss);
+}
+
+.alert {
+  align-items: start;
+  border: var(--hm-border-width) solid currentColor;
+  border-radius: var(--hm-radius-card);
+  display: grid;
+  gap: var(--hm-space-3);
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: var(--hm-space-4);
+}
+
+.alert.info {
+  background: var(--hm-info-wash);
+  color: var(--hm-info);
+}
+
+.alert.error {
+  background: var(--hm-error-wash);
+  color: var(--hm-error);
+}
+
+.alertIcon {
+  block-size: var(--hm-icon-md);
+  inline-size: var(--hm-icon-md);
+  margin-block-start: var(--hm-space-1);
+}
+
+.alertCopy {
+  display: grid;
+  gap: var(--hm-space-1);
+  min-inline-size: 0;
+  word-break: keep-all;
+}
+
+.alertCopy strong {
+  font-size: var(--hm-type-label);
+  line-height: var(--hm-leading-tight);
+}
+
+.alertCopy span {
+  color: var(--hm-ink);
+  font-size: var(--hm-type-caption);
+  line-height: var(--hm-leading-tight);
+  overflow-wrap: normal;
+}
+
+.alert > button {
+  grid-column: 2;
+  justify-self: start;
+}
+
+.skeleton {
+  align-items: center;
+  display: grid;
+  gap: var(--hm-space-4);
+  grid-template-columns: auto minmax(0, 1fr);
+  min-block-size: var(--hm-skeleton-block);
+  background: var(--hm-surface);
+  border: var(--hm-border-width) solid var(--hm-border);
+  border-radius: var(--hm-radius-card);
+  padding: var(--hm-space-4);
+}
+
+.skeletonIcon,
+.skeletonLine,
+.skeletonLineShort,
+.skeletonAction {
+  animation: skeleton-pulse var(--hm-motion-skeleton) var(--hm-ease-standard) infinite alternate;
+  background: var(--hm-border);
+  border-radius: var(--hm-radius-card);
+  display: block;
+}
+
+.skeletonIcon {
+  block-size: var(--hm-control-min);
+  inline-size: var(--hm-control-min);
+}
+
+.skeletonLines {
+  display: grid;
+  gap: var(--hm-space-3);
+}
+
+.skeletonLine {
+  block-size: var(--hm-space-4);
+  inline-size: min(100%, var(--hm-skeleton-line-wide));
+}
+
+.skeletonLineShort {
+  block-size: var(--hm-space-3);
+  inline-size: min(65%, var(--hm-skeleton-line-mid));
+}
+
+.skeletonAction {
+  block-size: var(--hm-control-min);
+  inline-size: min(100%, var(--hm-skeleton-action-wide));
+}
+
+@keyframes skeleton-pulse {
+  from {
+    opacity: var(--hm-skeleton-opacity-low);
+  }
+
+  to {
+    opacity: var(--hm-skeleton-opacity-high);
+  }
+}
+
+.emptyState {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--hm-space-3);
+  justify-content: center;
+  min-block-size: var(--hm-empty-block);
+  padding: var(--hm-space-6);
+  text-align: center;
+  background: var(--hm-surface);
+  border: var(--hm-border-width) solid var(--hm-border);
+  border-radius: var(--hm-radius-card);
+}
+
+.emptyState strong {
+  font-size: var(--hm-type-subheading);
+  line-height: var(--hm-leading-body);
+}
+
+.emptyState p {
+  color: var(--hm-ink-muted);
+  font-size: var(--hm-type-body);
+  line-height: var(--hm-leading-body);
+  margin: 0;
+  max-inline-size: 30ch;
+  word-break: keep-all;
+}
+
+.emptyGlyph {
+  align-items: center;
+  background: var(--hm-green-100);
+  border-radius: var(--hm-radius-marker);
+  color: var(--hm-green-800);
+  display: inline-flex;
+  block-size: var(--hm-empty-glyph);
+  inline-size: var(--hm-empty-glyph);
+  justify-content: center;
+}
+
+.emptyGlyph svg {
+  block-size: var(--hm-icon-lg);
+  inline-size: var(--hm-icon-lg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .filterButton,
+  .actionButton,
+  .markerTarget {
+    transition-duration: var(--hm-motion-reduced);
+  }
+
+  .filterButton:active:not(:disabled),
+  .markerTarget:active:not(:disabled),
+  .markerTarget:hover:not(:disabled),
+  .markerTarget[aria-pressed="true"] {
+    transform: none;
+  }
+
+  .actionButton:active:not(:disabled) {
+    filter: none;
+  }
+
+  .spinner,
+  .skeletonIcon,
+  .skeletonLine,
+  .skeletonLineShort,
+  .skeletonAction {
+    animation: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .filterButton:focus-visible,
+  .actionButton:focus-visible,
+  .markerTarget:focus-visible {
+    outline-color: Highlight;
+  }
+}
