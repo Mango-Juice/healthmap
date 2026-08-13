@@ -87,6 +87,10 @@
   font-size: var(--hm-type-caption);
   padding: var(--hm-space-2) var(--hm-space-3);
 }
+.header > button {
+  min-block-size: var(--hm-control-min);
+  padding-inline: var(--hm-space-3);
+}
 .map {
   background: var(--hm-map);
   min-block-size: 0;

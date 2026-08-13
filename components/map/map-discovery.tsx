@@ -49,10 +49,12 @@ export function MapDiscovery({ clientId, initialPlaces }: Properties) {
   const [selected, setSelected] = useState<string>()
   const sdkContainer = useRef<HTMLDivElement>(null)
   const adapter = useRef<MapAdapter>(null)
+  const sdkGeneration = useRef(0)
+  const catalogGeneration = useRef(0)
 
   const requestLocation = useCallback(() => {
     setLocation(beginLocationRequest())
-    if (!("geolocation" in navigator)) {
+    if (navigator.geolocation === undefined) {
       const next = resolveLocationOutcome({ kind: "unsupported" })
       setLocation(next)
       captureProductAnalytics({ event: "location_resolved", properties: { outcome: next.kind } })
@@ -81,6 +83,8 @@ export function MapDiscovery({ clientId, initialPlaces }: Properties) {
   }, [])
 
   const loadSdk = useCallback(() => {
+    const generation = sdkGeneration.current + 1
+    sdkGeneration.current = generation
     if (!clientId) {
       setAdapterState("fallback")
       return
@@ -88,6 +92,7 @@ export function MapDiscovery({ clientId, initialPlaces }: Properties) {
     setAdapterState("loading")
     loadNaverMaps(clientId).then(
       () => {
+        if (generation !== sdkGeneration.current) return
         const container = sdkContainer.current
         if (!container) return setAdapterState("error")
         try {
@@ -98,7 +103,9 @@ export function MapDiscovery({ clientId, initialPlaces }: Properties) {
           setAdapterState("error")
         }
       },
-      () => setAdapterState("error"),
+      () => {
+        if (generation === sdkGeneration.current) setAdapterState("error")
+      },
     )
   }, [clientId, view])
 
@@ -112,12 +119,15 @@ export function MapDiscovery({ clientId, initialPlaces }: Properties) {
 
   const visiblePlaces = useMemo(() => filterPlaces(places, filter), [filter, places])
   const reloadCatalog = async () => {
+    const generation = catalogGeneration.current + 1
+    catalogGeneration.current = generation
     setCatalogState("loading")
     try {
       const response = await fetch("/api/map-catalog", { cache: "no-store" })
       if (!response.ok) throw new CatalogLoadError()
       const payload: unknown = await response.json()
       if (!isCatalogPayload(payload)) throw new CatalogLoadError()
+      if (generation !== catalogGeneration.current) return
       setPlaces(
         payload.places.flatMap(({ slug }) => {
           const place = initialPlaces.find((candidate) => candidate.slug === slug)
@@ -126,7 +136,7 @@ export function MapDiscovery({ clientId, initialPlaces }: Properties) {
       )
       setCatalogState("ready")
     } catch {
-      setCatalogState("error")
+      if (generation === catalogGeneration.current) setCatalogState("error")
     }
   }
 

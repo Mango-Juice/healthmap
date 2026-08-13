@@ -2,16 +2,17 @@ import type { GeoPoint, MapView } from "../domain/geo"
 
 export type MapAdapterState = "fallback" | "loading" | "ready" | "error"
 
-type NaverMap = {
+export type NaverMap = {
   readonly destroy?: () => void
   readonly setCenter: (point: NaverLatLng) => void
   readonly setZoom: (zoom: number) => void
 }
-type NaverLatLng = object
-type NaverMapsApi = {
+export type MapContainer = { readonly dataset: DOMStringMap }
+export type NaverLatLng = object
+export type NaverMapsApi = {
   readonly LatLng: new (latitude: number, longitude: number) => NaverLatLng
   readonly Map: new (
-    container: HTMLElement,
+    container: MapContainer,
     options: { readonly center: NaverLatLng; readonly zoom: number },
   ) => NaverMap
 }
@@ -27,8 +28,12 @@ export interface MapAdapter {
   recenter(point: GeoPoint, zoom: number): void
 }
 
-export const createNaverMapAdapter = (container: HTMLElement, view: MapView): MapAdapter => {
-  const maps = window.naver?.maps
+export const createNaverMapAdapter = (
+  container: MapContainer,
+  view: MapView,
+  injectedMaps?: NaverMapsApi,
+): MapAdapter => {
+  const maps = injectedMaps ?? window.naver?.maps
   if (!maps) throw new MapSdkLoadError("NAVER Maps constructor is unavailable")
   const map = new maps.Map(container, {
     center: new maps.LatLng(view.latitude, view.longitude),
