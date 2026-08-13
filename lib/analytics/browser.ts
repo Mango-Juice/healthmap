@@ -1,14 +1,13 @@
 "use client"
 
-import posthog, { type PostHogConfig } from "posthog-js/dist/module.no-external"
+import PostHog from "posthog-js-lite"
 
+import { type AnalyticsEvent, parseAnalyticsEvent } from "../domain/analytics"
 import {
   createPrivacySafeAnalytics,
-  POSTHOG_PRIVACY_CONFIG,
   type PrivacySafeAnalytics,
   sanitizeAnalyticsTransportEvent,
 } from "./privacy-safe"
-import { type AnalyticsEvent, parseAnalyticsEvent } from "../domain/analytics"
 
 type BrowserAnalyticsEnvironment = {
   readonly host: string | undefined
@@ -17,6 +16,7 @@ type BrowserAnalyticsEnvironment = {
 
 type AnalyticsLifecycleState = {
   analytics: PrivacySafeAnalytics | null
+  client: PostHog | null
   configuredEnvironment: BrowserAnalyticsEnvironment | null
   generation: number
   initialization: Promise<void> | null
@@ -32,6 +32,7 @@ const getAnalyticsState = (): AnalyticsLifecycleState => {
   if (globalThis.healthmapAnalyticsLifecycle === undefined) {
     globalThis.healthmapAnalyticsLifecycle = {
       analytics: null,
+      client: null,
       configuredEnvironment: null,
       generation: 0,
       initialization: null,
@@ -43,6 +44,9 @@ const getAnalyticsState = (): AnalyticsLifecycleState => {
 }
 
 const MAX_QUEUED_EVENTS = 32
+type PostHogOptions = NonNullable<ConstructorParameters<typeof PostHog>[1]>
+type PostHogBeforeSend = Extract<PostHogOptions["before_send"], (...args: never[]) => unknown>
+type PostHogBeforeSendEvent = Parameters<PostHogBeforeSend>[0]
 
 const browserStorage = {
   getItem: (key: string): string | null => {
@@ -68,25 +72,38 @@ const asNonEmptyString = (value: string | undefined): string | null => {
   return trimmed === undefined || trimmed.length === 0 ? null : trimmed
 }
 
-const createPostHogConfig = (
-  anonymousId: string,
-  host: string,
-  loaded: NonNullable<PostHogConfig["loaded"]>,
-): Partial<PostHogConfig> => ({
-  ...POSTHOG_PRIVACY_CONFIG,
-  api_host: host,
-  bootstrap: { distinctID: anonymousId, isIdentifiedID: false },
-  property_denylist: [...POSTHOG_PRIVACY_CONFIG.property_denylist],
-  loaded,
-  before_send: (event) => {
+const toPostHogProperties = (
+  properties: Readonly<Record<string, unknown>>,
+): Record<string, string> =>
+  Object.fromEntries(
+    Object.entries(properties).flatMap(([key, value]) =>
+      typeof value === "string" ? [[key, value]] : [],
+    ),
+  )
+
+const ignoreSdkLifecycleFailure = (operation: Promise<void> | undefined): void => {
+  void operation?.catch(() => undefined)
+}
+
+const createPostHogConfig = (host: string): PostHogOptions => ({
+  autocapture: false,
+  defaultOptIn: true,
+  disableRemoteFeatureFlags: true,
+  flushAt: 1,
+  flushInterval: 0,
+  host,
+  persistence: "memory" as const,
+  personProfiles: "never" as const,
+  preloadFeatureFlags: false,
+  before_send: (event: PostHogBeforeSendEvent) => {
     if (event === null) return null
-    const safeEvent = sanitizeAnalyticsTransportEvent(event.event, event.properties)
+    const safeEvent = sanitizeAnalyticsTransportEvent(event.event, event.properties ?? {})
     if (safeEvent === null) return null
 
-    const token = event.properties["token"]
+    const token = event.properties?.["token"]
     const properties =
       typeof token === "string" ? { ...safeEvent.properties, token } : { ...safeEvent.properties }
-    return { event: safeEvent.event, properties, uuid: event.uuid }
+    return { ...event, event: safeEvent.event, properties: toPostHogProperties(properties) }
   },
 })
 
@@ -99,7 +116,10 @@ const flushQueuedEvents = (): void => {
 const enqueueOrCapture = (event: AnalyticsEvent): void => {
   const state = getAnalyticsState()
   if (getProductAnalyticsOptOut()) return
-  if (state.lifecycle === "ready" && state.analytics !== null) return state.analytics.capture(event)
+  if (state.lifecycle === "ready" && state.analytics !== null) {
+    state.analytics.capture(event)
+    return
+  }
   if (state.queuedEvents.length < MAX_QUEUED_EVENTS) state.queuedEvents.push(event)
 }
 
@@ -125,30 +145,22 @@ const startConfiguredAnalytics = (): Promise<void> => {
   const localAnalytics = createPrivacySafeAnalytics({
     storage: browserStorage,
     transport: {
-      capture: (event, properties) => posthog.capture(event, properties),
-      optIn: () => posthog.opt_in_capturing(),
-      optOut: () => posthog.opt_out_capturing(),
+      capture: (event, properties) => state.client?.capture(event, toPostHogProperties(properties)),
+      optIn: () => ignoreSdkLifecycleFailure(state.client?.optIn()),
+      optOut: () => ignoreSdkLifecycleFailure(state.client?.optOut()),
     },
     createId: () => crypto.randomUUID(),
   })
 
+  state.client = new PostHog(key, createPostHogConfig(host))
   state.analytics = localAnalytics
-  state.initialization = new Promise((resolve) => {
-    posthog.init(
-      key,
-      createPostHogConfig(localAnalytics.anonymousId, host, (instance) => {
-        if (state.generation !== currentGeneration || getProductAnalyticsOptOut()) {
-          state.queuedEvents.length = 0
-          instance.opt_out_capturing()
-          resolve()
-          return
-        }
-        posthog.opt_in_capturing({ captureEventName: false })
-        state.lifecycle = "ready"
-        flushQueuedEvents()
-        resolve()
-      }),
-    )
+  state.initialization = Promise.resolve().then(() => {
+    if (state.generation !== currentGeneration || getProductAnalyticsOptOut()) {
+      state.queuedEvents.length = 0
+      return
+    }
+    state.lifecycle = "ready"
+    flushQueuedEvents()
   })
   return state.initialization
 }
