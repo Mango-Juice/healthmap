@@ -8,7 +8,7 @@
 }
 .header {
   align-items: start;
-  border-block-end: 1px solid var(--hm-border);
+  border-block-end: var(--hm-border-width) solid var(--hm-border);
   display: flex;
   gap: var(--hm-space-3);
   justify-content: space-between;
@@ -52,6 +52,34 @@
   margin: 0;
   overflow-wrap: anywhere;
 }
+.summary {
+  display: grid;
+  gap: var(--hm-space-3);
+}
+.metaGrid {
+  display: grid;
+  gap: var(--hm-space-2);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.metaGrid > div {
+  background: var(--hm-surface-subtle);
+  border: var(--hm-border-width) solid var(--hm-border);
+  border-radius: var(--hm-radius-card);
+  display: grid;
+  gap: var(--hm-space-1);
+  min-inline-size: 0;
+  padding: var(--hm-space-3);
+}
+.metaGrid span {
+  color: var(--hm-ink-muted);
+  font-size: var(--hm-type-caption);
+  line-height: var(--hm-leading-tight);
+}
+.metaGrid strong {
+  font-size: var(--hm-type-label);
+  line-height: var(--hm-leading-tight);
+  overflow-wrap: anywhere;
+}
 .address svg {
   block-size: var(--hm-icon-md);
   color: var(--hm-green-600);
@@ -65,7 +93,7 @@
 .body h3 {
   color: var(--hm-green-800);
   font-size: var(--hm-type-label);
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
   margin: 0;
 }
 .body section {

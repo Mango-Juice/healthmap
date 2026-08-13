@@ -200,16 +200,20 @@
 @media (max-width: 480px) {
   .filterRail {
     display: grid;
-    gap: var(--hm-space-2);
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    overflow: visible;
+    gap: var(--hm-space-1);
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    overflow: hidden;
     scroll-snap-type: none;
   }
 
   .filterButton {
-    inline-size: 100%;
+    flex-direction: column;
+    gap: var(--hm-space-1);
+    inline-size: auto;
+    min-block-size: calc(var(--hm-control-min) + var(--hm-space-3));
     min-inline-size: 0;
-    padding-inline: var(--hm-space-2);
+    padding: var(--hm-space-1);
+    white-space: normal;
   }
 }
 

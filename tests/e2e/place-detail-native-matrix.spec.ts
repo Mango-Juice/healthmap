@@ -42,6 +42,7 @@ test("native place-detail matrix covers filters, touch, scroll, history, share, 
           rect.top + rect.height / 2,
         )
         return {
+          top: rect.top,
           width: rect.width,
           height: rect.height,
           hit: target === element || element.contains(target),
@@ -58,12 +59,15 @@ test("native place-detail matrix covers filters, touch, scroll, history, share, 
         return "width" in icon && "height" in icon && icon.width >= 16 && icon.height >= 16
       }),
     ).toBe(true)
+    if (viewport.width === 375) {
+      expect(new Set(filterMetrics.map(({ top }) => Math.round(top))).size).toBe(1)
+    }
     for (let index = 0; index < 5; index += 1) await filters.nth(index).click()
     await filters.nth(0).click()
     await page.getByRole("button", { name: /새싹 네모식당/ }).tap()
     await expect(page.locator("[data-detail-phase='open']")).toBeVisible()
     await page.screenshot({
-      path: `.omo/evidence/task-7/fix-r8/native-${viewport.name}-open.png`,
+      path: `.omo/evidence/task-7/fix-r9/native-${viewport.name}-open.png`,
       fullPage: false,
     })
 
@@ -89,6 +93,9 @@ test("native place-detail matrix covers filters, touch, scroll, history, share, 
     const activeAfterReverseTab = await page.evaluate(
       () => document.activeElement?.closest("[data-detail-phase]") !== null,
     )
+    expect(activeBeforeTabs).toBe(true)
+    expect(activeAfterTab).toBe(true)
+    expect(activeAfterReverseTab).toBe(viewport.width === 375)
     await page.getByRole("button", { name: "공유", exact: true }).tap()
     await expect(page.getByLabel("공유 URL")).toBeVisible()
     await page.getByRole("button", { name: "URL 선택" }).tap()
@@ -139,7 +146,7 @@ test("native place-detail matrix covers filters, touch, scroll, history, share, 
   }
 
   await writeFile(
-    ".omo/evidence/task-7/fix-r8/native-matrix.json",
+    ".omo/evidence/task-7/fix-r9/native-matrix.json",
     JSON.stringify(metrics, null, 2),
   )
 })

@@ -527,18 +527,32 @@ export function MapDiscovery({
           <span className={styles["paperFeature"]} data-fallback-geometry />
           <span className={styles["paperFeature"]} data-fallback-geometry />
           <span className={styles["paperFeature"]} data-fallback-geometry />
-          <span className={styles["paperBlock"]} data-map-block />
-          <span className={styles["paperBlock"]} data-map-block />
-          <span className={styles["paperPark"]} data-map-block />
+          <span className={styles["paperBlock"]} data-map-block="north-west" />
+          <span className={styles["paperBlock"]} data-map-block="south-east" />
+          <span className={styles["paperPark"]} data-map-block="park" />
+          <span className={styles["paperBlock"]} data-map-block="north-east" />
+          <span className={styles["paperBlock"]} data-map-block="center" />
+          <span className={styles["paperBlock"]} data-map-block="south-west" />
+          <span className={styles["paperBlock"]} data-map-block="east" />
           <span className={styles["paperRoad"]} data-map-road="north" />
           <span className={styles["paperRoad"]} data-map-road="east" />
           <span className={styles["paperRoad"]} data-map-road="south" />
           <span className={styles["paperRoad"]} data-map-road="west" />
-          <span className={styles["paperLabel"]} data-map-label>
+          <span className={styles["paperRoad"]} data-map-road="north-east" />
+          <span className={styles["paperRoad"]} data-map-road="east-south" />
+          <span className={styles["paperRoad"]} data-map-road="south-west" />
+          <span className={styles["paperRoad"]} data-map-road="west-center" />
+          <span className={styles["paperLabel"]} data-map-label="one">
             강남역
           </span>
-          <span className={styles["paperLabel"]} data-map-label>
+          <span className={styles["paperLabel"]} data-map-label="two">
             역삼역
+          </span>
+          <span className={styles["paperLabel"]} data-map-label="three">
+            강남 생활권
+          </span>
+          <span className={styles["paperLabel"]} data-map-label="four">
+            역삼 생활권
           </span>
         </div>
         <div aria-hidden="true" className={styles["sdkMap"]} ref={sdkContainer} />

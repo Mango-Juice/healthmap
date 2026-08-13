@@ -122,14 +122,25 @@ export function PlaceDetail({ directionsTarget, menus, onClose, place, shareMap 
         </ActionButton>
       </header>
       <div className={styles["body"]} data-testid="place-detail-body">
-        <p className={styles["address"]}>
-          <LocateIcon />
-          {place.address}
-        </p>
-        <p className={styles["tags"]}>
-          {place.healthTags.map((tag) => CATEGORY_LABELS[tag]).join(" · ")}
-        </p>
-        <section aria-label="샘플 건강식 메뉴">
+        <div className={styles["summary"]} data-detail-summary>
+          <p className={styles["address"]}>
+            <LocateIcon />
+            {place.address}
+          </p>
+          <div className={styles["metaGrid"]}>
+            <div data-detail-meta>
+              <span>유형</span>
+              <strong className={styles["tags"]}>
+                {place.healthTags.map((tag) => CATEGORY_LABELS[tag]).join(" · ")}
+              </strong>
+            </div>
+            <div data-detail-meta>
+              <span>메뉴</span>
+              <strong>{visibleMenus.length}가지</strong>
+            </div>
+          </div>
+        </div>
+        <section aria-label="샘플 건강식 메뉴" data-detail-menu>
           <h3>건강식 메뉴</h3>
           <ul>
             {visibleMenus.map((menu) => (

@@ -199,21 +199,49 @@
 .paperBlock {
   background: var(--hm-surface-subtle);
 }
-.paperBlock:nth-of-type(4) {
+.paperBlock[data-map-block="north-west"] {
   block-size: 14%;
   inline-size: 20%;
   inset-block-start: 30%;
   inset-inline-start: 16%;
   transform: rotate(4deg);
 }
-.paperBlock:nth-of-type(5) {
+.paperBlock[data-map-block="south-east"] {
   block-size: 18%;
   inline-size: 24%;
   inset-block-end: 24%;
   inset-inline-start: 54%;
   transform: rotate(-7deg);
 }
-.paperPark {
+.paperBlock[data-map-block="north-east"] {
+  block-size: 12%;
+  inline-size: 17%;
+  inset-block-start: 24%;
+  inset-inline-start: 45%;
+  transform: rotate(-5deg);
+}
+.paperBlock[data-map-block="center"] {
+  block-size: 11%;
+  inline-size: 16%;
+  inset-block-start: 48%;
+  inset-inline-start: 34%;
+  transform: rotate(7deg);
+}
+.paperBlock[data-map-block="south-west"] {
+  block-size: 13%;
+  inline-size: 18%;
+  inset-block-end: 13%;
+  inset-inline-start: 22%;
+  transform: rotate(-4deg);
+}
+.paperBlock[data-map-block="east"] {
+  block-size: 12%;
+  inline-size: 17%;
+  inset-block-end: 38%;
+  inset-inline-end: 8%;
+  transform: rotate(6deg);
+}
+.paperPark[data-map-block="park"] {
   background: var(--hm-green-100);
   block-size: 16%;
   inline-size: 18%;
@@ -252,6 +280,30 @@
   inset-inline-start: -2%;
   transform: rotate(-26deg);
 }
+.paperRoad[data-map-road="north-east"] {
+  inline-size: 34%;
+  inset-block-start: 26%;
+  inset-inline-start: 52%;
+  transform: rotate(32deg);
+}
+.paperRoad[data-map-road="east-south"] {
+  inline-size: 42%;
+  inset-block-start: 64%;
+  inset-inline-start: 48%;
+  transform: rotate(18deg);
+}
+.paperRoad[data-map-road="south-west"] {
+  inline-size: 38%;
+  inset-block-end: 18%;
+  inset-inline-start: 8%;
+  transform: rotate(-12deg);
+}
+.paperRoad[data-map-road="west-center"] {
+  inline-size: 30%;
+  inset-block-start: 45%;
+  inset-inline-start: 2%;
+  transform: rotate(55deg);
+}
 .paperLabel {
   background: var(--hm-surface-subtle);
   border: var(--hm-border-width) solid var(--hm-border);
@@ -259,18 +311,26 @@
   color: var(--hm-ink-muted);
   font-size: var(--hm-type-caption);
   font-weight: var(--hm-weight-label);
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
   padding: var(--hm-space-1) var(--hm-space-2);
   position: absolute;
   z-index: 3;
 }
-.paperLabel:nth-of-type(11) {
+.paperLabel[data-map-label="one"] {
   inset-block-start: 43%;
   inset-inline-start: 8%;
 }
-.paperLabel:nth-of-type(12) {
+.paperLabel[data-map-label="two"] {
   inset-block-end: 12%;
   inset-inline-end: 18%;
+}
+.paperLabel[data-map-label="three"] {
+  inset-block-start: 18%;
+  inset-inline-end: 8%;
+}
+.paperLabel[data-map-label="four"] {
+  inset-block-end: 27%;
+  inset-inline-start: 12%;
 }
 .filter {
   inset-block-start: var(--hm-space-3);
