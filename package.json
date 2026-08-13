@@ -16,7 +16,8 @@
     "typecheck": "tsc --noEmit",
     "test": "pnpm test:config && vitest run --sequence.shuffle --sequence.seed=20260813",
     "test:config": "node scripts/check-vercel-config.mjs",
-    "test:integration": "vitest run tests/integration --passWithNoTests",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:integration:local": "bash scripts/data/verify-local-supabase.sh",
     "test:e2e": "playwright test",
     "react:doctor": "react-doctor .",
     "supabase:start": "supabase start",
@@ -27,7 +28,8 @@
   "dependencies": {
     "next": "16.3.0",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.8",
