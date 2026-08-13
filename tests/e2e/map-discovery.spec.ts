@@ -55,6 +55,18 @@ test("shows an inside location and allows explicit retry", async ({ page }) => {
   await expect(page.locator('[data-location-state="inside"]')).toBeVisible()
 })
 
+test("shows requesting on the fallback while geolocation is pending", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: { getCurrentPosition: () => undefined },
+    })
+  })
+  await page.goto("/")
+  await expect(page.locator('[data-location-state="requesting"]')).toContainText("현재 위치를 확인")
+  await expect(page.getByTestId("map-view")).toContainText("37.5007, 127.0328")
+})
+
 for (const scenario of [
   { name: "southwest boundary", latitude: 37.482, longitude: 127.01, state: "inside" },
   { name: "northeast boundary", latitude: 37.5185, longitude: 127.0545, state: "inside" },
@@ -201,21 +213,17 @@ test("recovers catalog failure and supports empty catalog", async ({ page }) => 
 })
 
 test("rejects malformed catalog and ignores stale rapid refresh", async ({ page }) => {
-  let attempts = 0
+  const requests: import("@playwright/test").Route[] = []
   await page.route("**/api/map-catalog", async (route) => {
-    attempts += 1
-    if (attempts === 1) {
-      await new Promise((resolve) => setTimeout(resolve, 250))
-      return route.fulfill({ status: 503 })
-    }
-    if (attempts === 2)
-      return route.fulfill({ contentType: "application/json", body: '{"places":"bad"}' })
-    await route.continue()
+    requests.push(route)
   })
   await page.goto("/")
   await page.getByRole("button", { name: "장소 새로고침" }).click()
   await page.getByRole("button", { name: "장소 새로고침" }).click()
-  await expect(page.getByText("장소 데이터를 불러오지 못했습니다.")).toBeVisible()
-  await page.getByRole("button", { name: /다시 시도/ }).click()
-  await expect(page.getByRole("button", { name: /샘플/ })).toHaveCount(5)
+  await expect.poll(() => requests.length).toBe(2)
+  await requests[1]?.fulfill({ contentType: "application/json", body: '{"places":[]}' })
+  await expect(page.getByText("표시할 샘플 장소가 없습니다.")).toBeVisible()
+  await requests[0]?.fulfill({ status: 503 })
+  await expect(page.getByText("표시할 샘플 장소가 없습니다.")).toBeVisible()
+  await expect(page.getByText("장소 데이터를 불러오지 못했습니다.")).toHaveCount(0)
 })

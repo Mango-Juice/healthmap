@@ -272,7 +272,10 @@ button:focus-visible {
     display: none;
   }
   .location {
-    max-inline-size: 72%;
+    max-inline-size: calc(100% - var(--hm-space-6));
+  }
+  .location span {
+    word-break: keep-all;
   }
   .markers > span:nth-child(5) {
     inset-inline-start: 76%;

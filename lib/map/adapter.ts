@@ -28,6 +28,57 @@ export interface MapAdapter {
   recenter(point: GeoPoint, zoom: number): void
 }
 
+export type SdkScript = {
+  addEventListener(type: "load" | "error", listener: () => void): void
+  async: boolean
+  readonly dataset: DOMStringMap
+  src: string
+  remove(): void
+}
+export type SdkLoaderHost = {
+  append(script: SdkScript): void
+  createScript(): SdkScript
+  getMaps(): NaverMapsApi | undefined
+  queryScript(): SdkScript | undefined
+}
+export type SdkLoader = { cancel(): void; load(clientId: string): Promise<void> }
+
+export const createSdkLoader = (host: SdkLoaderHost): SdkLoader => {
+  let generation = 0
+  let pending: Promise<void> | undefined
+  return {
+    cancel: () => {
+      generation += 1
+      pending = undefined
+      host.queryScript()?.remove()
+    },
+    load: (clientId) => {
+      if (host.getMaps()) return Promise.resolve()
+      if (pending) return pending
+      const requestGeneration = generation
+      host.queryScript()?.remove()
+      const script = host.createScript()
+      script.dataset["healthMapSdk"] = "naver"
+      script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${encodeURIComponent(clientId)}`
+      script.async = true
+      pending = new Promise((resolve, reject) => {
+        const fail = (message: string) => {
+          if (requestGeneration !== generation) return
+          script.remove()
+          pending = undefined
+          reject(new MapSdkLoadError(message))
+        }
+        script.addEventListener("load", () =>
+          host.getMaps() ? resolve() : fail("NAVER Maps constructor is unavailable"),
+        )
+        script.addEventListener("error", () => fail("NAVER Maps SDK failed to load"))
+        host.append(script)
+      })
+      return pending
+    },
+  }
+}
+
 export const createNaverMapAdapter = (
   container: MapContainer,
   view: MapView,
@@ -52,24 +103,15 @@ export const createNaverMapAdapter = (
   }
 }
 
-export const loadNaverMaps = (clientId: string): Promise<void> =>
-  new Promise((resolve, reject) => {
-    if (window.naver?.maps) return resolve()
-    const existing = document.querySelector<HTMLScriptElement>(
-      'script[data-health-map-sdk="naver"]',
-    )
-    existing?.remove()
-    const script = document.createElement("script")
-    script.dataset["healthMapSdk"] = "naver"
-    script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${encodeURIComponent(clientId)}`
-    script.async = true
-    script.onload = () =>
-      window.naver?.maps
-        ? resolve()
-        : reject(new MapSdkLoadError("NAVER Maps constructor is unavailable"))
-    script.onerror = () => reject(new MapSdkLoadError("NAVER Maps SDK failed to load"))
-    document.head.append(script)
-  })
+const browserSdkLoader = createSdkLoader({
+  append: (script) => document.head.append(script as HTMLScriptElement),
+  createScript: () => document.createElement("script"),
+  getMaps: () => window.naver?.maps,
+  queryScript: () =>
+    document.querySelector<HTMLScriptElement>('script[data-health-map-sdk="naver"]') ?? undefined,
+})
+export const loadNaverMaps = (clientId: string): Promise<void> => browserSdkLoader.load(clientId)
+export const cancelNaverMapsLoad = (): void => browserSdkLoader.cancel()
 
 export class MapSdkLoadError extends Error {
   readonly name = "MapSdkLoadError"

@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { DEFAULT_VIEW } from "../../lib/domain/geo"
-import { createNaverMapAdapter, type NaverMapsApi, viewLabel } from "../../lib/map/adapter"
+import {
+  createNaverMapAdapter,
+  createSdkLoader,
+  type NaverMapsApi,
+  type SdkScript,
+  viewLabel,
+} from "../../lib/map/adapter"
 
 class FakeLatLng {
   constructor(
@@ -8,8 +14,74 @@ class FakeLatLng {
     readonly longitude: number,
   ) {}
 }
+type FakeScript = SdkScript & { dispatch(type: "load" | "error"): void }
+const fakeScript = (): FakeScript => {
+  const listeners = new Map<string, () => void>()
+  return {
+    addEventListener: (type, listener) => listeners.set(type, listener),
+    async: false,
+    dataset: {},
+    dispatch: (type) => listeners.get(type)?.(),
+    src: "",
+    remove() {},
+  }
+}
 
 describe("NAVER map adapter", () => {
+  it("deduplicates loading and rejects missing constructors before retry", async () => {
+    const scripts: FakeScript[] = []
+    let maps: NaverMapsApi | undefined
+    const loader = createSdkLoader({
+      append: () => undefined,
+      createScript: () => {
+        const script = fakeScript()
+        scripts.push(script)
+        return script
+      },
+      getMaps: () => maps,
+      queryScript: () => scripts.at(-1),
+    })
+    const first = loader.load("client")
+    expect(loader.load("client")).toBe(first)
+    scripts[0]?.dispatch("load")
+    await expect(first).rejects.toThrow("constructor is unavailable")
+    const retry = loader.load("client")
+    maps = {
+      LatLng: FakeLatLng,
+      Map: class {
+        setCenter() {}
+        setZoom() {}
+      },
+    } satisfies NaverMapsApi
+    scripts[1]?.dispatch("load")
+    await expect(retry).resolves.toBeUndefined()
+  })
+
+  it("rejects script errors and cancellation prevents late completion", async () => {
+    const scripts: FakeScript[] = []
+    const loader = createSdkLoader({
+      append: () => undefined,
+      createScript: () => {
+        const script = fakeScript()
+        scripts.push(script)
+        return script
+      },
+      getMaps: () => undefined,
+      queryScript: () => scripts.at(-1),
+    })
+    const failed = loader.load("client")
+    scripts[0]?.dispatch("error")
+    await expect(failed).rejects.toThrow("failed to load")
+    const cancelled = loader.load("client")
+    loader.cancel()
+    scripts[1]?.dispatch("load")
+    let settled = false
+    cancelled.finally(() => {
+      settled = true
+    })
+    await Promise.resolve()
+    expect(settled).toBe(false)
+  })
   it("constructs, recenters, and destroys through the provider surface", () => {
     const events: string[] = []
     class FakeMap {

@@ -13,6 +13,7 @@ import {
   resolveLocationOutcome,
 } from "../../lib/domain/geo"
 import {
+  cancelNaverMapsLoad,
   createNaverMapAdapter,
   loadNaverMaps,
   type MapAdapter,
@@ -111,7 +112,13 @@ export function MapDiscovery({ clientId, initialPlaces }: Properties) {
 
   useEffect(() => requestLocation(), [requestLocation])
   useEffect(() => loadSdk(), [loadSdk])
-  useEffect(() => () => adapter.current?.destroy(), [])
+  useEffect(
+    () => () => {
+      cancelNaverMapsLoad()
+      adapter.current?.destroy()
+    },
+    [],
+  )
   useEffect(
     () => captureProductAnalytics({ event: "map_viewed", properties: { source: "direct" } }),
     [],
@@ -189,7 +196,7 @@ export function MapDiscovery({ clientId, initialPlaces }: Properties) {
           <LocateIcon />
         </button>
         <output className={styles["location"]} data-location-state={location.kind}>
-          {LOCATION_COPY[location.kind]}
+          <span>{LOCATION_COPY[location.kind]}</span>
         </output>
         <span className={styles["view"]} data-testid="map-view">
           {viewLabel(view)}
