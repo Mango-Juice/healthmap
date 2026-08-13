@@ -19,6 +19,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:integration:local": "bash scripts/data/verify-local-supabase.sh",
     "test:e2e": "playwright test",
+    "verify:domain": "node --no-warnings --experimental-strip-types scripts/domain-contract-driver.ts",
     "react:doctor": "react-doctor .",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
