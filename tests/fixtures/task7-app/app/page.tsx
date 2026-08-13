@@ -8,6 +8,7 @@ function Task7FixturePage() {
         clientId={undefined}
         initialMenus={task7ActionCatalog.menus}
         initialPlaces={task7ActionCatalog.places}
+        storedPlaceFallbackSlugs={["task7-production-fallback"]}
       />
     </main>
   )

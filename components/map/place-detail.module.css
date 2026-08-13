@@ -91,6 +91,11 @@
 .actions button {
   padding-inline: var(--hm-space-2);
 }
+@media (max-width: 767px) {
+  .actions {
+    grid-template-columns: 1fr;
+  }
+}
 @media (min-width: 768px) {
   .header,
   .body,

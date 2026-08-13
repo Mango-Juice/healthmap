@@ -2,6 +2,7 @@ import { type ChildProcess, spawn } from "node:child_process"
 import { readFile, rm, writeFile } from "node:fs/promises"
 import { createServer } from "node:net"
 import { join } from "node:path"
+import { gunzipSync } from "node:zlib"
 import { expect, test } from "@playwright/test"
 
 type FixtureServer = {
@@ -24,6 +25,28 @@ const fixtureNextEnvContent = `/// <reference types="next" />
 
 const isCatalogResponse = (value: unknown): value is { readonly places: readonly unknown[] } =>
   typeof value === "object" && value !== null && "places" in value && Array.isArray(value.places)
+
+const hasDirectionsEvent = (postData: Buffer | null): boolean => {
+  if (postData === null) return false
+  const decoded = postData[0] === 0x1f && postData[1] === 0x8b ? gunzipSync(postData) : postData
+  const payload: unknown = JSON.parse(decoded.toString("utf8"))
+  if (typeof payload !== "object" || payload === null || !("batch" in payload)) return false
+  if (!Array.isArray(payload.batch)) return false
+  return payload.batch.some(
+    (entry) =>
+      typeof entry === "object" &&
+      entry !== null &&
+      "event" in entry &&
+      entry.event === "directions_opened" &&
+      "properties" in entry &&
+      typeof entry.properties === "object" &&
+      entry.properties !== null &&
+      "place_id" in entry.properties &&
+      entry.properties.place_id === "2a8039ba-6862-4bf5-882c-298892e7caf0" &&
+      "source" in entry.properties &&
+      entry.properties.source === "naver_route",
+  )
+}
 
 const getAvailablePort = async (): Promise<number> =>
   new Promise((resolve, reject) => {
@@ -143,21 +166,34 @@ test("Given the typed published production fixture, when directions is selected,
   )
 })
 
-test("Given a route-incomplete browser state, when directions is selected for the typed production fixture, then the UI opens its stored NAVER place fallback", async ({
+test("Given the typed production fixture, when directions opens, then its redacted transport event is emitted", async ({
+  page,
+}) => {
+  const server = fixtureServer
+  if (server === undefined) throw new Error("Fixture server was not started")
+  const directionsBodies: Buffer[] = []
+  await page.route(`${server.baseUrl}/posthog/**`, async (route) => {
+    const body = route.request().postDataBuffer()
+    if (hasDirectionsEvent(body) && body !== null) directionsBodies.push(body)
+    await route.fulfill({ status: 200, body: '{"status":1}' })
+  })
+  await page.goto(server.baseUrl)
+  await page.getByRole("button", { name: "테스트 생산 경로 식당" }).click()
+  const popup = page.waitForEvent("popup")
+  await page.getByRole("button", { name: "길찾기" }).click()
+  await popup
+  await expect.poll(() => directionsBodies.length).toBe(1)
+  expect(directionsBodies[0]?.toString("utf8")).not.toContain("테스트 생산 경로 식당")
+})
+
+test("Given a typed route-incomplete production fixture, when directions is selected, then the UI opens its stored NAVER place fallback", async ({
   page,
 }) => {
   // Given
   const server = fixtureServer
   if (server === undefined) throw new Error("Fixture server was not started")
-  await page.addInitScript(() => {
-    const originalIsFinite = Number.isFinite
-    Object.defineProperty(Number, "isFinite", {
-      configurable: true,
-      value: (value: unknown): boolean => value !== 37.5032 && originalIsFinite(value),
-    })
-  })
   await page.goto(server.baseUrl)
-  await page.getByRole("button", { name: "테스트 생산 경로 식당" }).click()
+  await page.getByRole("button", { name: "테스트 저장 장소 식당" }).click()
 
   // When
   const popup = page.waitForEvent("popup")
@@ -165,7 +201,7 @@ test("Given a route-incomplete browser state, when directions is selected for th
 
   // Then
   const directionsPage = await popup
-  await expect(directionsPage).toHaveURL("https://map.naver.com/p/entry/place/912345678")
+  await expect(directionsPage).toHaveURL("https://map.naver.com/p/entry/place/912345679")
 })
 
 test("Given an actual unpublished production fixture URL, when the map loads, then it recovers to the base map with a nonblocking notice", async ({

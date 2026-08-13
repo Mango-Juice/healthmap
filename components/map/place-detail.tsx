@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { captureProductAnalytics } from "../../lib/analytics/browser"
 import type { Menu, Place } from "../../lib/domain/catalog"
-import { buildProductionDirections } from "../../lib/domain/directions"
+import { buildProductionDirections, type DirectionsTarget } from "../../lib/domain/directions"
 import { serializeMapShare, serializePlaceShare } from "../../lib/domain/share"
 import { LocateIcon, NavigationIcon, XIcon } from "../ui/health-map-icons"
 import { CATEGORY_LABELS } from "../ui/health-map-options"
@@ -12,6 +12,7 @@ import styles from "./place-detail.module.css"
 
 type Properties = {
   readonly menus: readonly Menu[]
+  readonly directionsTarget?: DirectionsTarget | undefined
   readonly onClose: () => void
   readonly place: Place
   readonly shareMap: {
@@ -34,7 +35,7 @@ const copyUrl = async (url: string): Promise<boolean> => {
   }
 }
 
-export function PlaceDetail({ menus, onClose, place, shareMap }: Properties) {
+export function PlaceDetail({ directionsTarget, menus, onClose, place, shareMap }: Properties) {
   const title = useRef<HTMLHeadingElement>(null)
   const manualUrl = useRef<HTMLInputElement>(null)
   const [notice, setNotice] = useState<string>()
@@ -81,7 +82,7 @@ export function PlaceDetail({ menus, onClose, place, shareMap }: Properties) {
   }
 
   const openDirections = (): void => {
-    const directions = buildProductionDirections(place)
+    const directions = buildProductionDirections(place, directionsTarget)
     if (directions === undefined) {
       setNotice("샘플 데이터에서는 길찾기를 제공하지 않습니다.")
       return

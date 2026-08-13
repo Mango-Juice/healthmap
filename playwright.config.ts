@@ -28,6 +28,8 @@ export default defineConfig({
       NEXT_PUBLIC_DISABLE_REACT_DEVTOOLS: "1",
       NEXT_PUBLIC_NAVER_MAP_CLIENT_ID:
         process.env["NEXT_PUBLIC_NAVER_MAP_CLIENT_ID"] ?? "test-client",
+      NEXT_PUBLIC_POSTHOG_HOST: process.env["NEXT_PUBLIC_POSTHOG_HOST"] ?? "http://127.0.0.1:3498",
+      NEXT_PUBLIC_POSTHOG_KEY: process.env["NEXT_PUBLIC_POSTHOG_KEY"] ?? "playwright-test-key",
     },
     url: baseURL,
     reuseExistingServer: !isContinuousIntegration,

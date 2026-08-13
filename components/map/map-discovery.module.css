@@ -45,6 +45,11 @@
   --hm-leading-heading: 28px;
   --hm-motion-press: 120ms;
   --hm-motion-micro: 180ms;
+  --hm-motion-detail: 240ms;
+  --hm-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --hm-sheet-max: 68%;
+  --hm-sheet-block-min: 272px;
+  --hm-pane-wide: 360px;
   --hm-press-offset: 1px;
   --hm-marker-lift: -2px;
   --hm-active-brightness: 0.86;
@@ -206,10 +211,11 @@
   box-shadow: var(--hm-shadow-control);
   inset-block-end: 0;
   inset-inline: 0;
-  max-block-size: 52%;
-  min-block-size: 272px;
+  max-block-size: var(--hm-sheet-max);
+  min-block-size: var(--hm-sheet-block-min);
   overflow: hidden;
   position: absolute;
+  transition: transform var(--hm-motion-detail) var(--hm-ease-standard);
   z-index: var(--hm-layer-detail);
 }
 .markers {
@@ -299,13 +305,16 @@ button:focus-visible {
   .markers > span:nth-child(5) {
     inset-inline-start: 76%;
   }
+  .detailSurface {
+    max-block-size: var(--hm-sheet-max);
+  }
 }
 @media (min-width: 768px) {
   .detailSurface {
     border-block-start: 0;
     border-inline-start: var(--hm-border-width) solid var(--hm-border);
     border-radius: 0;
-    inline-size: min(360px, 42%);
+    inline-size: min(var(--hm-pane-wide), 42%);
     inset-block: 0;
     inset-inline: auto 0;
     max-block-size: none;

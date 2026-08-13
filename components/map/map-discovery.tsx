@@ -28,6 +28,7 @@ import { PlaceDetail } from "./place-detail"
 
 type Properties = {
   readonly clientId?: string | undefined
+  readonly storedPlaceFallbackSlugs?: readonly string[] | undefined
   readonly initialMenus: readonly Menu[]
   readonly initialPlaces: readonly Place[]
 }
@@ -83,7 +84,12 @@ const readMapSnapshot = (): HistorySnapshot | undefined => {
   }
 }
 
-export function MapDiscovery({ clientId, initialMenus, initialPlaces }: Properties) {
+export function MapDiscovery({
+  clientId,
+  initialMenus,
+  initialPlaces,
+  storedPlaceFallbackSlugs,
+}: Properties) {
   const [filter, setFilter] = useState<PlaceFilter>("all")
   const [places, setPlaces] = useState(initialPlaces)
   const [catalogState, setCatalogState] = useState<"ready" | "loading" | "error">("ready")
@@ -101,7 +107,9 @@ export function MapDiscovery({ clientId, initialMenus, initialPlaces }: Properti
   const didInitializeUrl = useRef(false)
   const mapSnapshot = useRef<HistorySnapshot | undefined>(undefined)
   const sharedEntrySource = useRef<"place_share" | "map_share" | undefined>(undefined)
+  const selectionTrigger = useRef<HTMLElement | undefined>(undefined)
   const [didResolveEntry, setDidResolveEntry] = useState(false)
+  const [isMobileDetail, setIsMobileDetail] = useState(false)
 
   const requestLocation = useCallback((isUserRequested: boolean) => {
     const source = sharedEntrySource.current
@@ -179,6 +187,15 @@ export function MapDiscovery({ clientId, initialMenus, initialPlaces }: Properti
   const clearSelection = useCallback(() => {
     setSelectedSlug(undefined)
     window.history.replaceState({}, "", "/")
+    window.setTimeout(() => selectionTrigger.current?.focus())
+  }, [])
+
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 767px)")
+    const update = (): void => setIsMobileDetail(query.matches)
+    update()
+    query.addEventListener("change", update)
+    return () => query.removeEventListener("change", update)
   }, [])
 
   useEffect(() => {
@@ -271,6 +288,8 @@ export function MapDiscovery({ clientId, initialMenus, initialPlaces }: Properti
     [publishedPlaces, selectedSlug],
   )
   const openPlace = (place: Place): void => {
+    const activeElement = document.activeElement
+    selectionTrigger.current = activeElement instanceof HTMLElement ? activeElement : undefined
     setLinkNotice(undefined)
     const snapshot = { filter, url: `${window.location.pathname}${window.location.search}`, view }
     window.sessionStorage.setItem(MAP_SNAPSHOT_KEY, JSON.stringify(snapshot))
@@ -308,6 +327,38 @@ export function MapDiscovery({ clientId, initialMenus, initialPlaces }: Properti
     } catch {
       if (generation === catalogGeneration.current) setCatalogState("error")
     }
+  }
+
+  const renderDetailSurface = (place: Place, isModal: boolean) => {
+    const detail = (
+      <PlaceDetail
+        key={place.slug}
+        directionsTarget={
+          storedPlaceFallbackSlugs?.includes(place.slug) ? { kind: "place" } : undefined
+        }
+        menus={initialMenus}
+        onClose={clearSelection}
+        place={place}
+        shareMap={{
+          latitude: view.latitude,
+          longitude: view.longitude,
+          zoom: view.zoom,
+          tag: filter === "all" ? "balanced" : filter,
+        }}
+      />
+    )
+    return isModal ? (
+      <div
+        aria-label="장소 상세"
+        aria-modal="true"
+        className={styles["detailSurface"]}
+        role="dialog"
+      >
+        {detail}
+      </div>
+    ) : (
+      <div className={styles["detailSurface"]}>{detail}</div>
+    )
   }
 
   return (
@@ -407,22 +458,11 @@ export function MapDiscovery({ clientId, initialMenus, initialPlaces }: Properti
             {linkNotice ?? "장소를 선택했습니다."}
           </p>
         ) : null}
-        {selectedPlace ? (
-          <div className={styles["detailSurface"]}>
-            <PlaceDetail
-              key={selectedPlace.slug}
-              menus={initialMenus}
-              onClose={clearSelection}
-              place={selectedPlace}
-              shareMap={{
-                latitude: view.latitude,
-                longitude: view.longitude,
-                zoom: view.zoom,
-                tag: filter === "all" ? "balanced" : filter,
-              }}
-            />
-          </div>
-        ) : null}
+        {selectedPlace
+          ? isMobileDetail
+            ? renderDetailSurface(selectedPlace, true)
+            : renderDetailSurface(selectedPlace, false)
+          : null}
       </div>
     </section>
   )
