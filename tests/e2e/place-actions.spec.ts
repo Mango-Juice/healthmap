@@ -76,3 +76,74 @@ test("Given a mock place, when directions and sharing are requested, then direct
   await page.getByRole("button", { name: "공유", exact: true }).click()
   await expect(page.getByLabel("공유 URL")).toBeVisible()
 })
+
+test("Given an open place sheet, when it is closed by the button or Escape, then the map remains available", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 812 })
+  await page.goto("/")
+  await page.getByRole("button", { name: /새싹 네모식당/ }).click()
+  await expect(page.getByTestId("place-detail")).toBeVisible()
+  await page.getByRole("button", { name: "상세 닫기" }).click()
+  await expect(page.getByTestId("place-detail")).toHaveCount(0)
+  await page.getByRole("button", { name: /새싹 네모식당/ }).click()
+  await page.keyboard.press("Escape")
+  await expect(page.getByTestId("place-detail")).toHaveCount(0)
+  await expect(page.getByTestId("map-stage")).toBeVisible()
+})
+
+test("Given each sample place, when directions is selected, then no external navigation is attempted", async ({
+  page,
+}) => {
+  const popup = page.waitForEvent("popup", { timeout: 500 }).then(
+    () => "opened",
+    () => "none",
+  )
+  await page.goto("/")
+  for (const name of [
+    "새싹 네모식당",
+    "무지개 한그릇 연구소",
+    "균형 실험실 식탁",
+    "잎사귀 가상 테이블",
+    "구름 도시락 공방",
+  ]) {
+    await page.getByRole("button", { name: new RegExp(name) }).click()
+    await page.getByRole("button", { name: "길찾기" }).click()
+    await expect(page.getByText("샘플 데이터에서는 길찾기를 제공하지 않습니다.")).toBeVisible()
+    await page.getByRole("button", { name: "상세 닫기" }).click()
+  }
+  await expect(popup).resolves.toBe("none")
+  await expect(page).toHaveURL(/\/$/)
+})
+
+test("Given Web Share and Clipboard outcomes, when place sharing is requested, then visible completion matches the browser outcome", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "share", {
+      configurable: true,
+      value: () => Promise.resolve(),
+    })
+  })
+  await page.goto("/?place=mock-sprout-square&src=place_share")
+  await page.getByRole("button", { name: "공유", exact: true }).click()
+  await expect(page.getByText("공유 창을 열었습니다.")).toBeVisible()
+})
+
+test("Given rejected Web Share and available Clipboard, when map sharing is requested, then a canonical URL is copied", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "share", {
+      configurable: true,
+      value: () => Promise.reject(new DOMException("cancelled")),
+    })
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: () => Promise.resolve() },
+    })
+  })
+  await page.goto("/?place=mock-sprout-square&src=place_share")
+  await page.getByRole("button", { name: "지도 공유" }).click()
+  await expect(page.getByText("공유 URL을 클립보드에 복사했습니다.")).toBeVisible()
+})
