@@ -1,24 +1,30 @@
-import { getMissingPublicEnvironmentNames } from "./public-environment"
+import { MapDiscovery } from "../components/map/map-discovery"
+import catalogSource from "../data/catalog.json"
+import { PlaceSchema } from "../lib/domain/catalog"
 
 export default function HomePage() {
-  const missingEnvironmentNames = getMissingPublicEnvironmentNames(process.env)
+  const places = catalogSource.places.map((entry) =>
+    PlaceSchema.parse({
+      address: entry.address,
+      dataMode: catalogSource.data_mode,
+      healthTags: entry.health_tags,
+      id: entry.id,
+      latitude: entry.latitude,
+      longitude: entry.longitude,
+      name: entry.name,
+      naverPlaceUrl: entry.naver_place_url,
+      primaryTag: entry.primary_tag,
+      published: entry.published,
+      slug: entry.slug,
+    }),
+  )
 
   return (
     <main>
-      <h1>건강식 지도</h1>
-      {missingEnvironmentNames.length > 0 ? (
-        <section aria-labelledby="configuration-heading">
-          <h2 id="configuration-heading">환경 설정이 필요합니다</h2>
-          <p>다음 공개 환경 변수 이름을 배포 환경에 설정해 주세요.</p>
-          <ul>
-            {missingEnvironmentNames.map((name) => (
-              <li key={name}>{name}</li>
-            ))}
-          </ul>
-        </section>
-      ) : (
-        <p>공개 환경 설정이 완료되었습니다.</p>
-      )}
+      <MapDiscovery
+        clientId={process.env["NEXT_PUBLIC_NAVER_MAP_CLIENT_ID"]}
+        initialPlaces={places}
+      />
     </main>
   )
 }
