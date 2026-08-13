@@ -527,6 +527,19 @@ export function MapDiscovery({
           <span className={styles["paperFeature"]} data-fallback-geometry />
           <span className={styles["paperFeature"]} data-fallback-geometry />
           <span className={styles["paperFeature"]} data-fallback-geometry />
+          <span className={styles["paperBlock"]} data-map-block />
+          <span className={styles["paperBlock"]} data-map-block />
+          <span className={styles["paperPark"]} data-map-block />
+          <span className={styles["paperRoad"]} data-map-road="north" />
+          <span className={styles["paperRoad"]} data-map-road="east" />
+          <span className={styles["paperRoad"]} data-map-road="south" />
+          <span className={styles["paperRoad"]} data-map-road="west" />
+          <span className={styles["paperLabel"]} data-map-label>
+            강남역
+          </span>
+          <span className={styles["paperLabel"]} data-map-label>
+            역삼역
+          </span>
         </div>
         <div aria-hidden="true" className={styles["sdkMap"]} ref={sdkContainer} />
         <div className={styles["filter"]}>

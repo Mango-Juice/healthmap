@@ -63,8 +63,18 @@
   inline-size: var(--hm-icon-md);
 }
 .body h3 {
+  color: var(--hm-green-800);
   font-size: var(--hm-type-label);
+  letter-spacing: 0.02em;
   margin: 0;
+}
+.body section {
+  border-block-start: var(--hm-border-width) solid var(--hm-border);
+  padding-block-start: var(--hm-space-3);
+}
+.tags {
+  color: var(--hm-green-800);
+  font-weight: var(--hm-weight-label);
 }
 .body ul {
   display: grid;

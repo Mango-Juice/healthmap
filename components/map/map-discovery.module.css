@@ -162,7 +162,7 @@
 .paperFeature {
   background: var(--hm-map-land);
   border: var(--hm-border-width) solid var(--hm-map-road);
-  border-radius: var(--hm-radius-lg);
+  border-radius: var(--hm-radius-card);
   position: absolute;
   z-index: 0;
 }
@@ -188,6 +188,89 @@
   inset-block-start: 57%;
   inset-inline-start: 15%;
   transform: rotate(-11deg);
+}
+.paperBlock,
+.paperPark {
+  border: var(--hm-border-width) solid var(--hm-border);
+  border-radius: var(--hm-radius-card);
+  position: absolute;
+  z-index: 1;
+}
+.paperBlock {
+  background: var(--hm-surface-subtle);
+}
+.paperBlock:nth-of-type(4) {
+  block-size: 14%;
+  inline-size: 20%;
+  inset-block-start: 30%;
+  inset-inline-start: 16%;
+  transform: rotate(4deg);
+}
+.paperBlock:nth-of-type(5) {
+  block-size: 18%;
+  inline-size: 24%;
+  inset-block-end: 24%;
+  inset-inline-start: 54%;
+  transform: rotate(-7deg);
+}
+.paperPark {
+  background: var(--hm-green-100);
+  block-size: 16%;
+  inline-size: 18%;
+  inset-block-start: 19%;
+  inset-inline-end: 21%;
+  transform: rotate(8deg);
+}
+.paperRoad {
+  background: var(--hm-map-road);
+  block-size: var(--hm-space-1);
+  box-shadow: 0 0 0 var(--hm-border-width) var(--hm-border);
+  position: absolute;
+  z-index: 2;
+}
+.paperRoad[data-map-road="north"] {
+  inline-size: 65%;
+  inset-block-start: 35%;
+  inset-inline-start: 2%;
+  transform: rotate(12deg);
+}
+.paperRoad[data-map-road="east"] {
+  inline-size: 56%;
+  inset-block-start: 54%;
+  inset-inline-start: 43%;
+  transform: rotate(-58deg);
+}
+.paperRoad[data-map-road="south"] {
+  inline-size: 70%;
+  inset-block-end: 29%;
+  inset-inline-start: 18%;
+  transform: rotate(5deg);
+}
+.paperRoad[data-map-road="west"] {
+  inline-size: 38%;
+  inset-block-start: 70%;
+  inset-inline-start: -2%;
+  transform: rotate(-26deg);
+}
+.paperLabel {
+  background: var(--hm-surface-subtle);
+  border: var(--hm-border-width) solid var(--hm-border);
+  border-radius: var(--hm-radius-control);
+  color: var(--hm-ink-muted);
+  font-size: var(--hm-type-caption);
+  font-weight: var(--hm-weight-label);
+  letter-spacing: 0.04em;
+  padding: var(--hm-space-1) var(--hm-space-2);
+  position: absolute;
+  z-index: 3;
+}
+.paperLabel:nth-of-type(11) {
+  inset-block-start: 43%;
+  inset-inline-start: 8%;
+}
+.paperLabel:nth-of-type(12) {
+  inset-block-end: 12%;
+  inset-inline-end: 18%;
 }
 .filter {
   inset-block-start: var(--hm-space-3);

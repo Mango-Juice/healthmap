@@ -134,7 +134,7 @@ test("production shell resolves consumed tokens and shows a fully visible five-c
       return { width: rect.width, height: rect.height }
     }),
   )
-  expect(leafSizes.length).toBe(4)
+  expect(leafSizes.length).toBe(5)
   expect(leafSizes.every(({ width, height }) => width >= 16 && height >= 16)).toBe(true)
 })
 
@@ -219,6 +219,17 @@ test("fallback map remains solid and nonblank with five live markers", async ({ 
   await expect(map.locator("[data-fallback-geometry]")).toHaveCount(3)
 })
 
+test("fallback map carries a layered field-guide hierarchy", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 })
+  await page.goto("/")
+  const map = page.getByTestId("map-stage")
+  await expect(map.locator("[data-map-road]")).toHaveCount(4)
+  await expect(map.locator("[data-map-block]")).toHaveCount(3)
+  await expect(map.locator("[data-map-label]")).toHaveCount(2)
+  await expect(map.locator("fieldset svg")).toHaveCount(5)
+  await expect(page.getByRole("button", { name: /새싹 네모식당/ })).toBeVisible()
+})
+
 test("close keeps the surface mounted until its native transition completes", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 })
   await page.goto("/")
@@ -283,20 +294,20 @@ test("captures fresh production viewport and motion evidence", async ({ page }) 
     await page.setViewportSize(viewport)
     await page.goto("/")
     await page.screenshot({
-      path: `.omo/evidence/task-7/fix-r7/manual-${viewport.name}-map.png`,
+      path: `.omo/evidence/task-7/fix-r8/manual-${viewport.name}-map.png`,
     })
     await page.getByRole("button", { name: /새싹 네모식당/ }).click()
     const surface = page.locator("[data-detail-phase]")
     await page.screenshot({
-      path: `.omo/evidence/task-7/fix-r7/manual-${viewport.name}-start.png`,
+      path: `.omo/evidence/task-7/fix-r8/manual-${viewport.name}-start.png`,
     })
     await page.waitForTimeout(120)
     await page.screenshot({
-      path: `.omo/evidence/task-7/fix-r7/manual-${viewport.name}-120ms.png`,
+      path: `.omo/evidence/task-7/fix-r8/manual-${viewport.name}-120ms.png`,
     })
     await page.waitForTimeout(200)
     await page.screenshot({
-      path: `.omo/evidence/task-7/fix-r7/manual-${viewport.name}-settled.png`,
+      path: `.omo/evidence/task-7/fix-r8/manual-${viewport.name}-settled.png`,
     })
     metrics.push(
       await surface.evaluate((element) => {
@@ -319,7 +330,7 @@ test("captures fresh production viewport and motion evidence", async ({ page }) 
     await expect(page.getByTestId("place-detail")).toHaveCount(0)
   }
   await writeFile(
-    ".omo/evidence/task-7/fix-r7/manual-qa-metrics.json",
+    ".omo/evidence/task-7/fix-r8/manual-qa-metrics.json",
     JSON.stringify(metrics, null, 2),
   )
 })

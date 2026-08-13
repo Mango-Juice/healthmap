@@ -31,7 +31,7 @@ export function FilterRail({ disabled = false, onSelect, selected }: FilterRailP
           onClick={onSelect ? () => onSelect(option.value) : undefined}
           type="button"
         >
-          {option.value === "all" ? null : <LeafIcon className={styles["inlineIcon"]} />}
+          <LeafIcon className={styles["inlineIcon"]} />
           <span>{option.label}</span>
         </button>
       ))}
