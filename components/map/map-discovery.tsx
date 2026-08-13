@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { captureProductAnalytics } from "../../lib/analytics/browser"
-import type { Place } from "../../lib/domain/catalog"
+import type { Menu, Place } from "../../lib/domain/catalog"
 import { filterPlaces, type PlaceFilter } from "../../lib/domain/filter"
 import {
   beginLocationRequest,
@@ -12,6 +12,7 @@ import {
   type MapView,
   resolveLocationOutcome,
 } from "../../lib/domain/geo"
+import { canonicalizeShareUrl, parseShareUrl, serializePlaceShare } from "../../lib/domain/share"
 import {
   cancelNaverMapsLoad,
   createNaverMapAdapter,
@@ -23,9 +24,11 @@ import {
 import { LocateIcon, RotateCcwIcon } from "../ui/health-map-icons"
 import { FilterRail, MapMarker } from "../ui/health-map-primitives"
 import styles from "./map-discovery.module.css"
+import { PlaceDetail } from "./place-detail"
 
 type Properties = {
   readonly clientId?: string | undefined
+  readonly initialMenus: readonly Menu[]
   readonly initialPlaces: readonly Place[]
 }
 
@@ -38,7 +41,49 @@ const LOCATION_COPY: Record<LocationState["kind"], string> = {
   unsupported: "이 브라우저에서는 위치 기능을 지원하지 않습니다.",
 }
 
-export function MapDiscovery({ clientId, initialPlaces }: Properties) {
+type HistorySnapshot = {
+  readonly filter: PlaceFilter
+  readonly url: string
+  readonly view: MapView
+}
+
+const isHistorySnapshot = (value: unknown): value is HistorySnapshot =>
+  typeof value === "object" &&
+  value !== null &&
+  "filter" in value &&
+  (value.filter === "all" ||
+    value.filter === "vegetables" ||
+    value.filter === "protein" ||
+    value.filter === "balanced" ||
+    value.filter === "plant_based") &&
+  "view" in value &&
+  typeof value.view === "object" &&
+  value.view !== null &&
+  "latitude" in value.view &&
+  typeof value.view.latitude === "number" &&
+  "longitude" in value.view &&
+  typeof value.view.longitude === "number" &&
+  "zoom" in value.view &&
+  typeof value.view.zoom === "number" &&
+  "url" in value &&
+  typeof value.url === "string"
+
+const MAP_SNAPSHOT_KEY = "healthmap.selection-map.v1"
+
+const readMapSnapshot = (): HistorySnapshot | undefined => {
+  const raw = window.sessionStorage.getItem(MAP_SNAPSHOT_KEY)
+  window.sessionStorage.removeItem(MAP_SNAPSHOT_KEY)
+  if (raw === null) return undefined
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    return isHistorySnapshot(parsed) ? parsed : undefined
+  } catch (error) {
+    if (error instanceof SyntaxError) return undefined
+    throw error
+  }
+}
+
+export function MapDiscovery({ clientId, initialMenus, initialPlaces }: Properties) {
   const [filter, setFilter] = useState<PlaceFilter>("all")
   const [places, setPlaces] = useState(initialPlaces)
   const [catalogState, setCatalogState] = useState<"ready" | "loading" | "error">("ready")
@@ -47,11 +92,14 @@ export function MapDiscovery({ clientId, initialPlaces }: Properties) {
   )
   const [location, setLocation] = useState<LocationState>(beginLocationRequest)
   const [view, setView] = useState<MapView>(DEFAULT_VIEW)
-  const [selected, setSelected] = useState<string>()
+  const [selectedSlug, setSelectedSlug] = useState<string>()
+  const [linkNotice, setLinkNotice] = useState<string>()
   const sdkContainer = useRef<HTMLDivElement>(null)
   const adapter = useRef<MapAdapter>(null)
   const sdkGeneration = useRef(0)
   const catalogGeneration = useRef(0)
+  const didInitializeUrl = useRef(false)
+  const mapSnapshot = useRef<HistorySnapshot | undefined>(undefined)
 
   const requestLocation = useCallback(() => {
     setLocation(beginLocationRequest())
@@ -119,12 +167,100 @@ export function MapDiscovery({ clientId, initialPlaces }: Properties) {
     },
     [],
   )
+
+  const clearSelection = useCallback(() => {
+    setSelectedSlug(undefined)
+    window.history.replaceState({}, "", "/")
+  }, [])
+
+  useEffect(() => {
+    const recoverFromUrl = (): void => {
+      const shareState = parseShareUrl(window.location.href)
+      switch (shareState.kind) {
+        case "place": {
+          const place = initialPlaces.find(
+            (candidate) => candidate.slug === shareState.slug && candidate.published,
+          )
+          if (place === undefined) {
+            setSelectedSlug(undefined)
+            setLinkNotice("유효하지 않은 장소 링크를 기본 지도로 복구했습니다.")
+            window.history.replaceState({}, "", "/")
+            return
+          }
+          setSelectedSlug(place.slug)
+          window.history.replaceState({}, "", canonicalizeShareUrl(window.location.href))
+          return
+        }
+        case "map":
+          setSelectedSlug(undefined)
+          mapSnapshot.current ??= readMapSnapshot()
+          const browserSnapshot = window.history.state
+          if (mapSnapshot.current === undefined && isHistorySnapshot(browserSnapshot)) {
+            mapSnapshot.current = browserSnapshot
+          }
+          if (mapSnapshot.current?.url === `${window.location.pathname}${window.location.search}`) {
+            setFilter(mapSnapshot.current.filter)
+            setView(mapSnapshot.current.view)
+            return
+          }
+          if (didInitializeUrl.current) {
+            if (isHistorySnapshot(window.history.state)) {
+              setFilter(window.history.state.filter)
+              setView(window.history.state.view)
+            }
+            return
+          }
+          setFilter(shareState.tag)
+          setView({ ...shareState.center, zoom: shareState.zoom })
+          window.history.replaceState({}, "", canonicalizeShareUrl(window.location.href))
+          return
+        case "fallback":
+          setSelectedSlug(undefined)
+          if (window.location.search.length > 0) {
+            setLinkNotice("유효하지 않은 공유 링크를 기본 지도로 복구했습니다.")
+            window.history.replaceState({}, "", "/")
+          }
+          return
+        default:
+          assertNever(shareState)
+          return
+      }
+    }
+    recoverFromUrl()
+    didInitializeUrl.current = true
+    window.addEventListener("popstate", recoverFromUrl)
+    return () => window.removeEventListener("popstate", recoverFromUrl)
+  }, [initialPlaces])
+
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent): void => {
+      if (event.key === "Escape" && selectedSlug !== undefined) clearSelection()
+    }
+    document.addEventListener("keydown", closeOnEscape)
+    return () => document.removeEventListener("keydown", closeOnEscape)
+  }, [clearSelection, selectedSlug])
   useEffect(
     () => captureProductAnalytics({ event: "map_viewed", properties: { source: "direct" } }),
     [],
   )
 
   const visiblePlaces = useMemo(() => filterPlaces(places, filter), [filter, places])
+  const selectedPlace = useMemo(
+    () => places.find((place) => place.slug === selectedSlug && place.published),
+    [places, selectedSlug],
+  )
+  const openPlace = (place: Place): void => {
+    setLinkNotice(undefined)
+    const snapshot = { filter, url: `${window.location.pathname}${window.location.search}`, view }
+    window.sessionStorage.setItem(MAP_SNAPSHOT_KEY, JSON.stringify(snapshot))
+    window.history.replaceState(snapshot, "", window.location.href)
+    setSelectedSlug(place.slug)
+    window.history.pushState({}, "", serializePlaceShare(place.slug))
+    captureProductAnalytics({
+      event: "place_opened",
+      properties: { place_id: place.id, source: "map" },
+    })
+  }
   const reloadCatalog = async () => {
     const generation = catalogGeneration.current + 1
     catalogGeneration.current = generation
@@ -226,23 +362,33 @@ export function MapDiscovery({ clientId, initialPlaces }: Properties) {
                 <MapMarker
                   category={place.primaryTag}
                   label={place.name}
-                  selected={selected === place.id}
-                  onSelect={() => {
-                    setSelected(place.id)
-                    captureProductAnalytics({
-                      event: "place_opened",
-                      properties: { place_id: place.id, source: "map" },
-                    })
-                  }}
+                  selected={selectedPlace?.id === place.id}
+                  onSelect={() => openPlace(place)}
                 />
               </span>
             ))}
           </section>
         )}
-        {selected ? (
+        {linkNotice ? (
           <p className={styles["selection"]} role="status">
-            장소를 선택했습니다.
+            {linkNotice}
           </p>
+        ) : null}
+        {selectedPlace ? (
+          <div className={styles["detailSurface"]}>
+            <PlaceDetail
+              key={selectedPlace.slug}
+              menus={initialMenus}
+              onClose={clearSelection}
+              place={selectedPlace}
+              shareMap={{
+                latitude: view.latitude,
+                longitude: view.longitude,
+                zoom: view.zoom,
+                tag: filter === "all" ? "balanced" : filter,
+              }}
+            />
+          </div>
         ) : null}
       </div>
     </section>
@@ -252,6 +398,7 @@ export function MapDiscovery({ clientId, initialPlaces }: Properties) {
 class CatalogLoadError extends Error {
   readonly name = "CatalogLoadError"
 }
+const assertNever = (value: never): never => value
 const isCatalogPayload = (
   value: unknown,
 ): value is { readonly places: readonly { readonly slug: string }[] } =>

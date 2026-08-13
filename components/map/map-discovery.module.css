@@ -199,6 +199,18 @@
   inset-inline-start: 50%;
   transform: translateX(-50%);
 }
+.detailSurface {
+  background: var(--hm-surface);
+  border-radius: var(--hm-radius-card) var(--hm-radius-card) 0 0;
+  box-shadow: var(--hm-shadow-control);
+  inset-block-end: 0;
+  inset-inline: 0;
+  max-block-size: 52%;
+  min-block-size: 272px;
+  overflow: hidden;
+  position: absolute;
+  z-index: var(--hm-layer-focus);
+}
 .markers {
   inset: 0;
   pointer-events: none;
@@ -285,6 +297,17 @@ button:focus-visible {
   }
   .markers > span:nth-child(5) {
     inset-inline-start: 76%;
+  }
+}
+@media (min-width: 768px) {
+  .detailSurface {
+    border-block-start: 0;
+    border-inline-start: var(--hm-border-width) solid var(--hm-border);
+    border-radius: 0;
+    inline-size: min(360px, 42%);
+    inset-block: 0;
+    inset-inline: auto 0;
+    max-block-size: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {
