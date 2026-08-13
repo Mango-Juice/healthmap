@@ -266,7 +266,13 @@ button:focus-visible {
     inset-inline: var(--hm-space-2);
   }
   .status {
-    max-inline-size: 55%;
+    max-inline-size: calc(100% - var(--hm-control-min) - var(--hm-space-12));
+  }
+  .status span {
+    word-break: keep-all;
+  }
+  .status button {
+    white-space: nowrap;
   }
   .view {
     display: none;

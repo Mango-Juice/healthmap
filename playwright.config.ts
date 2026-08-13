@@ -23,6 +23,11 @@ export default defineConfig({
   ],
   webServer: {
     command: `pnpm dev --hostname 127.0.0.1 --port ${port}`,
+    env: {
+      ...process.env,
+      NEXT_PUBLIC_NAVER_MAP_CLIENT_ID:
+        process.env["NEXT_PUBLIC_NAVER_MAP_CLIENT_ID"] ?? "test-client",
+    },
     url: baseURL,
     reuseExistingServer: !isContinuousIntegration,
     timeout: 120_000,

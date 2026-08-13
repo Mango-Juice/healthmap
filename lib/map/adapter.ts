@@ -115,9 +115,6 @@ export const cancelNaverMapsLoad = (): void => browserSdkLoader.cancel()
 
 export class MapSdkLoadError extends Error {
   readonly name = "MapSdkLoadError"
-  constructor(message: string) {
-    super(message)
-  }
 }
 
 export const viewLabel = (view: MapView): string =>
