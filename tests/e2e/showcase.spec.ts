@@ -1,13 +1,21 @@
 import { expect, type Page, test } from "@playwright/test"
 
+function installLongSheetTransition(page: Page) {
+  return page.addStyleTag({
+    content: '[role="dialog"] { transition-duration: 1s !important; }',
+  })
+}
+
 function waitForSheetTransformTransition(page: Page) {
   return page.locator('[role="dialog"]').evaluate(
     (element) =>
-      new Promise<void>((resolve) => {
+      new Promise<number>((resolve) => {
+        const startedAt = performance.now()
         element.addEventListener(
           "transitionend",
           (event) => {
-            if ("propertyName" in event && event.propertyName === "transform") resolve()
+            if ("propertyName" in event && event.propertyName === "transform")
+              resolve(performance.now() - startedAt)
           },
           { once: true },
         )
@@ -144,9 +152,7 @@ test("Given keyboard input, When filters and sheet controls are used, Then focus
 
   // When a close completion is interrupted by a marker selection
   const interruptedSheet = page.getByRole("dialog", { name: "그린테이블 강남점" })
-  await interruptedSheet.evaluate((element) => {
-    ;(element as HTMLElement).style.transitionDuration = "1s"
-  })
+  await installLongSheetTransition(page)
   const reopenCompletion = waitForSheetTransformTransition(page)
   await page.getByRole("button", { name: "상세 닫기" }).click()
   await expect(page.locator('[role="dialog"]')).toHaveAttribute("data-open", "false")
@@ -155,7 +161,7 @@ test("Given keyboard input, When filters and sheet controls are used, Then focus
     "data-open",
     "true",
   )
-  await expect(reopenCompletion).resolves.toBeUndefined()
+  await expect(reopenCompletion).resolves.toBeGreaterThan(0)
 
   // Then the stale close timer cannot expose a reopen control over the dialog
   await expect(page.getByRole("dialog", { name: "그린테이블 강남점" })).toBeVisible()
@@ -186,12 +192,11 @@ test("Given a mobile sheet with a long closing transition, When it closes, Then 
   await page.setViewportSize({ width: 375, height: 812 })
   await page.goto("/showcase")
   const sheet = page.getByRole("dialog", { name: "그린테이블 강남점" })
-  await sheet.evaluate((element) => {
-    ;(element as HTMLElement).style.transitionDuration = "1s"
-  })
+  await installLongSheetTransition(page)
   const closeCompletion = sheet.evaluate(
     (element) =>
-      new Promise<void>((resolve, reject) => {
+      new Promise<number>((resolve, reject) => {
+        const startedAt = performance.now()
         const reopenObserver = new MutationObserver(() => {
           if (document.querySelector("[data-testid='detail-closed']")) {
             reopenObserver.disconnect()
@@ -204,7 +209,7 @@ test("Given a mobile sheet with a long closing transition, When it closes, Then 
           (event) => {
             if (!("propertyName" in event) || event.propertyName !== "transform") return
             reopenObserver.disconnect()
-            resolve()
+            resolve(performance.now() - startedAt)
           },
           { once: true },
         )
@@ -215,7 +220,7 @@ test("Given a mobile sheet with a long closing transition, When it closes, Then 
   await page.getByRole("button", { name: "상세 닫기" }).click()
 
   // Then
-  await expect(closeCompletion).resolves.toBeUndefined()
+  await expect(closeCompletion).resolves.toBeGreaterThan(240)
   await expect(page.getByTestId("detail-closed")).toBeVisible()
 })
 
