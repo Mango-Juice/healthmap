@@ -50,6 +50,17 @@ describe("catalog row parser", () => {
     expect(parse).toThrow()
   })
 
+  it("Given a Supabase row with an unknown key, when parsed, then parsing fails", () => {
+    // Given: a valid row carrying a field outside the trusted database contract.
+    const malformedRow = { ...VALID_PLACE_ROW, unexpected_secret: "must-not-cross" }
+
+    // When: the boundary parser attempts to parse it.
+    const parse = () => parsePlaceRows([malformedRow])
+
+    // Then: the unknown field is rejected instead of silently stripped.
+    expect(parse).toThrow()
+  })
+
   it("Given a menu row with an insecure evidence URL, when parsed, then parsing fails", () => {
     // Given: an otherwise-shaped menu row with an HTTP evidence URL.
     const malformedRow = {

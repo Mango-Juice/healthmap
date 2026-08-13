@@ -30,6 +30,7 @@ const PlaceSchema = z
     healthTags: HealthTagsSchema,
     published: z.boolean(),
   })
+  .strict()
   .readonly()
   .superRefine((place, context) => {
     if (!place.healthTags.includes(place.primaryTag)) {
@@ -52,6 +53,7 @@ const MenuSchema = z
     displayOrder: z.number().int().nonnegative(),
     published: z.boolean(),
   })
+  .strict()
   .readonly()
 
 const PlaceRowSchema = z
@@ -67,6 +69,7 @@ const PlaceRowSchema = z
     health_tags: z.array(z.string()),
     published: z.boolean(),
   })
+  .strict()
   .transform((row) =>
     PlaceSchema.parse({
       id: row.id,
@@ -93,6 +96,7 @@ const MenuRowSchema = z
     display_order: z.number(),
     published: z.boolean(),
   })
+  .strict()
   .transform((row) =>
     MenuSchema.parse({
       id: row.id,
