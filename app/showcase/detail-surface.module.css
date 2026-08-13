@@ -14,7 +14,7 @@
   overflow: hidden;
   padding: 0;
   position: absolute;
-  transform: translateY(100%);
+  transform: translateY(var(--hm-sheet-close-offset));
   transition: transform var(--hm-motion-standard) var(--hm-ease-out);
   z-index: var(--hm-layer-detail);
 }

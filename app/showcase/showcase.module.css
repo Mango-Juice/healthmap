@@ -64,6 +64,7 @@
   --hm-copy-measure: 62ch;
   --hm-empty-copy-measure: 30ch;
   --hm-sheet-max: 52%;
+  --hm-sheet-close-offset: 100%;
   --hm-skeleton-line-short: 65%;
   --hm-icon-sm: 16px;
   --hm-icon-md: 20px;

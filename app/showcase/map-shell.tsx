@@ -2,34 +2,36 @@
 
 import {
   type KeyboardEvent,
+  type TransitionEvent,
   useCallback,
   useEffect,
   useRef,
   useState,
   useSyncExternalStore,
 } from "react"
-import { LeafIcon, LocateIcon, NavigationIcon, XIcon } from "../../components/ui/health-map-icons"
+import { LocateIcon } from "../../components/ui/health-map-icons"
 import type { FilterValue } from "../../components/ui/health-map-options"
 import { ActionButton, FilterRail, MapMarker } from "../../components/ui/health-map-primitives"
+import { DetailContent } from "./detail-content"
 import detailStyles from "./detail-surface.module.css"
 import mapStyles from "./map-shell.module.css"
 import styles from "./showcase.module.css"
 
 const MOBILE_MEDIA_QUERY = "(max-width: 767px)"
-const DETAIL_CLOSE_DURATION_MS = 240
+const REDUCED_MOTION_MEDIA_QUERY = "(prefers-reduced-motion: reduce)"
 const FOCUSABLE_SELECTOR =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
-function subscribeToMobileViewport(onChange: () => void) {
-  const mediaQuery = window.matchMedia(MOBILE_MEDIA_QUERY)
+function subscribeToMediaQuery(query: string, onChange: () => void) {
+  const mediaQuery = window.matchMedia(query)
   mediaQuery.addEventListener("change", onChange)
   return () => mediaQuery.removeEventListener("change", onChange)
 }
 
-function useMobileViewport() {
+function useMediaQuery(query: string) {
   return useSyncExternalStore(
-    subscribeToMobileViewport,
-    () => window.matchMedia(MOBILE_MEDIA_QUERY).matches,
+    (onChange) => subscribeToMediaQuery(query, onChange),
+    () => window.matchMedia(query).matches,
     () => false,
   )
 }
@@ -51,48 +53,6 @@ function MapDrawing() {
       <path d="M570-20c-80 150-90 280 10 590" />
       <path d="M220-20c10 150-60 280-240 430" />
     </svg>
-  )
-}
-
-type DetailContentProperties = { readonly onClose: () => void }
-
-function DetailContent({ onClose }: DetailContentProperties) {
-  return (
-    <>
-      <header className={detailStyles["detailHeader"]}>
-        <div>
-          <span className={detailStyles["detailKicker"]}>균형식 · 도보 5분</span>
-          <h2 id="showcase-place-title" tabIndex={-1}>
-            그린테이블 강남점
-          </h2>
-        </div>
-        <ActionButton
-          aria-label="상세 닫기"
-          className={mapStyles["iconButton"]}
-          onClick={onClose}
-          variant="quiet"
-        >
-          <XIcon />
-        </ActionButton>
-      </header>
-      <div className={detailStyles["detailBody"]}>
-        <div className={detailStyles["placeFact"]}>
-          <LeafIcon />
-          <span>채소 · 단백질 · 균형식</span>
-        </div>
-        <div className={detailStyles["placeFact"]}>
-          <LocateIcon />
-          <span>서울 강남구 테헤란로 123</span>
-        </div>
-        <p>신선한 채소와 곡물을 중심으로 고른 대표 메뉴를 확인할 수 있어요.</p>
-      </div>
-      <footer className={detailStyles["detailActions"]}>
-        <ActionButton leadingIcon={<NavigationIcon />} variant="primary">
-          길찾기
-        </ActionButton>
-        <ActionButton variant="secondary">공유</ActionButton>
-      </footer>
-    </>
   )
 }
 
@@ -120,9 +80,10 @@ export function MapShell() {
   const [selected, setSelected] = useState<FilterValue>("all")
   const [detailOpen, setDetailOpen] = useState(true)
   const [showReopen, setShowReopen] = useState(false)
-  const isMobile = useMobileViewport()
+  const isMobile = useMediaQuery(MOBILE_MEDIA_QUERY)
+  const prefersReducedMotion = useMediaQuery(REDUCED_MOTION_MEDIA_QUERY)
   const shellRef = useRef<HTMLDivElement>(null)
-  const closeTimerRef = useRef<number | undefined>(undefined)
+  const detailOpenRef = useRef(true)
 
   useEffect(() => {
     if (detailOpen && isMobile)
@@ -130,23 +91,32 @@ export function MapShell() {
   }, [detailOpen, isMobile])
 
   const closeDetail = useCallback(() => {
-    if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current)
+    detailOpenRef.current = false
     setDetailOpen(false)
-    closeTimerRef.current = window.setTimeout(() => setShowReopen(true), DETAIL_CLOSE_DURATION_MS)
-  }, [])
+    setShowReopen(!isMobile || prefersReducedMotion)
+    if (isMobile && !prefersReducedMotion)
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          const sheet = shellRef.current?.querySelector<HTMLElement>('[role="dialog"]')
+          if (!detailOpenRef.current && !sheet?.getAnimations().length) setShowReopen(true)
+        }),
+      )
+  }, [isMobile, prefersReducedMotion])
   const openDetail = () => {
-    if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current)
-    closeTimerRef.current = undefined
+    detailOpenRef.current = true
     setShowReopen(false)
     setDetailOpen(true)
   }
 
-  useEffect(
-    () => () => {
-      if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current)
-    },
-    [],
-  )
+  const completeMobileClose = (event: TransitionEvent<HTMLElement>) => {
+    if (
+      event.currentTarget !== event.target ||
+      event.propertyName !== "transform" ||
+      detailOpenRef.current
+    )
+      return
+    setShowReopen(true)
+  }
 
   useEffect(() => {
     if (showReopen)
@@ -228,6 +198,7 @@ export function MapShell() {
                   if (event.key === "Escape") closeDetail()
                   else trapSheetFocus(event)
                 }}
+                onTransitionEnd={completeMobileClose}
                 role="dialog"
               >
                 <DetailContent onClose={closeDetail} />

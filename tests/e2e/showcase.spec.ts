@@ -1,4 +1,19 @@
-import { expect, test } from "@playwright/test"
+import { expect, type Page, test } from "@playwright/test"
+
+function waitForSheetTransformTransition(page: Page) {
+  return page.locator('[role="dialog"]').evaluate(
+    (element) =>
+      new Promise<void>((resolve) => {
+        element.addEventListener(
+          "transitionend",
+          (event) => {
+            if ("propertyName" in event && event.propertyName === "transform") resolve()
+          },
+          { once: true },
+        )
+      }),
+  )
+}
 
 const viewports = [
   { name: "mobile", width: 375, height: 812 },
@@ -128,12 +143,19 @@ test("Given keyboard input, When filters and sheet controls are used, Then focus
   await expect(page.getByRole("dialog", { name: "그린테이블 강남점" })).toBeVisible()
 
   // When a close completion is interrupted by a marker selection
+  const interruptedSheet = page.getByRole("dialog", { name: "그린테이블 강남점" })
+  await interruptedSheet.evaluate((element) => {
+    ;(element as HTMLElement).style.transitionDuration = "1s"
+  })
+  const reopenCompletion = waitForSheetTransformTransition(page)
   await page.getByRole("button", { name: "상세 닫기" }).click()
+  await expect(page.locator('[role="dialog"]')).toHaveAttribute("data-open", "false")
   await page.getByRole("button", { name: "프로틴 키친 역삼점, 단백질" }).click()
-  await expect(page.getByRole("dialog", { name: "그린테이블 강남점" })).toHaveCSS(
-    "transform",
-    "matrix(1, 0, 0, 1, 0, 0)",
+  await expect(page.getByRole("dialog", { name: "그린테이블 강남점" })).toHaveAttribute(
+    "data-open",
+    "true",
   )
+  await expect(reopenCompletion).resolves.toBeUndefined()
 
   // Then the stale close timer cannot expose a reopen control over the dialog
   await expect(page.getByRole("dialog", { name: "그린테이블 강남점" })).toBeVisible()
@@ -155,6 +177,46 @@ test("Given mobile focus entry, When the detail title receives focus, Then the d
   await expect(title).toHaveCSS("outline-color", "rgb(38, 105, 156)")
   await expect(title).toHaveCSS("outline-style", "solid")
   await expect(title).toHaveCSS("outline-width", "3px")
+})
+
+test("Given a mobile sheet with a long closing transition, When it closes, Then the reopen control waits for transition completion", async ({
+  page,
+}) => {
+  // Given
+  await page.setViewportSize({ width: 375, height: 812 })
+  await page.goto("/showcase")
+  const sheet = page.getByRole("dialog", { name: "그린테이블 강남점" })
+  await sheet.evaluate((element) => {
+    ;(element as HTMLElement).style.transitionDuration = "1s"
+  })
+  const closeCompletion = sheet.evaluate(
+    (element) =>
+      new Promise<void>((resolve, reject) => {
+        const reopenObserver = new MutationObserver(() => {
+          if (document.querySelector("[data-testid='detail-closed']")) {
+            reopenObserver.disconnect()
+            reject(new Error("reopen control appeared before transitionend"))
+          }
+        })
+        reopenObserver.observe(document.body, { childList: true, subtree: true })
+        element.addEventListener(
+          "transitionend",
+          (event) => {
+            if (!("propertyName" in event) || event.propertyName !== "transform") return
+            reopenObserver.disconnect()
+            resolve()
+          },
+          { once: true },
+        )
+      }),
+  )
+
+  // When
+  await page.getByRole("button", { name: "상세 닫기" }).click()
+
+  // Then
+  await expect(closeCompletion).resolves.toBeUndefined()
+  await expect(page.getByTestId("detail-closed")).toBeVisible()
 })
 
 test("Given an open desktop detail pane, When Escape is pressed, Then the pane closes", async ({
