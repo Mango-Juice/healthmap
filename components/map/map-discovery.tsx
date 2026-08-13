@@ -100,6 +100,7 @@ export function MapDiscovery({ clientId, initialMenus, initialPlaces }: Properti
   const catalogGeneration = useRef(0)
   const didInitializeUrl = useRef(false)
   const mapSnapshot = useRef<HistorySnapshot | undefined>(undefined)
+  const sharedEntrySource = useRef<"place_share" | "map_share" | undefined>(undefined)
 
   const requestLocation = useCallback(() => {
     setLocation(beginLocationRequest())
@@ -188,11 +189,13 @@ export function MapDiscovery({ clientId, initialMenus, initialPlaces }: Properti
             return
           }
           setSelectedSlug(place.slug)
+          sharedEntrySource.current = "place_share"
           window.history.replaceState({}, "", canonicalizeShareUrl(window.location.href))
           return
         }
-        case "map":
+        case "map": {
           setSelectedSlug(undefined)
+          sharedEntrySource.current = "map_share"
           mapSnapshot.current ??= readMapSnapshot()
           const browserSnapshot = window.history.state
           if (mapSnapshot.current === undefined && isHistorySnapshot(browserSnapshot)) {
@@ -214,6 +217,7 @@ export function MapDiscovery({ clientId, initialMenus, initialPlaces }: Properti
           setView({ ...shareState.center, zoom: shareState.zoom })
           window.history.replaceState({}, "", canonicalizeShareUrl(window.location.href))
           return
+        }
         case "fallback":
           setSelectedSlug(undefined)
           if (window.location.search.length > 0) {
@@ -260,6 +264,12 @@ export function MapDiscovery({ clientId, initialMenus, initialPlaces }: Properti
       event: "place_opened",
       properties: { place_id: place.id, source: "map" },
     })
+    const source = sharedEntrySource.current
+    if (source !== undefined)
+      captureProductAnalytics({
+        event: "shared_visit_explored",
+        properties: { source, action: "place_opened" },
+      })
   }
   const reloadCatalog = async () => {
     const generation = catalogGeneration.current + 1
@@ -304,6 +314,12 @@ export function MapDiscovery({ clientId, initialMenus, initialPlaces }: Properti
             onSelect={(value) => {
               setFilter(value)
               captureProductAnalytics({ event: "filter_selected", properties: { tag: value } })
+              const source = sharedEntrySource.current
+              if (source !== undefined)
+                captureProductAnalytics({
+                  event: "shared_visit_explored",
+                  properties: { source, action: "filter" },
+                })
             }}
           />
         </div>
@@ -369,9 +385,9 @@ export function MapDiscovery({ clientId, initialMenus, initialPlaces }: Properti
             ))}
           </section>
         )}
-        {linkNotice ? (
+        {linkNotice || selectedPlace ? (
           <p className={styles["selection"]} role="status">
-            {linkNotice}
+            {linkNotice ?? "장소를 선택했습니다."}
           </p>
         ) : null}
         {selectedPlace ? (

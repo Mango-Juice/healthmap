@@ -50,6 +50,7 @@
   --hm-active-brightness: 0.86;
   --hm-layer-map: 0;
   --hm-layer-controls: 10;
+  --hm-layer-detail: 20;
   background: var(--hm-canvas);
   color: var(--hm-ink);
   display: grid;
@@ -209,7 +210,7 @@
   min-block-size: 272px;
   overflow: hidden;
   position: absolute;
-  z-index: var(--hm-layer-focus);
+  z-index: var(--hm-layer-detail);
 }
 .markers {
   inset: 0;
