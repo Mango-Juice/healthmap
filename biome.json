@@ -55,6 +55,7 @@
       "includes": [
         "app/layout.tsx",
         "app/page.tsx",
+        "app/privacy/page.tsx",
         "next.config.ts",
         "playwright.config.ts",
         "postcss.config.mjs",

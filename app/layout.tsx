@@ -2,6 +2,8 @@ import type { Metadata } from "next"
 import Script from "next/script"
 import type { ReactNode } from "react"
 
+import { AnalyticsProvider } from "../components/analytics/analytics-provider"
+
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -36,7 +38,10 @@ export default function RootLayout({ children }: RootLayoutProperties) {
           </>
         ) : null}
       </head>
-      <body>{children}</body>
+      <body>
+        <AnalyticsProvider />
+        {children}
+      </body>
     </html>
   )
 }
