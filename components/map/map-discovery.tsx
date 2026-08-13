@@ -2,6 +2,7 @@
 
 import {
   type KeyboardEvent as ReactKeyboardEvent,
+  type TransitionEvent as ReactTransitionEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -55,6 +56,9 @@ type HistorySnapshot = {
   readonly url: string
   readonly view: MapView
 }
+
+type DetailPhase = "closed" | "opening" | "open" | "closing"
+type DetailMotion = "start" | "settled"
 
 const isHistorySnapshot = (value: unknown): value is HistorySnapshot =>
   typeof value === "object" &&
@@ -119,6 +123,10 @@ export function MapDiscovery({
   const selectedSlugRef = useRef<string | undefined>(undefined)
   const [didResolveEntry, setDidResolveEntry] = useState(false)
   const [isMobileDetail, setIsMobileDetail] = useState(false)
+  const [detailPhase, setDetailPhase] = useState<DetailPhase>("closed")
+  const [detailMotion, setDetailMotion] = useState<DetailMotion>("settled")
+  const openingFrame = useRef<number | undefined>(undefined)
+  const closingFrame = useRef<number | undefined>(undefined)
 
   const requestLocation = useCallback((isUserRequested: boolean) => {
     const source = sharedEntrySource.current
@@ -193,11 +201,31 @@ export function MapDiscovery({
     [],
   )
 
-  const clearSelection = useCallback(() => {
+  const finishDetailClose = useCallback(() => {
+    setDetailPhase("closed")
     setSelectedSlug(undefined)
-    window.history.replaceState({}, "", "/")
-    window.setTimeout(() => selectionTrigger.current?.focus())
+    const trigger = selectionTrigger.current
+    selectionTrigger.current = undefined
+    trigger?.focus()
   }, [])
+
+  const clearSelection = useCallback(() => {
+    if (selectedSlug === undefined || detailPhase === "closing") return
+    window.history.replaceState({}, "", "/")
+    setDetailMotion("settled")
+    if (openingFrame.current !== undefined) window.cancelAnimationFrame(openingFrame.current)
+    if (closingFrame.current !== undefined) window.cancelAnimationFrame(closingFrame.current)
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      finishDetailClose()
+      return
+    }
+    if (detailPhase === "opening") {
+      setDetailPhase("open")
+      closingFrame.current = window.requestAnimationFrame(() => setDetailPhase("closing"))
+    } else {
+      setDetailPhase("closing")
+    }
+  }, [detailPhase, finishDetailClose, selectedSlug])
 
   useEffect(() => {
     selectedSlugRef.current = selectedSlug
@@ -222,19 +250,33 @@ export function MapDiscovery({
           )
           if (place === undefined) {
             sharedEntrySource.current = undefined
-            setSelectedSlug(undefined)
+            if (wasSelected) {
+              setDetailPhase("closing")
+              if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) finishDetailClose()
+            } else {
+              setSelectedSlug(undefined)
+              setDetailPhase("closed")
+            }
             setLinkNotice("유효하지 않은 장소 링크를 기본 지도로 복구했습니다.")
             window.history.replaceState({}, "", "/")
             return
           }
           setSelectedSlug(place.slug)
+          setDetailPhase("opening")
+          setDetailMotion("start")
           sharedEntrySource.current = shareState.source
           window.history.replaceState({}, "", canonicalizeShareUrl(window.location.href))
           return
         }
         case "map": {
-          setSelectedSlug(undefined)
-          if (wasSelected) window.setTimeout(() => selectionTrigger.current?.focus())
+          if (wasSelected) {
+            setDetailPhase("closing")
+            setDetailMotion("settled")
+            if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) finishDetailClose()
+          } else {
+            setSelectedSlug(undefined)
+            setDetailPhase("closed")
+          }
           sharedEntrySource.current = shareState.source
           mapSnapshot.current ??= readMapSnapshot()
           const browserSnapshot = window.history.state
@@ -260,8 +302,13 @@ export function MapDiscovery({
         }
         case "fallback":
           sharedEntrySource.current = undefined
-          setSelectedSlug(undefined)
-          if (wasSelected) window.setTimeout(() => selectionTrigger.current?.focus())
+          if (wasSelected) {
+            setDetailPhase("closing")
+            if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) finishDetailClose()
+          } else {
+            setSelectedSlug(undefined)
+            setDetailPhase("closed")
+          }
           if (window.location.search.length > 0) {
             setLinkNotice("유효하지 않은 공유 링크를 기본 지도로 복구했습니다.")
             window.history.replaceState({}, "", "/")
@@ -277,7 +324,24 @@ export function MapDiscovery({
     setDidResolveEntry(true)
     window.addEventListener("popstate", recoverFromUrl)
     return () => window.removeEventListener("popstate", recoverFromUrl)
-  }, [initialPlaces])
+  }, [finishDetailClose, initialPlaces])
+
+  useEffect(() => {
+    if (selectedSlug === undefined || detailPhase !== "opening") return
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setDetailMotion("settled")
+      setDetailPhase("open")
+      return
+    }
+    openingFrame.current = window.requestAnimationFrame(() => {
+      openingFrame.current = window.requestAnimationFrame(() => {
+        openingFrame.current = window.requestAnimationFrame(() => setDetailMotion("settled"))
+      })
+    })
+    return () => {
+      if (openingFrame.current !== undefined) window.cancelAnimationFrame(openingFrame.current)
+    }
+  }, [detailPhase, selectedSlug])
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent): void => {
@@ -304,6 +368,7 @@ export function MapDiscovery({
     [publishedPlaces, selectedSlug],
   )
   const openPlace = (place: Place): void => {
+    if (closingFrame.current !== undefined) window.cancelAnimationFrame(closingFrame.current)
     const activeElement = document.activeElement
     selectionTrigger.current = activeElement instanceof HTMLElement ? activeElement : undefined
     setLinkNotice(undefined)
@@ -311,6 +376,8 @@ export function MapDiscovery({
     window.sessionStorage.setItem(MAP_SNAPSHOT_KEY, JSON.stringify(snapshot))
     window.history.replaceState(snapshot, "", window.location.href)
     setSelectedSlug(place.slug)
+    setDetailPhase("opening")
+    setDetailMotion("start")
     window.history.pushState({}, "", serializePlaceShare(place.slug))
     captureProductAnalytics({
       event: "place_opened",
@@ -366,6 +433,8 @@ export function MapDiscovery({
         aria-label="장소 상세"
         aria-modal="true"
         className={styles["detailSurface"]}
+        data-detail-phase={detailPhase}
+        data-detail-motion={detailMotion}
         onKeyDown={(event: ReactKeyboardEvent<HTMLDivElement>) => {
           if (event.key !== "Tab") return
           const focusable = Array.from(
@@ -384,12 +453,28 @@ export function MapDiscovery({
             first.focus()
           }
         }}
+        onTransitionEnd={(event: ReactTransitionEvent<HTMLDivElement>) => {
+          if (event.target !== event.currentTarget) return
+          if (detailPhase === "closing") finishDetailClose()
+          if (detailPhase === "opening" && event.propertyName === "opacity") setDetailPhase("open")
+        }}
         role="dialog"
       >
         {detail}
       </div>
     ) : (
-      <div className={styles["detailSurface"]}>{detail}</div>
+      <div
+        className={styles["detailSurface"]}
+        data-detail-phase={detailPhase}
+        data-detail-motion={detailMotion}
+        onTransitionEnd={(event: ReactTransitionEvent<HTMLDivElement>) => {
+          if (event.target !== event.currentTarget) return
+          if (detailPhase === "closing") finishDetailClose()
+          if (detailPhase === "opening" && event.propertyName === "opacity") setDetailPhase("open")
+        }}
+      >
+        {detail}
+      </div>
     )
   }
 

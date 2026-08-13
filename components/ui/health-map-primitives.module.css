@@ -1,9 +1,11 @@
 .filterRail {
+  box-sizing: border-box;
   border: 0;
   display: flex;
   gap: var(--hm-space-2);
   max-inline-size: 100%;
   min-inline-size: 0;
+  inline-size: 100%;
   overflow-x: auto;
   overscroll-behavior-inline: contain;
   scroll-snap-type: inline mandatory;
@@ -192,6 +194,22 @@
 
   .spinner {
     animation: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .filterRail {
+    display: grid;
+    gap: var(--hm-space-2);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+
+  .filterButton {
+    inline-size: 100%;
+    min-inline-size: 0;
+    padding-inline: var(--hm-space-2);
   }
 }
 
