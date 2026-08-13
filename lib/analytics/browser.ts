@@ -2,11 +2,11 @@
 
 import posthog, { type PostHogConfig } from "posthog-js/dist/module.no-external"
 
-import { parseAnalyticsEvent } from "../domain/analytics"
 import {
   createPrivacySafeAnalytics,
   POSTHOG_PRIVACY_CONFIG,
   type PrivacySafeAnalytics,
+  sanitizeAnalyticsTransportEvent,
 } from "./privacy-safe"
 
 type BrowserAnalyticsEnvironment = {
@@ -15,6 +15,7 @@ type BrowserAnalyticsEnvironment = {
 }
 
 let analytics: PrivacySafeAnalytics | null = null
+let configuredEnvironment: BrowserAnalyticsEnvironment | null = null
 
 const browserStorage = {
   getItem: (key: string): string | null => {
@@ -47,19 +48,21 @@ const createPostHogConfig = (anonymousId: string, host: string): Partial<PostHog
   property_denylist: [...POSTHOG_PRIVACY_CONFIG.property_denylist],
   before_send: (event) => {
     if (event === null) return null
+    const safeEvent = sanitizeAnalyticsTransportEvent(event.event, event.properties)
+    if (safeEvent === null) return null
 
-    try {
-      const safeEvent = parseAnalyticsEvent({ event: event.event, properties: event.properties })
-      return { event: safeEvent.event, properties: safeEvent.properties, uuid: event.uuid }
-    } catch (error) {
-      if (error instanceof Error) return null
-      return null
-    }
+    const token = event.properties["token"]
+    const properties =
+      typeof token === "string" ? { ...safeEvent.properties, token } : { ...safeEvent.properties }
+    return { event: safeEvent.event, properties, uuid: event.uuid }
   },
 })
 
-export const initializeProductAnalytics = (environment: BrowserAnalyticsEnvironment): void => {
+const startConfiguredAnalytics = (): void => {
   if (analytics !== null) return
+
+  const environment = configuredEnvironment
+  if (environment === null || getProductAnalyticsOptOut()) return
 
   const key = asNonEmptyString(environment.key)
   const host = asNonEmptyString(environment.host)
@@ -75,10 +78,13 @@ export const initializeProductAnalytics = (environment: BrowserAnalyticsEnvironm
     createId: () => crypto.randomUUID(),
   })
 
-  if (localAnalytics.isOptedOut()) return
-
   posthog.init(key, createPostHogConfig(localAnalytics.anonymousId, host))
   analytics = localAnalytics
+}
+
+export const initializeProductAnalytics = (environment: BrowserAnalyticsEnvironment): void => {
+  configuredEnvironment = environment
+  startConfiguredAnalytics()
 }
 
 export const captureProductAnalytics = (event: unknown): void => analytics?.capture(event)
@@ -86,6 +92,10 @@ export const captureProductAnalytics = (event: unknown): void => analytics?.capt
 export const setProductAnalyticsOptOut = (optedOut: boolean): void => {
   if (analytics === null) {
     browserStorage.setItem("healthmap.analytics.opt-out.v1", String(optedOut))
+    if (!optedOut) {
+      startConfiguredAnalytics()
+      posthog.opt_in_capturing()
+    }
     return
   }
 

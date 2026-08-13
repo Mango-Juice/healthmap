@@ -21,6 +21,7 @@ export const POSTHOG_PRIVACY_CONFIG = {
   advanced_disable_flags: true,
   mask_all_element_attributes: true,
   mask_all_text: true,
+  opt_out_useragent_filter: true,
   person_profiles: "never",
   persistence: "memory",
   property_denylist: [
@@ -81,6 +82,49 @@ const toOutboundEvent = (input: unknown): AnalyticsEvent | null => {
   } catch (error) {
     if (error instanceof z.ZodError) return null
     throw error
+  }
+}
+
+const isPropertyRecord = (input: unknown): input is Readonly<Record<string, unknown>> =>
+  typeof input === "object" && input !== null && !Array.isArray(input)
+
+export const sanitizeAnalyticsTransportEvent = (
+  event: unknown,
+  properties: unknown,
+): AnalyticsEvent | null => {
+  if (!isPropertyRecord(properties)) return null
+
+  switch (event) {
+    case "map_viewed":
+      return toOutboundEvent({ event, properties: { source: properties["source"] } })
+    case "location_resolved":
+      return toOutboundEvent({ event, properties: { outcome: properties["outcome"] } })
+    case "filter_selected":
+      return toOutboundEvent({ event, properties: { tag: properties["tag"] } })
+    case "place_opened":
+      return toOutboundEvent({
+        event,
+        properties: { place_id: properties["place_id"], source: properties["source"] },
+      })
+    case "directions_opened":
+      return toOutboundEvent({
+        event,
+        properties: { place_id: properties["place_id"], source: properties["source"] },
+      })
+    case "share_invoked":
+      return toOutboundEvent({ event, properties: { target: properties["target"] } })
+    case "share_completed":
+      return toOutboundEvent({
+        event,
+        properties: { target: properties["target"], outcome: properties["outcome"] },
+      })
+    case "shared_visit_explored":
+      return toOutboundEvent({
+        event,
+        properties: { source: properties["source"], action: properties["action"] },
+      })
+    default:
+      return null
   }
 }
 

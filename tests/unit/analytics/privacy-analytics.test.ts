@@ -6,6 +6,7 @@ import {
   type AnalyticsTransport,
   createPrivacySafeAnalytics,
   POSTHOG_PRIVACY_CONFIG,
+  sanitizeAnalyticsTransportEvent,
 } from "../../../lib/analytics/privacy-safe"
 import { ANALYTICS_EVENT_NAMES } from "../../../lib/domain/analytics"
 
@@ -158,6 +159,29 @@ describe("privacy-safe product analytics", () => {
 
     // Then
     expect(transport.captures).toEqual([])
+  })
+
+  it("Given SDK-enriched properties, when an approved event is serialized, then only its allowlisted application properties remain", () => {
+    // Given
+    const enrichedProperties = {
+      source: "map",
+      $current_url: "https://healthmap.test/?precise=37.5007",
+      $referrer: "https://search.test/private",
+      coordinates: "37.5007,127.0328",
+      place_name: "두부마을",
+    }
+
+    // When
+    const event = sanitizeAnalyticsTransportEvent("place_opened", {
+      ...enrichedProperties,
+      place_id: "6dd657be-fc3b-4bb8-8e67-fabbee0f2ea0",
+    })
+
+    // Then
+    expect(event).toEqual({
+      event: "place_opened",
+      properties: { place_id: "6dd657be-fc3b-4bb8-8e67-fabbee0f2ea0", source: "map" },
+    })
   })
 
   it("Given local opt-out, when events are captured then opted back in, then capture stops immediately and resumes", () => {
