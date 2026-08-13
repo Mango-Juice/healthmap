@@ -22,7 +22,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `pnpm dev --hostname 127.0.0.1 --port ${port}`,
+    command: `exec node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port ${port}`,
     env: {
       ...process.env,
       NEXT_PUBLIC_DISABLE_REACT_DEVTOOLS: "1",

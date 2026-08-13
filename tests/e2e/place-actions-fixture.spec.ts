@@ -5,6 +5,8 @@ import { join } from "node:path"
 import { gunzipSync } from "node:zlib"
 import { expect, test } from "@playwright/test"
 
+test.describe.configure({ retries: 0 })
+
 type FixtureServer = {
   readonly baseUrl: string
   readonly distDirectory: string
@@ -169,6 +171,7 @@ test("Given the typed published production fixture, when directions is selected,
   await expect(directionsPage).toHaveURL(
     "https://map.naver.com/p/directions/127.0311,37.5032,place,%ED%85%8C%EC%8A%A4%ED%8A%B8%20%EC%83%9D%EC%82%B0%20%EA%B2%BD%EB%A1%9C%20%EC%8B%9D%EB%8B%B9/-/walk",
   )
+  await directionsPage.close()
 })
 
 test("Given the typed production fixture, when directions opens, then its redacted transport event is emitted", async ({
@@ -186,7 +189,8 @@ test("Given the typed production fixture, when directions opens, then its redact
   await page.getByRole("button", { name: "테스트 생산 경로 식당" }).click()
   const popup = page.waitForEvent("popup")
   await page.getByRole("button", { name: "길찾기" }).click()
-  await popup
+  const directionsPage = await popup
+  await directionsPage.close()
   await expect
     .poll(() => events.filter((entry) => entry.event === "directions_opened").length)
     .toBe(1)
@@ -234,21 +238,33 @@ test("Given a typed route-incomplete production fixture, when directions is sele
   // Then
   const directionsPage = await popup
   await expect(directionsPage).toHaveURL("https://map.naver.com/p/entry/place/912345679")
+  await directionsPage.close()
 })
 
 test("Given an actual unpublished production fixture URL, when the map loads, then it recovers to the base map with a nonblocking notice", async ({
   page,
 }) => {
   // Given
-  const server = fixtureServer
+  let server = fixtureServer
   if (server === undefined) throw new Error("Fixture server was not started")
+  await stopFixtureServer(server)
+  fixtureServer = await startFixtureServer()
+  server = fixtureServer
+  const recoveryPage = await page.context().newPage()
 
   // When
-  await page.goto(`${server.baseUrl}/?place=task7-unpublished-place&src=place_share`)
+  await recoveryPage.goto(server.baseUrl, { waitUntil: "commit" })
+  await recoveryPage.evaluate(() => {
+    window.history.pushState({}, "", "/?place=task7-unpublished-place&src=place_share")
+  })
+  await recoveryPage.reload({ waitUntil: "commit" })
 
   // Then
-  await expect(page).toHaveURL(`${server.baseUrl}/`)
-  await expect(page.getByText("유효하지 않은 장소 링크를 기본 지도로 복구했습니다.")).toBeVisible()
+  await expect(recoveryPage).toHaveURL(`${server.baseUrl}/`)
+  await expect(
+    recoveryPage.getByText("유효하지 않은 장소 링크를 기본 지도로 복구했습니다."),
+  ).toBeVisible()
+  await recoveryPage.close()
 })
 
 test("Given an actual unpublished production fixture, when the recovered map is rendered, then the unpublished record is not selectable", async ({

@@ -59,6 +59,7 @@ type HistorySnapshot = {
 
 type DetailPhase = "closed" | "opening" | "open" | "closing"
 type DetailMotion = "start" | "settled"
+const DETAIL_TRANSITION_BUFFER_MS = 48
 
 const isHistorySnapshot = (value: unknown): value is HistorySnapshot =>
   typeof value === "object" &&
@@ -121,12 +122,14 @@ export function MapDiscovery({
   const sharedEntrySource = useRef<"place_share" | "map_share" | undefined>(undefined)
   const selectionTrigger = useRef<HTMLElement | undefined>(undefined)
   const selectedSlugRef = useRef<string | undefined>(undefined)
+  const detailPhaseRef = useRef<DetailPhase>("closed")
   const [didResolveEntry, setDidResolveEntry] = useState(false)
   const [isMobileDetail, setIsMobileDetail] = useState(false)
   const [detailPhase, setDetailPhase] = useState<DetailPhase>("closed")
   const [detailMotion, setDetailMotion] = useState<DetailMotion>("settled")
   const openingFrame = useRef<number | undefined>(undefined)
   const closingFrame = useRef<number | undefined>(undefined)
+  const closeSafetyTimer = useRef<number | undefined>(undefined)
 
   const requestLocation = useCallback((isUserRequested: boolean) => {
     const source = sharedEntrySource.current
@@ -202,6 +205,12 @@ export function MapDiscovery({
   )
 
   const finishDetailClose = useCallback(() => {
+    if (closeSafetyTimer.current !== undefined) {
+      window.clearTimeout(closeSafetyTimer.current)
+      closeSafetyTimer.current = undefined
+    }
+    detailPhaseRef.current = "closed"
+    selectedSlugRef.current = undefined
     setDetailPhase("closed")
     setSelectedSlug(undefined)
     const trigger = selectionTrigger.current
@@ -209,27 +218,48 @@ export function MapDiscovery({
     trigger?.focus()
   }, [])
 
-  const clearSelection = useCallback(() => {
-    if (selectedSlug === undefined || detailPhase === "closing") return
-    window.history.replaceState({}, "", "/")
-    setDetailMotion("settled")
+  const beginDetailClose = useCallback(() => {
+    const currentSlug = selectedSlugRef.current
+    const currentPhase = detailPhaseRef.current
+    if (currentSlug === undefined || currentPhase === "closing") return
     if (openingFrame.current !== undefined) window.cancelAnimationFrame(openingFrame.current)
     if (closingFrame.current !== undefined) window.cancelAnimationFrame(closingFrame.current)
+    setDetailMotion("settled")
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       finishDetailClose()
       return
     }
-    if (detailPhase === "opening") {
+    if (currentPhase === "opening") {
+      detailPhaseRef.current = "open"
       setDetailPhase("open")
-      closingFrame.current = window.requestAnimationFrame(() => setDetailPhase("closing"))
+      closingFrame.current = window.requestAnimationFrame(() => {
+        detailPhaseRef.current = "closing"
+        setDetailPhase("closing")
+      })
     } else {
+      detailPhaseRef.current = "closing"
       setDetailPhase("closing")
     }
-  }, [detailPhase, finishDetailClose, selectedSlug])
+    const surface = document.querySelector<HTMLElement>("[data-detail-phase]")
+    const duration = surface
+      ? Number.parseFloat(getComputedStyle(surface).transitionDuration.split(",")[0] ?? "") * 1000
+      : 240
+    closeSafetyTimer.current = window.setTimeout(
+      finishDetailClose,
+      Math.max(0, duration) + DETAIL_TRANSITION_BUFFER_MS,
+    )
+  }, [finishDetailClose])
+
+  const clearSelection = useCallback(() => {
+    if (selectedSlugRef.current === undefined || detailPhaseRef.current === "closing") return
+    window.history.replaceState({}, "", "/")
+    beginDetailClose()
+  }, [beginDetailClose])
 
   useEffect(() => {
     selectedSlugRef.current = selectedSlug
-  }, [selectedSlug])
+    detailPhaseRef.current = detailPhase
+  }, [detailPhase, selectedSlug])
 
   useEffect(() => {
     const query = window.matchMedia("(max-width: 767px)")
@@ -251,8 +281,7 @@ export function MapDiscovery({
           if (place === undefined) {
             sharedEntrySource.current = undefined
             if (wasSelected) {
-              setDetailPhase("closing")
-              if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) finishDetailClose()
+              beginDetailClose()
             } else {
               setSelectedSlug(undefined)
               setDetailPhase("closed")
@@ -270,9 +299,7 @@ export function MapDiscovery({
         }
         case "map": {
           if (wasSelected) {
-            setDetailPhase("closing")
-            setDetailMotion("settled")
-            if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) finishDetailClose()
+            beginDetailClose()
           } else {
             setSelectedSlug(undefined)
             setDetailPhase("closed")
@@ -303,8 +330,7 @@ export function MapDiscovery({
         case "fallback":
           sharedEntrySource.current = undefined
           if (wasSelected) {
-            setDetailPhase("closing")
-            if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) finishDetailClose()
+            beginDetailClose()
           } else {
             setSelectedSlug(undefined)
             setDetailPhase("closed")
@@ -324,7 +350,7 @@ export function MapDiscovery({
     setDidResolveEntry(true)
     window.addEventListener("popstate", recoverFromUrl)
     return () => window.removeEventListener("popstate", recoverFromUrl)
-  }, [finishDetailClose, initialPlaces])
+  }, [beginDetailClose, initialPlaces])
 
   useEffect(() => {
     if (selectedSlug === undefined || detailPhase !== "opening") return
@@ -369,12 +395,18 @@ export function MapDiscovery({
   )
   const openPlace = (place: Place): void => {
     if (closingFrame.current !== undefined) window.cancelAnimationFrame(closingFrame.current)
+    if (closeSafetyTimer.current !== undefined) {
+      window.clearTimeout(closeSafetyTimer.current)
+      closeSafetyTimer.current = undefined
+    }
     const activeElement = document.activeElement
     selectionTrigger.current = activeElement instanceof HTMLElement ? activeElement : undefined
     setLinkNotice(undefined)
     const snapshot = { filter, url: `${window.location.pathname}${window.location.search}`, view }
     window.sessionStorage.setItem(MAP_SNAPSHOT_KEY, JSON.stringify(snapshot))
     window.history.replaceState(snapshot, "", window.location.href)
+    selectedSlugRef.current = place.slug
+    detailPhaseRef.current = "opening"
     setSelectedSlug(place.slug)
     setDetailPhase("opening")
     setDetailMotion("start")
@@ -491,7 +523,11 @@ export function MapDiscovery({
         </button>
       </header>
       <div className={styles["map"]} data-adapter-state={adapterState} data-testid="map-stage">
-        <div aria-hidden="true" className={styles["paperMap"]} />
+        <div aria-hidden="true" className={styles["paperMap"]}>
+          <span className={styles["paperFeature"]} data-fallback-geometry />
+          <span className={styles["paperFeature"]} data-fallback-geometry />
+          <span className={styles["paperFeature"]} data-fallback-geometry />
+        </div>
         <div aria-hidden="true" className={styles["sdkMap"]} ref={sdkContainer} />
         <div className={styles["filter"]}>
           <FilterRail

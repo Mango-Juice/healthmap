@@ -65,6 +65,15 @@
   --hm-spinner-turn: 360deg;
   --hm-skeleton-opacity-low: 0.48;
   --hm-skeleton-opacity-high: 0.9;
+  --hm-visually-hidden-size: 1px;
+  --hm-skeleton-block: 132px;
+  --hm-skeleton-line-wide: 240px;
+  --hm-skeleton-line-mid: 160px;
+  --hm-skeleton-line-short: 65%;
+  --hm-skeleton-action-wide: 200px;
+  --hm-empty-block: 220px;
+  --hm-empty-copy-measure: 30ch;
+  --hm-empty-glyph: 48px;
   --hm-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
   --hm-sheet-max: 52%;
   --hm-sheet-block-min: 272px;
@@ -149,6 +158,36 @@
   inset-inline-start: 45%;
   position: absolute;
   transform: rotate(28deg);
+}
+.paperFeature {
+  background: var(--hm-map-land);
+  border: var(--hm-border-width) solid var(--hm-map-road);
+  border-radius: var(--hm-radius-lg);
+  position: absolute;
+  z-index: 0;
+}
+.paperFeature:nth-child(1) {
+  block-size: 17%;
+  inline-size: 31%;
+  inset-block-start: 17%;
+  inset-inline-start: 9%;
+  transform: rotate(-5deg);
+}
+.paperFeature:nth-child(2) {
+  block-size: 22%;
+  inline-size: 27%;
+  inset-block-end: 18%;
+  inset-inline-end: 12%;
+  transform: rotate(6deg);
+}
+.paperFeature:nth-child(3) {
+  background: var(--hm-map-road);
+  border: 0;
+  block-size: var(--hm-space-2);
+  inline-size: 58%;
+  inset-block-start: 57%;
+  inset-inline-start: 15%;
+  transform: rotate(-11deg);
 }
 .filter {
   inset-block-start: var(--hm-space-3);
@@ -314,6 +353,7 @@ button:focus-visible {
     inset-inline: var(--hm-space-2);
   }
   .status {
+    inset-block-start: calc(var(--hm-space-12) + var(--hm-space-12) + var(--hm-space-6));
     max-inline-size: calc(100% - var(--hm-control-min) - var(--hm-space-12));
   }
   .status span {

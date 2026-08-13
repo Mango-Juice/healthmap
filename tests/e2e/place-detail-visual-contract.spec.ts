@@ -10,6 +10,8 @@ test.beforeEach(async ({ context }) => {
   })
 })
 
+test.describe.configure({ retries: 0 })
+
 test("mobile manual share owns native wheel scroll while the sheet and heading stay fixed", async ({
   page,
 }) => {
@@ -24,6 +26,7 @@ test("mobile manual share owns native wheel scroll while the sheet and heading s
   await page.goto("/")
   await page.getByRole("button", { name: /새싹 네모식당/ }).click()
   const detail = page.getByTestId("place-detail")
+  await expect(page.locator("[data-detail-phase='open']")).toBeVisible()
   await page.getByRole("button", { name: "공유", exact: true }).click()
   await expect(page.getByLabel("공유 URL")).toBeVisible()
 
@@ -81,6 +84,20 @@ test("production shell resolves consumed tokens and shows a fully visible five-c
     "--hm-border-width",
     "--hm-shadow-detail",
     "--hm-layer-detail",
+    "--hm-visually-hidden-size",
+    "--hm-skeleton-block",
+    "--hm-skeleton-line-wide",
+    "--hm-skeleton-line-mid",
+    "--hm-skeleton-line-short",
+    "--hm-skeleton-action-wide",
+    "--hm-empty-block",
+    "--hm-empty-copy-measure",
+    "--hm-empty-glyph",
+    "--hm-skeleton-opacity-low",
+    "--hm-skeleton-opacity-high",
+    "--hm-motion-spinner",
+    "--hm-motion-skeleton",
+    "--hm-spinner-turn",
   ] as const
   const tokenValues = await page
     .getByRole("region", { name: "건강식 지도" })
@@ -119,6 +136,25 @@ test("production shell resolves consumed tokens and shows a fully visible five-c
   )
   expect(leafSizes.length).toBe(4)
   expect(leafSizes.every(({ width, height }) => width >= 16 && height >= 16)).toBe(true)
+})
+
+test("initial 375 balance filter receives the native click without status interception", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 812 })
+  await page.goto("/")
+  const balanced = page.getByRole("button", { name: "균형식 필터" })
+  const hit = await balanced.evaluate((element) => {
+    const rect = element.getBoundingClientRect()
+    const target = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
+    return {
+      targetTag: target?.tagName ?? null,
+      targetIsButton: target === element || element.contains(target),
+    }
+  })
+  expect(hit.targetIsButton).toBe(true)
+  await balanced.click()
+  await expect(balanced).toHaveAttribute("aria-pressed", "true")
 })
 
 test("place detail opening exposes start, in-flight, and settled states", async ({ page }) => {
@@ -180,6 +216,7 @@ test("fallback map remains solid and nonblank with five live markers", async ({ 
     })
   expect(background.image).toBe("none")
   expect(background.color).not.toBe("rgba(0, 0, 0, 0)")
+  await expect(map.locator("[data-fallback-geometry]")).toHaveCount(3)
 })
 
 test("close keeps the surface mounted until its native transition completes", async ({ page }) => {
@@ -214,6 +251,27 @@ test("desktop close completes the inline pane transition", async ({ page }) => {
   await expect(page.getByTestId("place-detail")).toHaveCount(0)
 })
 
+test("Back during opening and the first rapid mobile close complete deterministically", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 768, height: 1024 })
+  await page.goto("/")
+  const marker = page.getByRole("button", { name: /새싹 네모식당/ })
+  await marker.click()
+  await page.goBack()
+  await page.waitForTimeout(350)
+  await expect(page.getByTestId("place-detail")).toHaveCount(0)
+  await expect(marker).toBeFocused()
+
+  await page.setViewportSize({ width: 375, height: 812 })
+  await page.goto("/")
+  await marker.click()
+  await page.getByRole("button", { name: "상세 닫기" }).click()
+  await page.waitForTimeout(350)
+  await expect(page.getByTestId("place-detail")).toHaveCount(0)
+  await expect(marker).toBeFocused()
+})
+
 test("captures fresh production viewport and motion evidence", async ({ page }) => {
   const viewports = [
     { width: 375, height: 812, name: "375x812" },
@@ -225,20 +283,20 @@ test("captures fresh production viewport and motion evidence", async ({ page }) 
     await page.setViewportSize(viewport)
     await page.goto("/")
     await page.screenshot({
-      path: `.omo/evidence/task-7/fix-r6/manual-${viewport.name}-map.png`,
+      path: `.omo/evidence/task-7/fix-r7/manual-${viewport.name}-map.png`,
     })
     await page.getByRole("button", { name: /새싹 네모식당/ }).click()
     const surface = page.locator("[data-detail-phase]")
     await page.screenshot({
-      path: `.omo/evidence/task-7/fix-r6/manual-${viewport.name}-start.png`,
+      path: `.omo/evidence/task-7/fix-r7/manual-${viewport.name}-start.png`,
     })
     await page.waitForTimeout(120)
     await page.screenshot({
-      path: `.omo/evidence/task-7/fix-r6/manual-${viewport.name}-120ms.png`,
+      path: `.omo/evidence/task-7/fix-r7/manual-${viewport.name}-120ms.png`,
     })
     await page.waitForTimeout(200)
     await page.screenshot({
-      path: `.omo/evidence/task-7/fix-r6/manual-${viewport.name}-settled.png`,
+      path: `.omo/evidence/task-7/fix-r7/manual-${viewport.name}-settled.png`,
     })
     metrics.push(
       await surface.evaluate((element) => {
@@ -261,7 +319,7 @@ test("captures fresh production viewport and motion evidence", async ({ page }) 
     await expect(page.getByTestId("place-detail")).toHaveCount(0)
   }
   await writeFile(
-    ".omo/evidence/task-7/fix-r6/manual-qa-metrics.json",
+    ".omo/evidence/task-7/fix-r7/manual-qa-metrics.json",
     JSON.stringify(metrics, null, 2),
   )
 })
