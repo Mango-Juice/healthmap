@@ -53,6 +53,26 @@ describe("public catalog repository", () => {
     // Then
     await expect(Promise.all(attempts)).rejects.toBeDefined()
   })
+
+  it("Given a menu with a mode distinct from its parent, when loaded, then the repository rejects it", async () => {
+    // Given
+    const repository = createPublicCatalogRepository({
+      selectPublishedPlaces: async () => [VALID_PLACE_ROW],
+      selectPublishedMenus: async () => [
+        {
+          ...VALID_MENU_ROW,
+          data_mode: "mock",
+          evidence_url: "https://example.invalid/mock-evidence/mock-mode-mismatch",
+        },
+      ],
+    })
+
+    // When
+    const attempt = repository.getPublicCatalog()
+
+    // Then
+    await expect(attempt).rejects.toBeDefined()
+  })
 })
 
 describe("five-minute public catalog cache", () => {

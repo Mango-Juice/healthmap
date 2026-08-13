@@ -12,6 +12,7 @@ const VALID_PLACE_ROW = {
   primary_tag: "balanced",
   health_tags: ["balanced", "vegetables"],
   published: true,
+  data_mode: "production",
 }
 
 describe("catalog row parser", () => {
@@ -35,6 +36,7 @@ describe("catalog row parser", () => {
         primaryTag: VALID_PLACE_ROW.primary_tag,
         healthTags: VALID_PLACE_ROW.health_tags,
         published: VALID_PLACE_ROW.published,
+        dataMode: "production",
       },
     ])
   })
@@ -72,6 +74,7 @@ describe("catalog row parser", () => {
       verified_at: "2026-08-13",
       display_order: 0,
       published: true,
+      data_mode: "production",
     }
 
     // When: the boundary parser attempts to parse it.

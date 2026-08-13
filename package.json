@@ -12,7 +12,7 @@
     "dev": "next dev",
     "build": "next build",
     "data:audit": "vitest run --config vitest.data.config.ts && node --experimental-strip-types scripts/data/audit-catalog.mjs",
-    "data:seed:generate": "node scripts/data/generate-seed.mjs",
+    "data:seed:generate": "node --experimental-strip-types scripts/data/generate-seed.mjs",
     "start": "next start",
     "format": "biome check --write .",
     "typecheck": "tsc --noEmit",

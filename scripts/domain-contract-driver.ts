@@ -16,6 +16,7 @@ const placeRow = {
   primary_tag: "balanced",
   health_tags: ["balanced", "vegetables"],
   published: true,
+  data_mode: "production",
 }
 
 const menuRow = {
@@ -27,6 +28,7 @@ const menuRow = {
   verified_at: "2026-08-13",
   display_order: 0,
   published: true,
+  data_mode: "production",
 }
 
 const isRejected = (input: unknown): boolean => {

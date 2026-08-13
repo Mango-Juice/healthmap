@@ -9,6 +9,7 @@ export const VALID_PLACE_ROW = {
   primary_tag: "balanced",
   health_tags: ["balanced", "vegetables"],
   published: true,
+  data_mode: "production",
 }
 
 export const VALID_MENU_ROW = {
@@ -20,4 +21,5 @@ export const VALID_MENU_ROW = {
   verified_at: "2026-08-13",
   display_order: 0,
   published: true,
+  data_mode: "production",
 }

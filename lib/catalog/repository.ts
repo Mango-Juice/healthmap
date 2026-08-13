@@ -22,10 +22,14 @@ export const createPublicCatalogRepository = (
     ])
     const places = parsePlaceRows(toRows(placeRows))
     const menus = parseMenuRows(toRows(menuRows))
-    const placeIds = new Set(places.filter((place) => place.published).map((place) => place.id))
+    const publicPlaces = places.filter((place) => place.published)
+    const placeById = new Map(publicPlaces.map((place) => [place.id, place]))
     const isPublic =
       places.every((place) => place.published) &&
-      menus.every((menu) => menu.published && placeIds.has(menu.placeId))
+      menus.every((menu) => {
+        const parent = placeById.get(menu.placeId)
+        return menu.published && parent !== undefined && parent.dataMode === menu.dataMode
+      })
     if (!isPublic) throw new PublicCatalogIntegrityError()
     return { places, menus }
   },
