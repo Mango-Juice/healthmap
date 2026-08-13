@@ -10,6 +10,7 @@ import {
 } from "react"
 import { captureProductAnalytics } from "../../lib/analytics/browser"
 import type { Menu, Place } from "../../lib/domain/catalog"
+import type { DirectionsTarget } from "../../lib/domain/directions"
 import { filterPlaces, type PlaceFilter } from "../../lib/domain/filter"
 import {
   beginLocationRequest,
@@ -35,7 +36,7 @@ import { PlaceDetail } from "./place-detail"
 
 type Properties = {
   readonly clientId?: string | undefined
-  readonly storedPlaceFallbackSlugs?: readonly string[] | undefined
+  readonly directionsTargets?: Readonly<Partial<Record<Place["id"], DirectionsTarget>>> | undefined
   readonly initialMenus: readonly Menu[]
   readonly initialPlaces: readonly Place[]
 }
@@ -95,7 +96,7 @@ export function MapDiscovery({
   clientId,
   initialMenus,
   initialPlaces,
-  storedPlaceFallbackSlugs,
+  directionsTargets,
 }: Properties) {
   const [filter, setFilter] = useState<PlaceFilter>("all")
   const [places, setPlaces] = useState(initialPlaces)
@@ -348,9 +349,7 @@ export function MapDiscovery({
     const detail = (
       <PlaceDetail
         key={place.slug}
-        directionsTarget={
-          storedPlaceFallbackSlugs?.includes(place.slug) ? { kind: "place" } : undefined
-        }
+        directionsTarget={directionsTargets?.[place.id]}
         menus={initialMenus}
         onClose={clearSelection}
         place={place}

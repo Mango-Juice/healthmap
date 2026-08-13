@@ -26,26 +26,31 @@ const fixtureNextEnvContent = `/// <reference types="next" />
 const isCatalogResponse = (value: unknown): value is { readonly places: readonly unknown[] } =>
   typeof value === "object" && value !== null && "places" in value && Array.isArray(value.places)
 
-const hasDirectionsEvent = (postData: Buffer | null): boolean => {
-  if (postData === null) return false
+type AnalyticsEvent = {
+  readonly event: string
+  readonly properties: Record<string, unknown>
+}
+
+const parseAnalyticsEvents = (postData: Buffer | null): readonly AnalyticsEvent[] => {
+  if (postData === null) return []
   const decoded = postData[0] === 0x1f && postData[1] === 0x8b ? gunzipSync(postData) : postData
   const payload: unknown = JSON.parse(decoded.toString("utf8"))
-  if (typeof payload !== "object" || payload === null || !("batch" in payload)) return false
-  if (!Array.isArray(payload.batch)) return false
-  return payload.batch.some(
-    (entry) =>
-      typeof entry === "object" &&
-      entry !== null &&
-      "event" in entry &&
-      entry.event === "directions_opened" &&
-      "properties" in entry &&
-      typeof entry.properties === "object" &&
-      entry.properties !== null &&
-      "place_id" in entry.properties &&
-      entry.properties.place_id === "2a8039ba-6862-4bf5-882c-298892e7caf0" &&
-      "source" in entry.properties &&
-      entry.properties.source === "naver_route",
-  )
+  if (typeof payload !== "object" || payload === null || !("batch" in payload)) return []
+  if (!Array.isArray(payload.batch)) return []
+  return payload.batch.flatMap((entry) => {
+    if (
+      typeof entry !== "object" ||
+      entry === null ||
+      !("event" in entry) ||
+      typeof entry.event !== "string" ||
+      !("properties" in entry) ||
+      typeof entry.properties !== "object" ||
+      entry.properties === null ||
+      Array.isArray(entry.properties)
+    )
+      return []
+    return [{ event: entry.event, properties: entry.properties }]
+  })
 }
 
 const getAvailablePort = async (): Promise<number> =>
@@ -171,10 +176,10 @@ test("Given the typed production fixture, when directions opens, then its redact
 }) => {
   const server = fixtureServer
   if (server === undefined) throw new Error("Fixture server was not started")
-  const directionsBodies: Buffer[] = []
+  const events: AnalyticsEvent[] = []
   await page.route(`${server.baseUrl}/posthog/**`, async (route) => {
     const body = route.request().postDataBuffer()
-    if (hasDirectionsEvent(body) && body !== null) directionsBodies.push(body)
+    events.push(...parseAnalyticsEvents(body))
     await route.fulfill({ status: 200, body: '{"status":1}' })
   })
   await page.goto(server.baseUrl)
@@ -182,8 +187,35 @@ test("Given the typed production fixture, when directions opens, then its redact
   const popup = page.waitForEvent("popup")
   await page.getByRole("button", { name: "길찾기" }).click()
   await popup
-  await expect.poll(() => directionsBodies.length).toBe(1)
-  expect(directionsBodies[0]?.toString("utf8")).not.toContain("테스트 생산 경로 식당")
+  await expect
+    .poll(() => events.filter((entry) => entry.event === "directions_opened").length)
+    .toBe(1)
+  const directions = events.filter((entry) => entry.event === "directions_opened")
+  expect(directions).toEqual([
+    {
+      event: "directions_opened",
+      properties: {
+        place_id: "2a8039ba-6862-4bf5-882c-298892e7caf0",
+        source: "naver_route",
+      },
+    },
+  ])
+  const redacted = JSON.stringify(directions[0]?.properties)
+  for (const forbidden of [
+    "latitude",
+    "longitude",
+    "lat",
+    "lng",
+    "coordinates",
+    "url",
+    "query",
+    "referrer",
+    "https://map.naver.com/p/directions/",
+    "서울 강남구 테스트로 7길 1",
+    "테스트 생산 경로 식당",
+    "테스트 생산 메뉴 하나",
+  ])
+    expect(redacted).not.toContain(forbidden)
 })
 
 test("Given a typed route-incomplete production fixture, when directions is selected, then the UI opens its stored NAVER place fallback", async ({

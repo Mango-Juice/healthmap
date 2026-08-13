@@ -1,4 +1,5 @@
 import { parseMenuRows, parsePlaceRows } from "../../lib/domain/catalog"
+import type { DirectionsTarget } from "../../lib/domain/directions"
 
 const places = parsePlaceRows([
   {
@@ -67,4 +68,14 @@ const menus = parseMenuRows([
   },
 ])
 
-export const task7ActionCatalog = { menus, places } as const
+const fallbackPlace = places.find((place) => place.slug === "task7-production-fallback")
+
+if (fallbackPlace === undefined) throw new Error("Task7 fallback fixture place is missing")
+
+export const task7ActionCatalog = {
+  directionsTargets: {
+    [fallbackPlace.id]: { kind: "place" },
+  } satisfies Readonly<Partial<Record<(typeof places)[number]["id"], DirectionsTarget>>>,
+  menus,
+  places,
+} as const

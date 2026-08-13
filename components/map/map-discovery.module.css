@@ -38,6 +38,12 @@
   --hm-marker-ring-gap: 5px;
   --hm-marker-notch-border: 2px;
   --hm-icon-md: 20px;
+  --hm-icon-sm: 16px;
+  --hm-green-300: #98bba5;
+  --hm-weight-action: 700;
+  --hm-disabled-opacity: 0.52;
+  --hm-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --hm-motion-reduced: 0.01ms;
   --hm-type-heading: 20px;
   --hm-type-label: 14px;
   --hm-type-caption: 13px;
@@ -57,6 +63,7 @@
   --hm-layer-map: 0;
   --hm-layer-controls: 10;
   --hm-layer-detail: 20;
+  --hm-layer-focus: 30;
   background: var(--hm-canvas);
   color: var(--hm-ink);
   display: grid;
@@ -106,21 +113,6 @@
 }
 .paperMap {
   background-color: var(--hm-map);
-  background-image:
-    linear-gradient(
-      28deg,
-      transparent 46%,
-      var(--hm-map-road) 47%,
-      var(--hm-map-road) 51%,
-      transparent 52%
-    ),
-    linear-gradient(
-      104deg,
-      transparent 42%,
-      var(--hm-map-road) 43%,
-      var(--hm-map-road) 47%,
-      transparent 48%
-    );
   inset: 0;
   position: absolute;
 }
@@ -135,6 +127,16 @@
   inset: 22% 12% 38% 55%;
   position: absolute;
   transform: rotate(-8deg);
+}
+.paperMap::before {
+  background: var(--hm-map-road);
+  block-size: 150%;
+  content: "";
+  inline-size: var(--hm-space-6);
+  inset-block-start: -25%;
+  inset-inline-start: 45%;
+  position: absolute;
+  transform: rotate(28deg);
 }
 .filter {
   inset-block-start: var(--hm-space-3);
@@ -216,7 +218,10 @@
   min-block-size: var(--hm-sheet-block-min);
   overflow: hidden;
   position: absolute;
-  transition: transform var(--hm-motion-standard) var(--hm-ease-standard);
+  opacity: 1;
+  transition:
+    opacity var(--hm-motion-standard) var(--hm-ease-standard),
+    transform var(--hm-motion-standard) var(--hm-ease-standard);
   z-index: var(--hm-layer-detail);
 }
 .markers {
@@ -324,6 +329,19 @@ button:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .shell * {
     scroll-behavior: auto;
-    transition: none;
+    transition-duration: var(--hm-motion-reduced);
+  }
+}
+@starting-style {
+  .detailSurface {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+}
+@media (min-width: 768px) {
+  @starting-style {
+    .detailSurface {
+      transform: translateX(100%);
+    }
   }
 }

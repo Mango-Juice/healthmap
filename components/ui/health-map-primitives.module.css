@@ -5,6 +5,8 @@
   max-inline-size: 100%;
   min-inline-size: 0;
   overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scroll-snap-type: inline mandatory;
   padding: var(--hm-space-1);
   scrollbar-color: var(--hm-border-strong) transparent;
   scrollbar-width: thin;
@@ -54,6 +56,7 @@
   line-height: var(--hm-leading-tight);
   min-block-size: var(--hm-control-min);
   padding: var(--hm-space-2) var(--hm-space-4);
+  scroll-snap-align: start;
   transition:
     background-color var(--hm-motion-micro) var(--hm-ease-standard),
     border-color var(--hm-motion-micro) var(--hm-ease-standard),

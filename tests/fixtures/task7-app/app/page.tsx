@@ -6,9 +6,9 @@ function Task7FixturePage() {
     <main>
       <MapDiscovery
         clientId={undefined}
+        directionsTargets={task7ActionCatalog.directionsTargets}
         initialMenus={task7ActionCatalog.menus}
         initialPlaces={task7ActionCatalog.places}
-        storedPlaceFallbackSlugs={["task7-production-fallback"]}
       />
     </main>
   )
