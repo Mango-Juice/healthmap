@@ -8,14 +8,41 @@ import {
   type PrivacySafeAnalytics,
   sanitizeAnalyticsTransportEvent,
 } from "./privacy-safe"
+import { type AnalyticsEvent, parseAnalyticsEvent } from "../domain/analytics"
 
 type BrowserAnalyticsEnvironment = {
   readonly host: string | undefined
   readonly key: string | undefined
 }
 
-let analytics: PrivacySafeAnalytics | null = null
-let configuredEnvironment: BrowserAnalyticsEnvironment | null = null
+type AnalyticsLifecycleState = {
+  analytics: PrivacySafeAnalytics | null
+  configuredEnvironment: BrowserAnalyticsEnvironment | null
+  generation: number
+  initialization: Promise<void> | null
+  lifecycle: "idle" | "starting" | "ready"
+  queuedEvents: AnalyticsEvent[]
+}
+
+declare global {
+  var healthmapAnalyticsLifecycle: AnalyticsLifecycleState | undefined
+}
+
+const getAnalyticsState = (): AnalyticsLifecycleState => {
+  if (globalThis.healthmapAnalyticsLifecycle === undefined) {
+    globalThis.healthmapAnalyticsLifecycle = {
+      analytics: null,
+      configuredEnvironment: null,
+      generation: 0,
+      initialization: null,
+      lifecycle: "idle",
+      queuedEvents: [],
+    }
+  }
+  return globalThis.healthmapAnalyticsLifecycle
+}
+
+const MAX_QUEUED_EVENTS = 32
 
 const browserStorage = {
   getItem: (key: string): string | null => {
@@ -41,11 +68,16 @@ const asNonEmptyString = (value: string | undefined): string | null => {
   return trimmed === undefined || trimmed.length === 0 ? null : trimmed
 }
 
-const createPostHogConfig = (anonymousId: string, host: string): Partial<PostHogConfig> => ({
+const createPostHogConfig = (
+  anonymousId: string,
+  host: string,
+  loaded: NonNullable<PostHogConfig["loaded"]>,
+): Partial<PostHogConfig> => ({
   ...POSTHOG_PRIVACY_CONFIG,
   api_host: host,
   bootstrap: { distinctID: anonymousId, isIdentifiedID: false },
   property_denylist: [...POSTHOG_PRIVACY_CONFIG.property_denylist],
+  loaded,
   before_send: (event) => {
     if (event === null) return null
     const safeEvent = sanitizeAnalyticsTransportEvent(event.event, event.properties)
@@ -58,15 +90,37 @@ const createPostHogConfig = (anonymousId: string, host: string): Partial<PostHog
   },
 })
 
-const startConfiguredAnalytics = (): void => {
-  if (analytics !== null) return
+const flushQueuedEvents = (): void => {
+  const state = getAnalyticsState()
+  if (state.analytics === null || getProductAnalyticsOptOut()) return
+  while (state.queuedEvents.length > 0) state.analytics.capture(state.queuedEvents.shift())
+}
 
-  const environment = configuredEnvironment
-  if (environment === null || getProductAnalyticsOptOut()) return
+const enqueueOrCapture = (event: AnalyticsEvent): void => {
+  const state = getAnalyticsState()
+  if (getProductAnalyticsOptOut()) return
+  if (state.lifecycle === "ready" && state.analytics !== null) return state.analytics.capture(event)
+  if (state.queuedEvents.length < MAX_QUEUED_EVENTS) state.queuedEvents.push(event)
+}
+
+const startConfiguredAnalytics = (): Promise<void> => {
+  const state = getAnalyticsState()
+  if (state.lifecycle === "ready") return Promise.resolve()
+  if (state.initialization !== null) return state.initialization
+
+  const environment = state.configuredEnvironment
+  if (environment === null || getProductAnalyticsOptOut()) return Promise.resolve()
 
   const key = asNonEmptyString(environment.key)
   const host = asNonEmptyString(environment.host)
-  if (key === null || host === null) return
+  if (key === null || host === null) {
+    state.queuedEvents.length = 0
+    return Promise.resolve()
+  }
+
+  const currentGeneration = state.generation + 1
+  state.generation = currentGeneration
+  state.lifecycle = "starting"
 
   const localAnalytics = createPrivacySafeAnalytics({
     storage: browserStorage,
@@ -78,29 +132,61 @@ const startConfiguredAnalytics = (): void => {
     createId: () => crypto.randomUUID(),
   })
 
-  posthog.init(key, createPostHogConfig(localAnalytics.anonymousId, host))
-  analytics = localAnalytics
+  state.analytics = localAnalytics
+  state.initialization = new Promise((resolve) => {
+    posthog.init(
+      key,
+      createPostHogConfig(localAnalytics.anonymousId, host, (instance) => {
+        if (state.generation !== currentGeneration || getProductAnalyticsOptOut()) {
+          state.queuedEvents.length = 0
+          instance.opt_out_capturing()
+          resolve()
+          return
+        }
+        posthog.opt_in_capturing({ captureEventName: false })
+        state.lifecycle = "ready"
+        flushQueuedEvents()
+        resolve()
+      }),
+    )
+  })
+  return state.initialization
 }
 
 export const initializeProductAnalytics = (environment: BrowserAnalyticsEnvironment): void => {
-  configuredEnvironment = environment
-  startConfiguredAnalytics()
+  getAnalyticsState().configuredEnvironment = environment
+  void startConfiguredAnalytics()
 }
 
-export const captureProductAnalytics = (event: unknown): void => analytics?.capture(event)
+export const captureProductAnalytics = (event: unknown): void => {
+  try {
+    enqueueOrCapture(parseAnalyticsEvent(event))
+  } catch {
+    return
+  }
+}
 
-export const setProductAnalyticsOptOut = (optedOut: boolean): void => {
-  if (analytics === null) {
+export const setProductAnalyticsOptOut = async (optedOut: boolean): Promise<void> => {
+  const state = getAnalyticsState()
+  if (state.analytics === null) {
     browserStorage.setItem("healthmap.analytics.opt-out.v1", String(optedOut))
     if (!optedOut) {
-      startConfiguredAnalytics()
-      posthog.opt_in_capturing()
+      await startConfiguredAnalytics()
     }
     return
   }
 
-  if (optedOut) analytics.optOut()
-  else analytics.optIn()
+  if (optedOut) {
+    state.generation += 1
+    state.lifecycle = "idle"
+    state.initialization = null
+    state.queuedEvents.length = 0
+    state.analytics.optOut()
+  } else {
+    state.analytics.optIn()
+    state.lifecycle = "ready"
+    flushQueuedEvents()
+  }
 }
 
 export const getProductAnalyticsOptOut = (): boolean =>

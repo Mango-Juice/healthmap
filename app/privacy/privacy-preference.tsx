@@ -7,16 +7,19 @@ import { getProductAnalyticsOptOut, setProductAnalyticsOptOut } from "../../lib/
 export function PrivacyPreference() {
   const [optedOut, setOptedOut] = useState(true)
   const [ready, setReady] = useState(false)
+  const [pending, setPending] = useState(false)
 
   useEffect(() => {
     setOptedOut(getProductAnalyticsOptOut())
     setReady(true)
   }, [])
 
-  const onChange = () => {
+  const onChange = async () => {
     const nextOptedOut = !optedOut
-    setProductAnalyticsOptOut(nextOptedOut)
+    setPending(true)
+    await setProductAnalyticsOptOut(nextOptedOut)
     setOptedOut(nextOptedOut)
+    setPending(false)
   }
 
   return (
@@ -29,7 +32,7 @@ export function PrivacyPreference() {
         aria-checked={!optedOut}
         aria-label="분석 데이터 수집 설정"
         className="privacy-toggle"
-        disabled={!ready}
+        disabled={!ready || pending}
         onClick={onChange}
         role="switch"
         type="button"
