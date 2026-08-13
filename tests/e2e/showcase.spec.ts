@@ -148,14 +148,43 @@ test("Given reduced motion, When the showcase loads, Then transforms and pulses 
   await page.goto("/showcase")
 
   // Then
-  const motion = await page.getByTestId("skeleton-line").evaluate((element) => {
-    const style = getComputedStyle(element)
-    return { animationName: style.animationName, transform: style.transform }
+  const motion = await page.locator("main, main *").evaluateAll((elements) => {
+    const durationToMilliseconds = (duration: string) => {
+      const value = Number.parseFloat(duration)
+      return duration.trim().endsWith("ms") ? value : value * 1_000
+    }
+    const isVisible = (element: Element) => {
+      const style = getComputedStyle(element)
+      const bounds = element.getBoundingClientRect()
+      return (
+        style.display !== "none" &&
+        style.visibility !== "hidden" &&
+        bounds.width > 0 &&
+        bounds.height > 0
+      )
+    }
+
+    return elements.flatMap((element) => {
+      const style = getComputedStyle(element)
+      const transitionDuration = style.transitionDuration.split(",").map(durationToMilliseconds)
+      const violations = [
+        style.animationName !== "none" ? `animation:${style.animationName}` : null,
+        transitionDuration.some((duration) => duration > 0)
+          ? `transition:${style.transitionDuration}`
+          : null,
+        isVisible(element) && style.transform !== "none" ? `transform:${style.transform}` : null,
+      ].filter((violation): violation is string => violation !== null)
+
+      return violations.length > 0
+        ? [
+            {
+              element: element.tagName.toLowerCase(),
+              className: element.getAttribute("class"),
+              violations,
+            },
+          ]
+        : []
+    })
   })
-  expect(motion.animationName).toBe("none")
-  expect(motion.transform).toBe("none")
-  const sheetMotion = await page
-    .getByRole("dialog", { name: "그린테이블 강남점" })
-    .evaluate((element) => getComputedStyle(element).transitionDuration)
-  expect(Number.parseFloat(sheetMotion)).toBeLessThanOrEqual(0.000_01)
+  expect(motion).toEqual([])
 })

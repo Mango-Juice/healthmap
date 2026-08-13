@@ -404,7 +404,7 @@
   .filterButton,
   .actionButton,
   .markerTarget {
-    transition-duration: var(--hm-motion-reduced);
+    transition: none;
   }
 
   .filterButton:active:not(:disabled),

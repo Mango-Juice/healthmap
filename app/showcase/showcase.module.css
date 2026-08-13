@@ -596,7 +596,11 @@
 @media (prefers-reduced-motion: reduce) {
   .mobileSheet,
   .sheetScrim {
-    transition-duration: var(--hm-motion-reduced);
+    transition: none;
+  }
+
+  .mobileSheet[data-open="true"] {
+    transform: none;
   }
 
   .stateCell [data-demo-state="active"] button {
