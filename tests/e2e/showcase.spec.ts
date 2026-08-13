@@ -151,7 +151,6 @@ test("Given keyboard input, When filters and sheet controls are used, Then focus
   await expect(page.getByRole("dialog", { name: "그린테이블 강남점" })).toBeVisible()
 
   // When a close completion is interrupted by a marker selection
-  const interruptedSheet = page.getByRole("dialog", { name: "그린테이블 강남점" })
   await installLongSheetTransition(page)
   const reopenCompletion = waitForSheetTransformTransition(page)
   await page.getByRole("button", { name: "상세 닫기" }).click()
@@ -197,8 +196,9 @@ test("Given a mobile sheet with a long closing transition, When it closes, Then 
     (element) =>
       new Promise<number>((resolve, reject) => {
         const startedAt = performance.now()
+        let transitionEnded = false
         const reopenObserver = new MutationObserver(() => {
-          if (document.querySelector("[data-testid='detail-closed']")) {
+          if (!transitionEnded && document.querySelector("[data-testid='detail-closed']")) {
             reopenObserver.disconnect()
             reject(new Error("reopen control appeared before transitionend"))
           }
@@ -208,6 +208,7 @@ test("Given a mobile sheet with a long closing transition, When it closes, Then 
           "transitionend",
           (event) => {
             if (!("propertyName" in event) || event.propertyName !== "transform") return
+            transitionEnded = true
             reopenObserver.disconnect()
             resolve(performance.now() - startedAt)
           },
