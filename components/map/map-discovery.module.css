@@ -142,375 +142,6 @@
   position: absolute;
   z-index: var(--hm-layer-map);
 }
-.paperMap::after {
-  background: var(--hm-map-land);
-  content: "";
-  inset: 22% 12% 38% 55%;
-  position: absolute;
-  transform: rotate(-8deg);
-}
-.paperMap::before {
-  background: var(--hm-map-road);
-  block-size: 150%;
-  content: "";
-  inline-size: var(--hm-space-6);
-  inset-block-start: -25%;
-  inset-inline-start: 45%;
-  position: absolute;
-  transform: rotate(28deg);
-}
-.paperWater,
-.paperArea {
-  pointer-events: none;
-  position: absolute;
-}
-.paperWater {
-  background: var(--hm-info-wash);
-  border: var(--hm-border-width) solid var(--hm-info);
-  border-radius: var(--hm-radius-control);
-  z-index: 0;
-}
-.paperWater[data-map-water="river"] {
-  block-size: 19%;
-  inline-size: 122%;
-  inset-block-start: 47%;
-  inset-inline-start: -11%;
-  transform: rotate(-14deg);
-}
-.paperWater[data-map-water="stream"] {
-  block-size: 13%;
-  inline-size: 66%;
-  inset-block-end: 2%;
-  inset-inline-end: -5%;
-  transform: rotate(24deg);
-}
-.paperArea {
-  background: var(--hm-green-100);
-  border: var(--hm-border-width) solid var(--hm-green-300);
-  border-radius: var(--hm-radius-card);
-  z-index: 0;
-}
-.paperArea[data-map-area="north-green"] {
-  block-size: 24%;
-  inline-size: 29%;
-  inset-block-start: 7%;
-  inset-inline-start: 10%;
-  transform: rotate(-5deg);
-}
-.paperArea[data-map-area="central-green"] {
-  block-size: 22%;
-  inline-size: 25%;
-  inset-block-start: 37%;
-  inset-inline-start: 35%;
-  transform: rotate(7deg);
-}
-.paperArea[data-map-area="east-green"] {
-  block-size: 27%;
-  inline-size: 23%;
-  inset-block-start: 10%;
-  inset-inline-end: 7%;
-  transform: rotate(8deg);
-}
-.paperArea[data-map-area="south-green"] {
-  block-size: 20%;
-  inline-size: 31%;
-  inset-block-end: 7%;
-  inset-inline-start: 8%;
-  transform: rotate(-8deg);
-}
-.paperFeature {
-  background: var(--hm-map-land);
-  border: var(--hm-border-width) solid var(--hm-map-road);
-  border-radius: var(--hm-radius-card);
-  position: absolute;
-  z-index: 0;
-}
-.paperFeature:nth-child(1) {
-  block-size: 17%;
-  inline-size: 31%;
-  inset-block-start: 17%;
-  inset-inline-start: 9%;
-  transform: rotate(-5deg);
-}
-.paperFeature:nth-child(2) {
-  block-size: 22%;
-  inline-size: 27%;
-  inset-block-end: 18%;
-  inset-inline-end: 12%;
-  transform: rotate(6deg);
-}
-.paperFeature:nth-child(3) {
-  background: var(--hm-map-road);
-  border: 0;
-  block-size: var(--hm-space-2);
-  inline-size: 58%;
-  inset-block-start: 57%;
-  inset-inline-start: 15%;
-  transform: rotate(-11deg);
-}
-.paperBlock,
-.paperPark {
-  border: var(--hm-border-width) solid var(--hm-border);
-  border-radius: var(--hm-radius-card);
-  position: absolute;
-  z-index: 1;
-}
-.paperBlock {
-  background: var(--hm-surface-subtle);
-  block-size: 10%;
-  inline-size: 13%;
-}
-.paperBlock[data-map-block^="north-west"] {
-  inset-block-start: 26%;
-  inset-inline-start: 13%;
-}
-.paperBlock[data-map-block^="north-center"] {
-  inset-block-start: 20%;
-  inset-inline-start: 37%;
-}
-.paperBlock[data-map-block^="north-east"] {
-  inset-block-start: 24%;
-  inset-inline-start: 65%;
-}
-.paperBlock[data-map-block^="center-west"] {
-  inset-block-start: 48%;
-  inset-inline-start: 10%;
-}
-.paperBlock[data-map-block^="center-east"] {
-  inset-block-start: 48%;
-  inset-inline-start: 67%;
-}
-.paperBlock[data-map-block^="south-west"] {
-  inset-block-end: 13%;
-  inset-inline-start: 19%;
-}
-.paperBlock[data-map-block^="south-center"] {
-  inset-block-end: 16%;
-  inset-inline-start: 43%;
-}
-.paperBlock[data-map-block^="south-east"] {
-  inset-block-end: 12%;
-  inset-inline-end: 8%;
-}
-.paperBlock[data-map-block$="-b"] {
-  block-size: 8%;
-  inline-size: 12%;
-  transform: translate(var(--hm-space-6), var(--hm-space-3)) rotate(5deg);
-}
-.paperBlock[data-map-block="north-west"] {
-  block-size: 14%;
-  inline-size: 20%;
-  inset-block-start: 30%;
-  inset-inline-start: 16%;
-  transform: rotate(4deg);
-}
-.paperBlock[data-map-block="south-east"] {
-  block-size: 18%;
-  inline-size: 24%;
-  inset-block-end: 24%;
-  inset-inline-start: 54%;
-  transform: rotate(-7deg);
-}
-.paperBlock[data-map-block="north-east"] {
-  block-size: 12%;
-  inline-size: 17%;
-  inset-block-start: 24%;
-  inset-inline-start: 45%;
-  transform: rotate(-5deg);
-}
-.paperBlock[data-map-block="center"] {
-  block-size: 11%;
-  inline-size: 16%;
-  inset-block-start: 48%;
-  inset-inline-start: 34%;
-  transform: rotate(7deg);
-}
-.paperBlock[data-map-block="south-west"] {
-  block-size: 13%;
-  inline-size: 18%;
-  inset-block-end: 13%;
-  inset-inline-start: 22%;
-  transform: rotate(-4deg);
-}
-.paperBlock[data-map-block="east"] {
-  block-size: 12%;
-  inline-size: 17%;
-  inset-block-end: 38%;
-  inset-inline-end: 8%;
-  transform: rotate(6deg);
-}
-.paperPark[data-map-block="park"] {
-  background: var(--hm-green-100);
-  block-size: 16%;
-  inline-size: 18%;
-  inset-block-start: 19%;
-  inset-inline-end: 21%;
-  transform: rotate(8deg);
-}
-.paperRoad {
-  background: var(--hm-map-road);
-  block-size: var(--hm-space-1);
-  box-shadow: 0 0 0 var(--hm-border-width) var(--hm-border);
-  position: absolute;
-  z-index: 2;
-}
-.paperRoad[data-road-tier="arterial"] {
-  block-size: var(--hm-space-2);
-}
-.paperRoad[data-road-tier="collector"] {
-  block-size: var(--hm-space-1);
-}
-.paperRoad[data-road-tier="local"] {
-  block-size: var(--hm-border-width);
-  box-shadow: none;
-}
-.paperRoad[data-map-road="arterial-west-east"] {
-  inline-size: 110%;
-  inset-block-start: 55%;
-  inset-inline-start: -5%;
-  transform: rotate(-8deg);
-}
-.paperRoad[data-map-road="arterial-north-south"] {
-  inline-size: 118%;
-  inset-block-start: 42%;
-  inset-inline-start: -10%;
-  transform: rotate(74deg);
-}
-.paperRoad[data-map-road="arterial-diagonal"] {
-  inline-size: 92%;
-  inset-block-start: 58%;
-  inset-inline-start: 9%;
-  transform: rotate(26deg);
-}
-.paperRoad[data-map-road^="collector-north"] {
-  inline-size: 48%;
-  inset-block-start: 30%;
-  inset-inline-start: 12%;
-  transform: rotate(18deg);
-}
-.paperRoad[data-map-road="collector-north-b"] {
-  inset-block-start: 23%;
-  inset-inline-start: 42%;
-  transform: rotate(-12deg);
-}
-.paperRoad[data-map-road^="collector-center"] {
-  inline-size: 43%;
-  inset-block-start: 49%;
-  inset-inline-start: 28%;
-  transform: rotate(-38deg);
-}
-.paperRoad[data-map-road="collector-center-b"] {
-  inset-block-start: 60%;
-  inset-inline-start: 46%;
-  transform: rotate(12deg);
-}
-.paperRoad[data-map-road^="collector-south"] {
-  inline-size: 48%;
-  inset-block-start: 72%;
-  inset-inline-start: 18%;
-  transform: rotate(-18deg);
-}
-.paperRoad[data-map-road="collector-south-b"] {
-  inset-block-start: 78%;
-  inset-inline-start: 55%;
-  transform: rotate(16deg);
-}
-.paperRoad[data-map-road^="local-west"] {
-  inline-size: 25%;
-  inset-block-start: 37%;
-  inset-inline-start: 3%;
-  transform: rotate(64deg);
-}
-.paperRoad[data-map-road="local-west-b"] {
-  inset-block-start: 67%;
-  inset-inline-start: 2%;
-  transform: rotate(-34deg);
-}
-.paperRoad[data-map-road="local-west-c"] {
-  inset-block-start: 78%;
-  inset-inline-start: 4%;
-  transform: rotate(8deg);
-}
-.paperRoad[data-map-road^="local-center"] {
-  inline-size: 27%;
-  inset-block-start: 42%;
-  inset-inline-start: 38%;
-  transform: rotate(73deg);
-}
-.paperRoad[data-map-road="local-center-b"] {
-  inset-block-start: 54%;
-  inset-inline-start: 38%;
-  transform: rotate(-4deg);
-}
-.paperRoad[data-map-road="local-center-c"] {
-  inset-block-start: 66%;
-  inset-inline-start: 32%;
-  transform: rotate(36deg);
-}
-.paperRoad[data-map-road^="local-east"] {
-  inline-size: 29%;
-  inset-block-start: 34%;
-  inset-inline-start: 66%;
-  transform: rotate(-58deg);
-}
-.paperRoad[data-map-road="local-east-b"] {
-  inset-block-start: 51%;
-  inset-inline-start: 72%;
-  transform: rotate(18deg);
-}
-.paperRoad[data-map-road="local-east-c"] {
-  inset-block-start: 67%;
-  inset-inline-start: 69%;
-  transform: rotate(-18deg);
-}
-.paperRoad[data-map-road="north"] {
-  inline-size: 65%;
-  inset-block-start: 35%;
-  inset-inline-start: 2%;
-  transform: rotate(12deg);
-}
-.paperRoad[data-map-road="east"] {
-  inline-size: 56%;
-  inset-block-start: 54%;
-  inset-inline-start: 43%;
-  transform: rotate(-58deg);
-}
-.paperRoad[data-map-road="south"] {
-  inline-size: 70%;
-  inset-block-end: 29%;
-  inset-inline-start: 18%;
-  transform: rotate(5deg);
-}
-.paperRoad[data-map-road="west"] {
-  inline-size: 38%;
-  inset-block-start: 70%;
-  inset-inline-start: -2%;
-  transform: rotate(-26deg);
-}
-.paperRoad[data-map-road="north-east"] {
-  inline-size: 34%;
-  inset-block-start: 26%;
-  inset-inline-start: 52%;
-  transform: rotate(32deg);
-}
-.paperRoad[data-map-road="east-south"] {
-  inline-size: 42%;
-  inset-block-start: 64%;
-  inset-inline-start: 48%;
-  transform: rotate(18deg);
-}
-.paperRoad[data-map-road="south-west"] {
-  inline-size: 38%;
-  inset-block-end: 18%;
-  inset-inline-start: 8%;
-  transform: rotate(-12deg);
-}
-.paperRoad[data-map-road="west-center"] {
-  inline-size: 30%;
-  inset-block-start: 45%;
-  inset-inline-start: 2%;
-  transform: rotate(55deg);
-}
 .paperLabel {
   background: var(--hm-surface-subtle);
   border: var(--hm-border-width) solid var(--hm-border);
@@ -523,83 +154,71 @@
   position: absolute;
   z-index: 3;
 }
-.paperLabel[data-map-label="one"] {
-  inset-block-start: 43%;
-  inset-inline-start: 8%;
+.paperArea,
+.paperJunction,
+.paperLabel,
+.paperParcel,
+.paperRoad,
+.paperWater {
+  inset-block-start: var(--geo-y);
+  inset-inline-start: var(--geo-x);
+  transform: rotate(var(--geo-rotate));
 }
-.paperLabel[data-map-label="two"] {
-  inset-block-end: 12%;
-  inset-inline-end: 18%;
+.paperArea,
+.paperParcel,
+.paperRoad,
+.paperWater {
+  block-size: var(--geo-block);
+  inline-size: var(--geo-inline);
 }
-.paperLabel[data-map-label="three"] {
-  inset-block-start: 18%;
-  inset-inline-end: 8%;
+.paperArea {
+  background: var(--hm-green-100);
+  border: var(--hm-border-width) solid var(--hm-green-300);
+  border-radius: var(--hm-radius-card);
+  pointer-events: none;
+  position: absolute;
+  z-index: 0;
 }
-.paperLabel[data-map-label="four"] {
-  inset-block-end: 27%;
-  inset-inline-start: 12%;
+.paperWater {
+  background: var(--hm-info-wash);
+  border: var(--hm-border-width) solid var(--hm-info);
+  border-radius: var(--hm-radius-card);
+  pointer-events: none;
+  position: absolute;
+  z-index: 0;
 }
-.paperLabel[data-map-label="gangnam"] {
-  inset-block-start: 39%;
-  inset-inline-start: 11%;
+.paperParcel {
+  background: var(--hm-surface-subtle);
+  border: var(--hm-border-width) solid var(--hm-border);
+  border-radius: var(--hm-radius-card);
+  pointer-events: none;
+  position: absolute;
+  z-index: 1;
 }
-.paperLabel[data-map-label="yeoksam"] {
-  inset-block-end: 15%;
-  inset-inline-end: 15%;
-}
-.paperLabel[data-map-label="north"] {
-  inset-block-start: 10%;
-  inset-inline-end: 22%;
-}
-.paperLabel[data-map-label="south"] {
-  inset-block-end: 30%;
-  inset-inline-start: 12%;
-}
-.paperLabel[data-map-label="green"] {
-  inset-block-start: 19%;
-  inset-inline-start: 42%;
-}
-.paperLabel[data-map-label="water"] {
-  inset-block-start: 54%;
-  inset-inline-end: 8%;
-}
-.paperLabel[data-map-label="road"] {
-  inset-block-end: 9%;
-  inset-inline-start: 43%;
+.paperRoad {
+  background: var(--hm-map-road);
+  block-size: var(--geo-block);
+  box-shadow: 0 0 0 var(--hm-border-width) var(--hm-border);
+  inline-size: var(--geo-inline);
+  pointer-events: none;
+  position: absolute;
+  z-index: 2;
 }
 .paperJunction {
   background: var(--hm-map-road);
   border: var(--hm-border-width) solid var(--hm-border-strong);
   border-radius: var(--hm-radius-marker);
-  block-size: var(--hm-space-3);
-  inline-size: var(--hm-space-3);
+  block-size: var(--geo-block);
+  inline-size: var(--geo-inline);
   pointer-events: none;
   position: absolute;
+  transform: translate(-50%, -50%);
   z-index: 3;
 }
-.paperJunction[data-map-junction="north"] {
-  inset-block-start: 28%;
-  inset-inline-start: 43%;
-}
-.paperJunction[data-map-junction="west"] {
-  inset-block-start: 54%;
-  inset-inline-start: 21%;
-}
-.paperJunction[data-map-junction="center"] {
-  inset-block-start: 55%;
-  inset-inline-start: 51%;
-}
-.paperJunction[data-map-junction="east"] {
-  inset-block-start: 51%;
-  inset-inline-start: 76%;
-}
-.paperJunction[data-map-junction="south"] {
-  inset-block-start: 73%;
-  inset-inline-start: 52%;
-}
-.paperJunction[data-map-junction="river"] {
-  inset-block-start: 46%;
-  inset-inline-start: 66%;
+.paperLabel {
+  inset-block-start: var(--geo-y);
+  inset-inline-start: var(--geo-x);
+  transform: rotate(var(--geo-rotate));
 }
 .filter {
   inset-block-start: var(--hm-space-3);
@@ -791,19 +410,40 @@ button:focus-visible {
   }
 }
 @media (min-width: 768px) {
+  .map {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--hm-pane-wide);
+  }
+  .paperMap,
+  .sdkMap {
+    inset-inline-end: var(--hm-pane-wide);
+  }
+  .filter {
+    inline-size: calc(100% - var(--hm-pane-wide) - var(--hm-space-6));
+    inset-inline-end: calc(var(--hm-pane-wide) + var(--hm-space-3));
+  }
+  .locate {
+    inset-inline-end: calc(var(--hm-pane-wide) + var(--hm-space-3));
+  }
+  .markers {
+    inset-inline-end: var(--hm-pane-wide);
+  }
   .detailSurface {
     border-block-start: 0;
     border-inline-start: var(--hm-border-width) solid var(--hm-border);
     border-radius: 0;
-    inline-size: min(var(--hm-pane-wide), 42%);
-    inset-block: 0;
-    inset-inline: auto 0;
+    block-size: 100%;
+    grid-column: 2;
+    grid-row: 1;
+    inline-size: auto;
     max-block-size: none;
+    min-block-size: 0;
+    position: relative;
   }
 }
 @media (min-width: 768px) and (max-width: 900px) {
   .filter {
-    inline-size: calc(100% - min(var(--hm-pane-wide), 42%) - var(--hm-space-6));
+    inline-size: calc(100% - var(--hm-pane-wide) - var(--hm-space-6));
   }
   .filter fieldset {
     gap: var(--hm-space-1);
@@ -814,6 +454,9 @@ button:focus-visible {
     min-inline-size: var(--hm-control-min);
     padding-inline: var(--hm-space-2);
     white-space: normal;
+  }
+  .filter fieldset button svg {
+    flex: 0 0 auto;
   }
 }
 @media (prefers-reduced-motion: reduce) {

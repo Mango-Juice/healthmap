@@ -211,12 +211,20 @@ export function MapDiscovery({
       closeSafetyTimer.current = undefined
     }
     detailPhaseRef.current = "closed"
+    const triggerSlug = selectedSlugRef.current
     selectedSlugRef.current = undefined
     setDetailPhase("closed")
     setSelectedSlug(undefined)
     const trigger = selectionTrigger.current
     selectionTrigger.current = undefined
-    trigger?.focus()
+    if (trigger?.isConnected) {
+      trigger.focus({ preventScroll: true })
+    } else if (triggerSlug !== undefined) {
+      document
+        .querySelector<HTMLElement>(`[data-place-slug="${triggerSlug}"]`)
+        ?.querySelector<HTMLElement>("button")
+        ?.focus({ preventScroll: true })
+    }
   }, [])
 
   const beginDetailClose = useCallback(() => {
@@ -593,7 +601,7 @@ export function MapDiscovery({
         ) : (
           <section aria-label={`샘플 장소 ${visiblePlaces.length}곳`} className={styles["markers"]}>
             {visiblePlaces.map((place) => (
-              <span key={place.id}>
+              <span data-place-slug={place.slug} key={place.id}>
                 <MapMarker
                   category={place.primaryTag}
                   label={place.name}

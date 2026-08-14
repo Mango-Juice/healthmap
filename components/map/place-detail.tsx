@@ -44,7 +44,7 @@ export function PlaceDetail({ directionsTarget, menus, onClose, place, shareMap 
     .filter((menu) => menu.placeId === place.id && menu.published)
     .sort((left, right) => left.displayOrder - right.displayOrder)
 
-  useEffect(() => title.current?.focus(), [])
+  useEffect(() => title.current?.focus({ preventScroll: true }), [])
 
   const share = async (target: ShareTarget): Promise<void> => {
     const url =
