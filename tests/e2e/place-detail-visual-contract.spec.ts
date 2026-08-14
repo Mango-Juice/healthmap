@@ -13,7 +13,7 @@ test.beforeEach(async ({ context }) => {
 test.describe.configure({ retries: 0 })
 
 test.beforeAll(async () => {
-  await mkdir(".omo/evidence/task-7/fix-r12", { recursive: true })
+  await mkdir(".omo/evidence/task-7/fix-r13", { recursive: true })
   await mkdir(".omo/evidence/task-7/fix-r9", { recursive: true })
   await mkdir(".omo/evidence/task-7/fix-r10", { recursive: true })
 })
@@ -170,7 +170,7 @@ test("open 768 pane keeps the fifth filter natively hit-testable", async ({ page
   await page.setViewportSize({ width: 768, height: 1024 })
   await page.goto("/")
   await page.screenshot({
-    path: ".omo/evidence/task-7/fix-r12/baseline-768x1024-default.png",
+    path: ".omo/evidence/task-7/fix-r13/baseline-768x1024-default.png",
   })
   await page.getByRole("button", { name: /새싹 네모식당/ }).click()
   await expect(
@@ -190,7 +190,7 @@ test("open 768 pane keeps the fifth filter natively hit-testable", async ({ page
     }
   })
   await page.screenshot({
-    path: ".omo/evidence/task-7/fix-r12/baseline-768x1024-open.png",
+    path: ".omo/evidence/task-7/fix-r13/baseline-768x1024-open.png",
   })
   expect(hit.targetIsFilter).toBe(true)
 })
@@ -252,7 +252,7 @@ test("768 split-pane acceptance keeps every filter stable through opening and re
   ).toBeVisible()
   await page.waitForTimeout(280)
   const settled = await capture()
-  await page.screenshot({ path: ".omo/evidence/task-7/fix-r12/final-768-settled.png" })
+  await page.screenshot({ path: ".omo/evidence/task-7/fix-r13/final-768-settled.png" })
   const states = [closed, opening, settled]
   for (const state of states) {
     expect(state.mapScrollLeft).toBe(0)
@@ -323,7 +323,10 @@ test("768 all-five filter clicks remain native through every detail lifecycle st
       const buttons = [...document.querySelectorAll<HTMLButtonElement>("fieldset button")]
       return {
         mapScrollLeft: map?.scrollLeft ?? -1,
+        railScrollLeft: map?.querySelector<HTMLElement>("fieldset")?.scrollLeft ?? -1,
+        phase: pane?.getAttribute("data-detail-phase") ?? "closed",
         paneTag: pane?.tagName ?? null,
+        paneLabel: pane?.getAttribute("aria-label") ?? null,
         paneLeft: pane?.getBoundingClientRect().left ?? -1,
         paperRight: paper?.getBoundingClientRect().right ?? -1,
         filters: buttons.map((button) => {
@@ -339,6 +342,7 @@ test("768 all-five filter clicks remain native through every detail lifecycle st
             ariaPressed: button.getAttribute("aria-pressed"),
             labelSingleLine:
               label !== null && label.getBoundingClientRect().height <= lineHeight * 1.1,
+            labelNoOverflow: label !== null && label.scrollWidth <= label.clientWidth,
             nativeHit: target === button || button.contains(target),
             visible:
               rect.left >= 0 &&
@@ -349,29 +353,42 @@ test("768 all-five filter clicks remain native through every detail lifecycle st
         }),
       }
     })
-  const assertState = async (state: string) => {
+  const assertState = async (state: string, expectedPhase?: string) => {
     const snapshot = await capture()
     expect(snapshot.mapScrollLeft, state).toBe(0)
+    expect(snapshot.railScrollLeft, state).toBe(0)
+    if (expectedPhase !== undefined) expect(snapshot.phase, state).toBe(expectedPhase)
     expect(snapshot.filters, state).toHaveLength(5)
     expect(
       snapshot.filters.every(
-        ({ nativeHit, visible, labelSingleLine }) => nativeHit && visible && labelSingleLine,
+        ({ nativeHit, visible, labelSingleLine, labelNoOverflow }) =>
+          nativeHit && visible && labelSingleLine && labelNoOverflow,
       ),
       state,
     ).toBe(true)
-    if (snapshot.paneTag === "ASIDE") {
+    if (snapshot.paneTag !== null) {
+      expect(snapshot.paneTag, state).toBe("ASIDE")
+      expect(snapshot.paneLabel, state).toBe("장소 상세")
       expect(snapshot.paneLeft, state).toBeGreaterThanOrEqual(snapshot.paperRight)
+      const paneRole = page.getByRole("complementary", { name: "장소 상세" })
+      if (state.startsWith("closing")) await expect(paneRole).toHaveCount(1)
+      else await expect(paneRole).toBeVisible()
+    } else {
+      await expect(page.getByRole("complementary", { name: "장소 상세" })).toHaveCount(0)
     }
     return snapshot
   }
-  const clickAll = async (state: string) => {
-    for (let index = 0; index < 5; index += 1) {
-      await filters.nth(index).click()
-      await expect(filters.nth(index), `${state} filter ${index}`).toHaveAttribute(
-        "aria-pressed",
-        "true",
-      )
-      await assertState(`${state}-after-filter-${index}`)
+  const clickOne = async (state: string, index: number, expectedPhase?: string) => {
+    await filters.nth(index).click()
+    await expect(filters.nth(index), `${state} filter ${index}`).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    )
+    await assertState(`${state}-after-filter-${index}`, expectedPhase)
+  }
+  const clickAll = async (state: string, expectedPhase?: string, startIndex = 0) => {
+    for (let index = startIndex; index < 5; index += 1) {
+      await clickOne(state, index, expectedPhase)
     }
   }
 
@@ -380,26 +397,27 @@ test("768 all-five filter clicks remain native through every detail lifecycle st
   await filters.nth(0).click()
   const marker = page.getByRole("button", { name: /새싹 네모식당/ })
   await marker.click()
-  await assertState("opening")
-  await clickAll("opening")
-  await page.waitForTimeout(280)
-  await assertState("settled")
-  await clickAll("settled")
+  await expect(
+    page.locator("[data-detail-phase='opening']:not([data-testid='map-stage'])"),
+  ).toBeVisible()
+  await assertState("opening", "opening")
+  await clickOne("opening", 0, "opening")
+  await expect(
+    page.locator("[data-detail-phase='open']:not([data-testid='map-stage'])"),
+  ).toBeVisible()
+  await assertState("settled", "open")
+  await clickAll("settled", "open")
   await filters.nth(0).click()
   await page.getByRole("button", { name: "상세 닫기" }).click()
-  await assertState("closing")
-  await clickAll("closing")
-  await filters.nth(0).click()
-  await page.waitForTimeout(300)
+  await expect(
+    page.locator("[data-detail-phase='closing']:not([data-testid='map-stage'])"),
+  ).toBeVisible()
+  await assertState("closing", "closing")
+  await clickOne("closing", 0, "closing")
   await expect(page.getByTestId("place-detail")).toHaveCount(0)
-  await assertState("restored")
-  await clickAll("restored")
-  await filters.nth(0).click()
-  await marker.click()
-  await page.waitForTimeout(300)
-  await page.getByRole("button", { name: "상세 닫기" }).click()
-  await page.waitForTimeout(300)
+  await assertState("restored", "closed")
   await expect(marker).toBeFocused()
+  await clickAll("restored", "closed", 1)
 })
 
 test("desktop title focus does not scroll its map ancestor", async ({ page }) => {
@@ -418,7 +436,7 @@ test("desktop title focus does not scroll its map ancestor", async ({ page }) =>
 test("fallback geography stays bounded and connected", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 })
   await page.goto("/")
-  await page.screenshot({ path: ".omo/evidence/task-7/fix-r12/final-375-geography.png" })
+  await page.screenshot({ path: ".omo/evidence/task-7/fix-r13/final-375-geography.png" })
   const bounded = await page.getByTestId("map-stage").evaluate((map) => {
     const mapRect = map.getBoundingClientRect()
     return [...map.querySelectorAll("[data-map-water]")].every((water) => {
@@ -547,6 +565,26 @@ test("desktop detail is complementary and the field guide has connected terrain 
   expect(hit).toBe(true)
 })
 
+test("normal close stays mounted through the detail transition", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 })
+  await page.goto("/")
+  await page.getByRole("button", { name: /새싹 네모식당/ }).click()
+  await expect(page.getByTestId("place-detail")).toBeVisible()
+  const transition = await page
+    .locator("[data-detail-phase='open']:not([data-testid='map-stage'])")
+    .evaluate((element) => getComputedStyle(element).transitionDuration)
+  expect(transition).toContain("0.24")
+  const startedAt = await page.evaluate(() => performance.now())
+  await page.getByRole("button", { name: "상세 닫기" }).click()
+  await expect(
+    page.locator("[data-detail-phase='closing']:not([data-testid='map-stage'])"),
+  ).toBeVisible()
+  await expect(page.getByTestId("place-detail")).toBeVisible()
+  await expect(page.getByTestId("place-detail")).toHaveCount(0)
+  const elapsed = await page.evaluate((start) => performance.now() - start, startedAt)
+  expect(elapsed).toBeGreaterThan(200)
+})
+
 test("close keeps the surface mounted until its native transition completes", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 })
   await page.goto("/")
@@ -614,19 +652,19 @@ test("captures fresh production viewport and motion evidence", async ({ page }) 
     await page.setViewportSize(viewport)
     await page.goto("/")
     await page.screenshot({
-      path: `.omo/evidence/task-7/fix-r12/final-${viewport.name}-map.png`,
+      path: `.omo/evidence/task-7/fix-r13/final-${viewport.name}-map.png`,
     })
     await page.getByRole("button", { name: /새싹 네모식당/ }).click()
     await page.screenshot({
-      path: `.omo/evidence/task-7/fix-r12/final-${viewport.name}-start.png`,
+      path: `.omo/evidence/task-7/fix-r13/final-${viewport.name}-start.png`,
     })
     await page.waitForTimeout(120)
     await page.screenshot({
-      path: `.omo/evidence/task-7/fix-r12/final-${viewport.name}-120ms.png`,
+      path: `.omo/evidence/task-7/fix-r13/final-${viewport.name}-120ms.png`,
     })
     await page.waitForTimeout(200)
     await page.screenshot({
-      path: `.omo/evidence/task-7/fix-r12/final-${viewport.name}-settled.png`,
+      path: `.omo/evidence/task-7/fix-r13/final-${viewport.name}-settled.png`,
     })
     await page.getByRole("button", { name: "상세 닫기" }).click()
     await expect(page.getByTestId("place-detail")).toHaveCount(0)

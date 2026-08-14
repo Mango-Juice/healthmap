@@ -131,6 +131,10 @@ export function MapDiscovery({
   const openingFrame = useRef<number | undefined>(undefined)
   const closingFrame = useRef<number | undefined>(undefined)
   const closeSafetyTimer = useRef<number | undefined>(undefined)
+  const detailSurfaceRef = useRef<HTMLElement>(null)
+  const setDetailSurfaceRef = useCallback((element: HTMLElement | null): void => {
+    detailSurfaceRef.current = element
+  }, [])
 
   const requestLocation = useCallback((isUserRequested: boolean) => {
     const source = sharedEntrySource.current
@@ -249,7 +253,7 @@ export function MapDiscovery({
       detailPhaseRef.current = "closing"
       setDetailPhase("closing")
     }
-    const surface = document.querySelector<HTMLElement>("[data-detail-phase]")
+    const surface = detailSurfaceRef.current
     const duration = surface
       ? Number.parseFloat(getComputedStyle(surface).transitionDuration.split(",")[0] ?? "") * 1000
       : 240
@@ -476,6 +480,7 @@ export function MapDiscovery({
         className={styles["detailSurface"]}
         data-detail-phase={detailPhase}
         data-detail-motion={detailMotion}
+        ref={setDetailSurfaceRef}
         onKeyDown={(event: ReactKeyboardEvent<HTMLDivElement>) => {
           if (event.key !== "Tab") return
           const focusable = Array.from(
@@ -509,6 +514,7 @@ export function MapDiscovery({
         className={styles["detailSurface"]}
         data-detail-phase={detailPhase}
         data-detail-motion={detailMotion}
+        ref={setDetailSurfaceRef}
         onTransitionEnd={(event: ReactTransitionEvent<HTMLElement>) => {
           if (event.target !== event.currentTarget) return
           if (detailPhase === "closing") finishDetailClose()
