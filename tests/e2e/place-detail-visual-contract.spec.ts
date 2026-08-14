@@ -54,6 +54,15 @@ test("mobile manual share owns native wheel scroll while the sheet and heading s
       headingTop: document.querySelector("#place-detail-title")?.getBoundingClientRect().top ?? -1,
     }
   })
+  await writeFile(
+    ".omo/evidence/task-7/fix-r10/native/manual-scroll-375.json",
+    JSON.stringify(
+      { before, after, scrollTop: await body.evaluate((element) => element.scrollTop) },
+      null,
+      2,
+    ),
+  )
+  expect(await body.evaluate((element) => element.scrollTop)).toBeGreaterThan(0)
   expect(after.detailTop).toBe(before.detailTop)
   expect(after.headingTop).toBe(before.headingTop)
   await expect(detail).toBeVisible()
@@ -157,6 +166,37 @@ test("initial 375 balance filter receives the native click without status interc
   await expect(balanced).toHaveAttribute("aria-pressed", "true")
 })
 
+test("open 768 pane keeps the fifth filter natively hit-testable", async ({ page }) => {
+  await page.setViewportSize({ width: 768, height: 1024 })
+  await page.goto("/")
+  await page.screenshot({
+    path: ".omo/evidence/task-7/fix-r10/baseline-768x1024-default.png",
+  })
+  await page.getByRole("button", { name: /새싹 네모식당/ }).click()
+  await expect(page.locator("[data-detail-phase='open']")).toBeVisible()
+  const fifth = page.getByRole("button", { name: "식물성 필터" })
+  const hit = await fifth.evaluate((element) => {
+    const rect = element.getBoundingClientRect()
+    const target = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
+    return {
+      center: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 },
+      filterRect: rect.toJSON(),
+      targetId: target?.id ?? null,
+      targetTag: target?.tagName ?? null,
+      targetTestId: target?.closest("[data-testid]")?.getAttribute("data-testid") ?? null,
+      targetIsFilter: target === element || element.contains(target),
+    }
+  })
+  await writeFile(
+    ".omo/evidence/task-7/fix-r10/baseline-768-filter-hit.json",
+    JSON.stringify(hit, null, 2),
+  )
+  await page.screenshot({
+    path: ".omo/evidence/task-7/fix-r10/baseline-768x1024-open.png",
+  })
+  expect(hit.targetIsFilter).toBe(true)
+})
+
 test("place detail opening exposes start, in-flight, and settled states", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 })
   await page.goto("/")
@@ -216,16 +256,18 @@ test("fallback map remains solid and nonblank with five live markers", async ({ 
     })
   expect(background.image).toBe("none")
   expect(background.color).not.toBe("rgba(0, 0, 0, 0)")
-  await expect(map.locator("[data-fallback-geometry]")).toHaveCount(3)
+  await expect(map.locator("[data-map-water]")).toHaveCount(2)
+  await expect(map.locator("[data-map-area]")).toHaveCount(4)
+  await expect(map.locator("[data-map-junction]")).toHaveCount(5)
 })
 
 test("fallback map carries a layered field-guide hierarchy", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 })
   await page.goto("/")
   const map = page.getByTestId("map-stage")
-  await expect(map.locator("[data-map-road]")).toHaveCount(8)
-  await expect(map.locator("[data-map-block]")).toHaveCount(7)
-  await expect(map.locator("[data-map-label]")).toHaveCount(4)
+  await expect(map.locator("[data-map-road]")).toHaveCount(18)
+  await expect(map.locator("[data-map-block]")).toHaveCount(16)
+  await expect(map.locator("[data-map-label]")).toHaveCount(7)
   await expect(map.locator("fieldset svg")).toHaveCount(5)
   await expect(page.getByRole("button", { name: /새싹 네모식당/ })).toBeVisible()
 })
@@ -236,14 +278,34 @@ test("field-guide composition has dense live map structure and detail anatomy", 
   await page.setViewportSize({ width: 375, height: 812 })
   await page.goto("/")
   const map = page.getByTestId("map-stage")
-  await expect(map.locator("[data-map-road]")).toHaveCount(8)
-  await expect(map.locator("[data-map-block]")).toHaveCount(7)
-  await expect(map.locator("[data-map-label]")).toHaveCount(4)
+  await expect(map.locator("[data-map-road]")).toHaveCount(18)
+  await expect(map.locator("[data-map-block]")).toHaveCount(16)
+  await expect(map.locator("[data-map-label]")).toHaveCount(7)
   await page.getByRole("button", { name: /새싹 네모식당/ }).click()
   const detail = page.getByTestId("place-detail")
   await expect(detail.locator("[data-detail-summary]")).toBeVisible()
   await expect(detail.locator("[data-detail-meta]")).toHaveCount(2)
   await expect(detail.locator("[data-detail-menu]")).toBeVisible()
+})
+
+test("desktop detail is complementary and the field guide has connected terrain layers", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 768, height: 1024 })
+  await page.goto("/")
+  const map = page.getByTestId("map-stage")
+  await expect(map.locator("[data-map-water]")).toHaveCount(2)
+  await expect(map.locator("[data-map-area]")).toHaveCount(4)
+  await expect(map.locator("[data-map-junction]")).toHaveCount(5)
+  await page.getByRole("button", { name: /새싹 네모식당/ }).click()
+  await expect(page.getByRole("complementary", { name: "장소 상세" })).toBeVisible()
+  const fifth = map.locator("fieldset button").nth(4)
+  const hit = await fifth.evaluate((element) => {
+    const rect = element.getBoundingClientRect()
+    const target = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
+    return target === element || element.contains(target)
+  })
+  expect(hit).toBe(true)
 })
 
 test("close keeps the surface mounted until its native transition completes", async ({ page }) => {

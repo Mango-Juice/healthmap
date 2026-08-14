@@ -159,6 +159,65 @@
   position: absolute;
   transform: rotate(28deg);
 }
+.paperWater,
+.paperArea {
+  pointer-events: none;
+  position: absolute;
+}
+.paperWater {
+  background: var(--hm-info-wash);
+  border: var(--hm-border-width) solid var(--hm-info);
+  border-radius: var(--hm-radius-control);
+  z-index: 0;
+}
+.paperWater[data-map-water="river"] {
+  block-size: 19%;
+  inline-size: 122%;
+  inset-block-start: 47%;
+  inset-inline-start: -11%;
+  transform: rotate(-14deg);
+}
+.paperWater[data-map-water="stream"] {
+  block-size: 13%;
+  inline-size: 66%;
+  inset-block-end: 2%;
+  inset-inline-end: -5%;
+  transform: rotate(24deg);
+}
+.paperArea {
+  background: var(--hm-green-100);
+  border: var(--hm-border-width) solid var(--hm-green-300);
+  border-radius: var(--hm-radius-card);
+  z-index: 0;
+}
+.paperArea[data-map-area="north-green"] {
+  block-size: 24%;
+  inline-size: 29%;
+  inset-block-start: 7%;
+  inset-inline-start: 10%;
+  transform: rotate(-5deg);
+}
+.paperArea[data-map-area="central-green"] {
+  block-size: 22%;
+  inline-size: 25%;
+  inset-block-start: 37%;
+  inset-inline-start: 35%;
+  transform: rotate(7deg);
+}
+.paperArea[data-map-area="east-green"] {
+  block-size: 27%;
+  inline-size: 23%;
+  inset-block-start: 10%;
+  inset-inline-end: 7%;
+  transform: rotate(8deg);
+}
+.paperArea[data-map-area="south-green"] {
+  block-size: 20%;
+  inline-size: 31%;
+  inset-block-end: 7%;
+  inset-inline-start: 8%;
+  transform: rotate(-8deg);
+}
 .paperFeature {
   background: var(--hm-map-land);
   border: var(--hm-border-width) solid var(--hm-map-road);
@@ -198,6 +257,45 @@
 }
 .paperBlock {
   background: var(--hm-surface-subtle);
+  block-size: 10%;
+  inline-size: 13%;
+}
+.paperBlock[data-map-block^="north-west"] {
+  inset-block-start: 26%;
+  inset-inline-start: 13%;
+}
+.paperBlock[data-map-block^="north-center"] {
+  inset-block-start: 20%;
+  inset-inline-start: 37%;
+}
+.paperBlock[data-map-block^="north-east"] {
+  inset-block-start: 24%;
+  inset-inline-start: 65%;
+}
+.paperBlock[data-map-block^="center-west"] {
+  inset-block-start: 48%;
+  inset-inline-start: 10%;
+}
+.paperBlock[data-map-block^="center-east"] {
+  inset-block-start: 48%;
+  inset-inline-start: 67%;
+}
+.paperBlock[data-map-block^="south-west"] {
+  inset-block-end: 13%;
+  inset-inline-start: 19%;
+}
+.paperBlock[data-map-block^="south-center"] {
+  inset-block-end: 16%;
+  inset-inline-start: 43%;
+}
+.paperBlock[data-map-block^="south-east"] {
+  inset-block-end: 12%;
+  inset-inline-end: 8%;
+}
+.paperBlock[data-map-block$="-b"] {
+  block-size: 8%;
+  inline-size: 12%;
+  transform: translate(var(--hm-space-6), var(--hm-space-3)) rotate(5deg);
 }
 .paperBlock[data-map-block="north-west"] {
   block-size: 14%;
@@ -255,6 +353,115 @@
   box-shadow: 0 0 0 var(--hm-border-width) var(--hm-border);
   position: absolute;
   z-index: 2;
+}
+.paperRoad[data-road-tier="arterial"] {
+  block-size: var(--hm-space-2);
+}
+.paperRoad[data-road-tier="collector"] {
+  block-size: var(--hm-space-1);
+}
+.paperRoad[data-road-tier="local"] {
+  block-size: var(--hm-border-width);
+  box-shadow: none;
+}
+.paperRoad[data-map-road="arterial-west-east"] {
+  inline-size: 110%;
+  inset-block-start: 55%;
+  inset-inline-start: -5%;
+  transform: rotate(-8deg);
+}
+.paperRoad[data-map-road="arterial-north-south"] {
+  inline-size: 118%;
+  inset-block-start: 42%;
+  inset-inline-start: -10%;
+  transform: rotate(74deg);
+}
+.paperRoad[data-map-road="arterial-diagonal"] {
+  inline-size: 92%;
+  inset-block-start: 58%;
+  inset-inline-start: 9%;
+  transform: rotate(26deg);
+}
+.paperRoad[data-map-road^="collector-north"] {
+  inline-size: 48%;
+  inset-block-start: 30%;
+  inset-inline-start: 12%;
+  transform: rotate(18deg);
+}
+.paperRoad[data-map-road="collector-north-b"] {
+  inset-block-start: 23%;
+  inset-inline-start: 42%;
+  transform: rotate(-12deg);
+}
+.paperRoad[data-map-road^="collector-center"] {
+  inline-size: 43%;
+  inset-block-start: 49%;
+  inset-inline-start: 28%;
+  transform: rotate(-38deg);
+}
+.paperRoad[data-map-road="collector-center-b"] {
+  inset-block-start: 60%;
+  inset-inline-start: 46%;
+  transform: rotate(12deg);
+}
+.paperRoad[data-map-road^="collector-south"] {
+  inline-size: 48%;
+  inset-block-start: 72%;
+  inset-inline-start: 18%;
+  transform: rotate(-18deg);
+}
+.paperRoad[data-map-road="collector-south-b"] {
+  inset-block-start: 78%;
+  inset-inline-start: 55%;
+  transform: rotate(16deg);
+}
+.paperRoad[data-map-road^="local-west"] {
+  inline-size: 25%;
+  inset-block-start: 37%;
+  inset-inline-start: 3%;
+  transform: rotate(64deg);
+}
+.paperRoad[data-map-road="local-west-b"] {
+  inset-block-start: 67%;
+  inset-inline-start: 2%;
+  transform: rotate(-34deg);
+}
+.paperRoad[data-map-road="local-west-c"] {
+  inset-block-start: 78%;
+  inset-inline-start: 4%;
+  transform: rotate(8deg);
+}
+.paperRoad[data-map-road^="local-center"] {
+  inline-size: 27%;
+  inset-block-start: 42%;
+  inset-inline-start: 38%;
+  transform: rotate(73deg);
+}
+.paperRoad[data-map-road="local-center-b"] {
+  inset-block-start: 54%;
+  inset-inline-start: 38%;
+  transform: rotate(-4deg);
+}
+.paperRoad[data-map-road="local-center-c"] {
+  inset-block-start: 66%;
+  inset-inline-start: 32%;
+  transform: rotate(36deg);
+}
+.paperRoad[data-map-road^="local-east"] {
+  inline-size: 29%;
+  inset-block-start: 34%;
+  inset-inline-start: 66%;
+  transform: rotate(-58deg);
+}
+.paperRoad[data-map-road="local-east-b"] {
+  inset-block-start: 51%;
+  inset-inline-start: 72%;
+  transform: rotate(18deg);
+}
+.paperRoad[data-map-road="local-east-c"] {
+  inset-block-start: 67%;
+  inset-inline-start: 69%;
+  transform: rotate(-18deg);
 }
 .paperRoad[data-map-road="north"] {
   inline-size: 65%;
@@ -331,6 +538,68 @@
 .paperLabel[data-map-label="four"] {
   inset-block-end: 27%;
   inset-inline-start: 12%;
+}
+.paperLabel[data-map-label="gangnam"] {
+  inset-block-start: 39%;
+  inset-inline-start: 11%;
+}
+.paperLabel[data-map-label="yeoksam"] {
+  inset-block-end: 15%;
+  inset-inline-end: 15%;
+}
+.paperLabel[data-map-label="north"] {
+  inset-block-start: 10%;
+  inset-inline-end: 22%;
+}
+.paperLabel[data-map-label="south"] {
+  inset-block-end: 30%;
+  inset-inline-start: 12%;
+}
+.paperLabel[data-map-label="green"] {
+  inset-block-start: 19%;
+  inset-inline-start: 42%;
+}
+.paperLabel[data-map-label="water"] {
+  inset-block-start: 54%;
+  inset-inline-end: 8%;
+}
+.paperLabel[data-map-label="road"] {
+  inset-block-end: 9%;
+  inset-inline-start: 43%;
+}
+.paperJunction {
+  background: var(--hm-map-road);
+  border: var(--hm-border-width) solid var(--hm-border-strong);
+  border-radius: var(--hm-radius-marker);
+  block-size: var(--hm-space-3);
+  inline-size: var(--hm-space-3);
+  pointer-events: none;
+  position: absolute;
+  z-index: 3;
+}
+.paperJunction[data-map-junction="north"] {
+  inset-block-start: 28%;
+  inset-inline-start: 43%;
+}
+.paperJunction[data-map-junction="west"] {
+  inset-block-start: 54%;
+  inset-inline-start: 21%;
+}
+.paperJunction[data-map-junction="center"] {
+  inset-block-start: 55%;
+  inset-inline-start: 51%;
+}
+.paperJunction[data-map-junction="east"] {
+  inset-block-start: 51%;
+  inset-inline-start: 76%;
+}
+.paperJunction[data-map-junction="south"] {
+  inset-block-start: 73%;
+  inset-inline-start: 52%;
+}
+.paperJunction[data-map-junction="river"] {
+  inset-block-start: 46%;
+  inset-inline-start: 66%;
 }
 .filter {
   inset-block-start: var(--hm-space-3);
@@ -530,6 +799,21 @@ button:focus-visible {
     inset-block: 0;
     inset-inline: auto 0;
     max-block-size: none;
+  }
+}
+@media (min-width: 768px) and (max-width: 900px) {
+  .filter {
+    inline-size: calc(100% - min(var(--hm-pane-wide), 42%) - var(--hm-space-6));
+  }
+  .filter fieldset {
+    gap: var(--hm-space-1);
+  }
+  .filter fieldset button {
+    flex: 1 1 0;
+    gap: var(--hm-space-1);
+    min-inline-size: var(--hm-control-min);
+    padding-inline: var(--hm-space-2);
+    white-space: normal;
   }
 }
 @media (prefers-reduced-motion: reduce) {

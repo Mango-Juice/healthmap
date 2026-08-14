@@ -32,6 +32,7 @@ import {
 } from "../../lib/map/adapter"
 import { LocateIcon, RotateCcwIcon } from "../ui/health-map-icons"
 import { FilterRail, MapMarker } from "../ui/health-map-primitives"
+import { FallbackFieldGuide } from "./fallback-field-guide"
 import styles from "./map-discovery.module.css"
 import { PlaceDetail } from "./place-detail"
 
@@ -485,7 +486,7 @@ export function MapDiscovery({
             first.focus()
           }
         }}
-        onTransitionEnd={(event: ReactTransitionEvent<HTMLDivElement>) => {
+        onTransitionEnd={(event: ReactTransitionEvent<HTMLElement>) => {
           if (event.target !== event.currentTarget) return
           if (detailPhase === "closing") finishDetailClose()
           if (detailPhase === "opening" && event.propertyName === "opacity") setDetailPhase("open")
@@ -495,18 +496,19 @@ export function MapDiscovery({
         {detail}
       </div>
     ) : (
-      <div
+      <aside
+        aria-label="장소 상세"
         className={styles["detailSurface"]}
         data-detail-phase={detailPhase}
         data-detail-motion={detailMotion}
-        onTransitionEnd={(event: ReactTransitionEvent<HTMLDivElement>) => {
+        onTransitionEnd={(event: ReactTransitionEvent<HTMLElement>) => {
           if (event.target !== event.currentTarget) return
           if (detailPhase === "closing") finishDetailClose()
           if (detailPhase === "opening" && event.propertyName === "opacity") setDetailPhase("open")
         }}
       >
         {detail}
-      </div>
+      </aside>
     )
   }
 
@@ -523,38 +525,7 @@ export function MapDiscovery({
         </button>
       </header>
       <div className={styles["map"]} data-adapter-state={adapterState} data-testid="map-stage">
-        <div aria-hidden="true" className={styles["paperMap"]}>
-          <span className={styles["paperFeature"]} data-fallback-geometry />
-          <span className={styles["paperFeature"]} data-fallback-geometry />
-          <span className={styles["paperFeature"]} data-fallback-geometry />
-          <span className={styles["paperBlock"]} data-map-block="north-west" />
-          <span className={styles["paperBlock"]} data-map-block="south-east" />
-          <span className={styles["paperPark"]} data-map-block="park" />
-          <span className={styles["paperBlock"]} data-map-block="north-east" />
-          <span className={styles["paperBlock"]} data-map-block="center" />
-          <span className={styles["paperBlock"]} data-map-block="south-west" />
-          <span className={styles["paperBlock"]} data-map-block="east" />
-          <span className={styles["paperRoad"]} data-map-road="north" />
-          <span className={styles["paperRoad"]} data-map-road="east" />
-          <span className={styles["paperRoad"]} data-map-road="south" />
-          <span className={styles["paperRoad"]} data-map-road="west" />
-          <span className={styles["paperRoad"]} data-map-road="north-east" />
-          <span className={styles["paperRoad"]} data-map-road="east-south" />
-          <span className={styles["paperRoad"]} data-map-road="south-west" />
-          <span className={styles["paperRoad"]} data-map-road="west-center" />
-          <span className={styles["paperLabel"]} data-map-label="one">
-            강남역
-          </span>
-          <span className={styles["paperLabel"]} data-map-label="two">
-            역삼역
-          </span>
-          <span className={styles["paperLabel"]} data-map-label="three">
-            강남 생활권
-          </span>
-          <span className={styles["paperLabel"]} data-map-label="four">
-            역삼 생활권
-          </span>
-        </div>
+        <FallbackFieldGuide />
         <div aria-hidden="true" className={styles["sdkMap"]} ref={sdkContainer} />
         <div className={styles["filter"]}>
           <FilterRail

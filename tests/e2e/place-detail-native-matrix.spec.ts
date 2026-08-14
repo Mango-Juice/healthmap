@@ -66,6 +66,17 @@ test("native place-detail matrix covers filters, touch, scroll, history, share, 
     await filters.nth(0).click()
     await page.getByRole("button", { name: /새싹 네모식당/ }).tap()
     await expect(page.locator("[data-detail-phase='open']")).toBeVisible()
+    if (viewport.width === 768) {
+      const openPaneFilterHit = await filters.nth(4).evaluate((element) => {
+        const rect = element.getBoundingClientRect()
+        const target = document.elementFromPoint(
+          rect.left + rect.width / 2,
+          rect.top + rect.height / 2,
+        )
+        return target === element || element.contains(target)
+      })
+      expect(openPaneFilterHit).toBe(true)
+    }
     await page.screenshot({
       path: `.omo/evidence/task-7/fix-r9/native-${viewport.name}-open.png`,
       fullPage: false,
