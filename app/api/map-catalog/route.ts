@@ -1,7 +1,14 @@
-import catalogSource from "../../../data/catalog.json"
+import { getPublicCatalogRuntimeProvider, isCatalogMode } from "../../../lib/catalog/runtime"
 
 export const dynamic = "force-dynamic"
 
-export function GET() {
-  return Response.json({ data_mode: catalogSource.data_mode, places: catalogSource.places })
+export async function GET() {
+  try {
+    const provider = getPublicCatalogRuntimeProvider()
+    const catalog = await provider.read()
+    if (!isCatalogMode(catalog, provider.mode)) return Response.json({}, { status: 503 })
+    return Response.json({ dataMode: provider.mode, menus: catalog.menus, places: catalog.places })
+  } catch {
+    return Response.json({}, { status: 503 })
+  }
 }

@@ -200,7 +200,10 @@ test("recovers catalog failure and supports empty catalog", async ({ page }) => 
     attempts += 1
     if (attempts === 1) return route.fulfill({ status: 503 })
     if (attempts === 2)
-      return route.fulfill({ contentType: "application/json", body: '{"places":[]}' })
+      return route.fulfill({
+        contentType: "application/json",
+        body: '{"dataMode":"mock","menus":[],"places":[]}',
+      })
     await route.continue()
   })
   await page.goto("/")
@@ -221,7 +224,10 @@ test("rejects malformed catalog and ignores stale rapid refresh", async ({ page 
   await page.getByRole("button", { name: "장소 새로고침" }).click()
   await page.getByRole("button", { name: "장소 새로고침" }).click()
   await expect.poll(() => requests.length).toBe(2)
-  await requests[1]?.fulfill({ contentType: "application/json", body: '{"places":[]}' })
+  await requests[1]?.fulfill({
+    contentType: "application/json",
+    body: '{"dataMode":"mock","menus":[],"places":[]}',
+  })
   await expect(page.getByText("표시할 샘플 장소가 없습니다.")).toBeVisible()
   await requests[0]?.fulfill({ status: 503 })
   await expect(page.getByText("표시할 샘플 장소가 없습니다.")).toBeVisible()

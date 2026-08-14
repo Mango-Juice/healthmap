@@ -10,6 +10,7 @@ import {
   useState,
 } from "react"
 import { captureProductAnalytics } from "../../lib/analytics/browser"
+import { loadPublicCatalog } from "../../lib/catalog/public-catalog-client"
 import type { Menu, Place } from "../../lib/domain/catalog"
 import type { DirectionsTarget } from "../../lib/domain/directions"
 import { filterPlaces, type PlaceFilter } from "../../lib/domain/filter"
@@ -41,6 +42,7 @@ type Properties = {
   readonly directionsTargets?: Readonly<Partial<Record<Place["id"], DirectionsTarget>>> | undefined
   readonly initialMenus: readonly Menu[]
   readonly initialPlaces: readonly Place[]
+  readonly initialCatalogState?: "ready" | "error" | undefined
 }
 
 const LOCATION_COPY: Record<LocationState["kind"], string> = {
@@ -102,14 +104,19 @@ export function MapDiscovery({
   clientId,
   initialMenus,
   initialPlaces,
+  initialCatalogState = "ready",
   directionsTargets,
 }: Properties) {
   const [filter, setFilter] = useState<PlaceFilter>("all")
   const [places, setPlaces] = useState(initialPlaces)
-  const [catalogState, setCatalogState] = useState<"ready" | "loading" | "error">("ready")
+  const [menus, setMenus] = useState(initialMenus)
+  const [catalogState, setCatalogState] = useState<"ready" | "loading" | "error">(
+    initialCatalogState,
+  )
   const [adapterState, setAdapterState] = useState<MapAdapterState>(
     clientId ? "loading" : "fallback",
   )
+  const isSampleCatalog = places.every((place) => place.dataMode === "mock")
   const [location, setLocation] = useState<LocationState>(beginLocationRequest)
   const [view, setView] = useState<MapView>(DEFAULT_VIEW)
   const [selectedSlug, setSelectedSlug] = useState<string>()
@@ -440,17 +447,10 @@ export function MapDiscovery({
     catalogGeneration.current = generation
     setCatalogState("loading")
     try {
-      const response = await fetch("/api/map-catalog", { cache: "no-store" })
-      if (!response.ok) throw new CatalogLoadError()
-      const payload: unknown = await response.json()
-      if (!isCatalogPayload(payload)) throw new CatalogLoadError()
+      const payload = await loadPublicCatalog()
       if (generation !== catalogGeneration.current) return
-      setPlaces(
-        payload.places.flatMap(({ slug }) => {
-          const place = initialPlaces.find((candidate) => candidate.slug === slug)
-          return place?.published ? [place] : []
-        }),
-      )
+      setPlaces(payload.places)
+      setMenus(payload.menus)
       setCatalogState("ready")
     } catch {
       if (generation === catalogGeneration.current) setCatalogState("error")
@@ -462,7 +462,7 @@ export function MapDiscovery({
       <PlaceDetail
         key={place.slug}
         directionsTarget={directionsTargets?.[place.id]}
-        menus={initialMenus}
+        menus={menus}
         onClose={clearSelection}
         place={place}
         shareMap={{
@@ -533,7 +533,7 @@ export function MapDiscovery({
           <h1>건강식 지도</h1>
           <p>강남·역삼 주변의 건강식 선택지를 지도에서 살펴보세요.</p>
         </div>
-        <strong className={styles["sample"]}>샘플 데이터</strong>
+        {isSampleCatalog ? <strong className={styles["sample"]}>샘플 데이터</strong> : null}
         <button onClick={reloadCatalog} type="button">
           장소 새로고침
         </button>
@@ -607,10 +607,13 @@ export function MapDiscovery({
           </div>
         ) : visiblePlaces.length === 0 ? (
           <div className={styles["catalogFeedback"]} role="status">
-            표시할 샘플 장소가 없습니다.
+            {isSampleCatalog ? "표시할 샘플 장소가 없습니다." : "표시할 장소가 없습니다."}
           </div>
         ) : (
-          <section aria-label={`샘플 장소 ${visiblePlaces.length}곳`} className={styles["markers"]}>
+          <section
+            aria-label={`${isSampleCatalog ? "샘플 장소" : "장소"} ${visiblePlaces.length}곳`}
+            className={styles["markers"]}
+          >
             {visiblePlaces.map((place) => (
               <span data-place-slug={place.slug} key={place.id}>
                 <MapMarker
@@ -638,21 +641,4 @@ export function MapDiscovery({
   )
 }
 
-class CatalogLoadError extends Error {
-  readonly name = "CatalogLoadError"
-}
 const assertNever = (value: never): never => value
-const isCatalogPayload = (
-  value: unknown,
-): value is { readonly places: readonly { readonly slug: string }[] } =>
-  typeof value === "object" &&
-  value !== null &&
-  "places" in value &&
-  Array.isArray(value.places) &&
-  value.places.every(
-    (place) =>
-      typeof place === "object" &&
-      place !== null &&
-      "slug" in place &&
-      typeof place.slug === "string",
-  )
