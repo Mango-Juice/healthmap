@@ -299,6 +299,21 @@ test("Vercel and CI pin frozen installs, quality gates, and deployment commands"
   assert.match(ci, /pnpm test:integration/)
   assert.match(ci, /pnpm start --port "\$PORT"/)
   assert.match(ci, /pnpm deploy:smoke -- --base-url http:\/\/127\.0\.0\.1:\$PORT/)
+  assert.match(
+    ci,
+    /env -u NEXT_PUBLIC_SUPABASE_URL -u NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY pnpm start --port "\$PORT"/,
+  )
+  assert.match(
+    ci,
+    /env -u NEXT_PUBLIC_SUPABASE_URL -u NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY pnpm build/,
+  )
+  assert.equal(
+    (
+      ci.match(/pnpm deploy:smoke -- --base-url http:\/\/127\.0\.0\.1:\$PORT --data-mode mock/g) ??
+      []
+    ).length,
+    2,
+  )
 })
 
 test("the public template names match the runtime validator", async () => {

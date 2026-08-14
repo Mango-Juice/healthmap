@@ -93,14 +93,14 @@ jobs:
           NEXT_PUBLIC_SITE_URL: https://healthmap.example.test
         run: |
           pnpm deploy:validate
-          pnpm build
+          env -u NEXT_PUBLIC_SUPABASE_URL -u NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY pnpm build
           PORT=3100
-          pnpm start --port "$PORT" > next-production.log 2>&1 &
+          env -u NEXT_PUBLIC_SUPABASE_URL -u NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY pnpm start --port "$PORT" > next-production.log 2>&1 &
           SERVER_PID=$!
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
           for attempt in $(seq 1 30); do curl --fail --silent "http://127.0.0.1:$PORT/" >/dev/null && break; sleep 1; done
-          pnpm deploy:smoke -- --base-url http://127.0.0.1:$PORT
-          pnpm deploy:smoke -- --base-url http://127.0.0.1:$PORT
+          pnpm deploy:smoke -- --base-url http://127.0.0.1:$PORT --data-mode mock
+          pnpm deploy:smoke -- --base-url http://127.0.0.1:$PORT --data-mode mock
 
   browser-smoke:
     needs: quality
