@@ -1,5 +1,39 @@
-import { mkdir } from "node:fs/promises"
+import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { expect, test } from "@playwright/test"
+
+type MatrixRect = {
+  readonly bottom: number
+  readonly left: number
+  readonly right: number
+  readonly top: number
+}
+
+type MatrixFilter = {
+  readonly ariaPressed: string | null
+  readonly center: { readonly x: number; readonly y: number }
+  readonly inViewport: boolean
+  readonly nativeHit: boolean
+  readonly noOverflow: boolean
+  readonly oneLine: boolean
+}
+
+type MatrixSnapshot = {
+  readonly complementary: {
+    readonly name: string | null
+    readonly present: boolean
+    readonly role: string | null
+  }
+  readonly filters: readonly MatrixFilter[]
+  readonly focusOwner: string | null
+  readonly focusRestored: boolean
+  readonly label: string
+  readonly mapRect: MatrixRect | null
+  readonly mapScrollLeft: number
+  readonly nonOverlapping: boolean
+  readonly paneRect: MatrixRect | null
+  readonly phase: string
+  readonly railScrollLeft: number
+}
 
 test.beforeEach(async ({ context }) => {
   await context.addInitScript(() => {
@@ -13,7 +47,7 @@ test.beforeEach(async ({ context }) => {
 test.describe.configure({ retries: 0 })
 
 test.beforeAll(async () => {
-  await mkdir(".omo/evidence/task-7/fix-r13", { recursive: true })
+  await mkdir(".omo/evidence/task-7/fix-r14", { recursive: true })
   await mkdir(".omo/evidence/task-7/fix-r9", { recursive: true })
   await mkdir(".omo/evidence/task-7/fix-r10", { recursive: true })
 })
@@ -170,7 +204,7 @@ test("open 768 pane keeps the fifth filter natively hit-testable", async ({ page
   await page.setViewportSize({ width: 768, height: 1024 })
   await page.goto("/")
   await page.screenshot({
-    path: ".omo/evidence/task-7/fix-r13/baseline-768x1024-default.png",
+    path: ".omo/evidence/task-7/fix-r14/baseline-768x1024-default.png",
   })
   await page.getByRole("button", { name: /새싹 네모식당/ }).click()
   await expect(
@@ -190,7 +224,7 @@ test("open 768 pane keeps the fifth filter natively hit-testable", async ({ page
     }
   })
   await page.screenshot({
-    path: ".omo/evidence/task-7/fix-r13/baseline-768x1024-open.png",
+    path: ".omo/evidence/task-7/fix-r14/baseline-768x1024-open.png",
   })
   expect(hit.targetIsFilter).toBe(true)
 })
@@ -252,7 +286,7 @@ test("768 split-pane acceptance keeps every filter stable through opening and re
   ).toBeVisible()
   await page.waitForTimeout(280)
   const settled = await capture()
-  await page.screenshot({ path: ".omo/evidence/task-7/fix-r13/final-768-settled.png" })
+  await page.screenshot({ path: ".omo/evidence/task-7/fix-r14/final-768-settled.png" })
   const states = [closed, opening, settled]
   for (const state of states) {
     expect(state.mapScrollLeft).toBe(0)
@@ -313,69 +347,97 @@ test("768 all-five filter clicks remain native through every detail lifecycle st
   await page.setViewportSize({ width: 768, height: 1024 })
   await page.goto("/")
   const filters = page.getByTestId("map-stage").locator("fieldset button")
-  const capture = async () =>
-    page.evaluate(() => {
+  const matrix: MatrixSnapshot[] = []
+  const capture = async (label: string): Promise<MatrixSnapshot> =>
+    page.evaluate((stateLabel) => {
+      const rectSnapshot = (rect: DOMRect | undefined): MatrixRect | null =>
+        rect === undefined
+          ? null
+          : { bottom: rect.bottom, left: rect.left, right: rect.right, top: rect.top }
       const map = document.querySelector<HTMLElement>("[data-testid='map-stage']")
       const paper = map?.querySelector<HTMLElement>("[data-field-guide-map]")
       const pane = map?.querySelector<HTMLElement>(
         "[data-detail-phase]:not([data-testid='map-stage'])",
       )
       const buttons = [...document.querySelectorAll<HTMLButtonElement>("fieldset button")]
-      return {
-        mapScrollLeft: map?.scrollLeft ?? -1,
-        railScrollLeft: map?.querySelector<HTMLElement>("fieldset")?.scrollLeft ?? -1,
-        phase: pane?.getAttribute("data-detail-phase") ?? "closed",
-        paneTag: pane?.tagName ?? null,
-        paneLabel: pane?.getAttribute("aria-label") ?? null,
-        paneLeft: pane?.getBoundingClientRect().left ?? -1,
-        paperRight: paper?.getBoundingClientRect().right ?? -1,
-        filters: buttons.map((button) => {
-          const rect = button.getBoundingClientRect()
-          const target = document.elementFromPoint(
-            rect.left + rect.width / 2,
-            rect.top + rect.height / 2,
-          )
-          const label = button.querySelector("span")
-          const lineHeight =
-            label === null ? 0 : Number.parseFloat(getComputedStyle(label).lineHeight)
-          return {
-            ariaPressed: button.getAttribute("aria-pressed"),
-            labelSingleLine:
-              label !== null && label.getBoundingClientRect().height <= lineHeight * 1.1,
-            labelNoOverflow: label !== null && label.scrollWidth <= label.clientWidth,
-            nativeHit: target === button || button.contains(target),
-            visible:
-              rect.left >= 0 &&
-              rect.right <= innerWidth &&
-              rect.top >= 0 &&
-              rect.bottom <= innerHeight,
-          }
-        }),
+      const paneRect = rectSnapshot(pane?.getBoundingClientRect())
+      const mapRect = rectSnapshot(paper?.getBoundingClientRect())
+      const active = document.activeElement
+      const focusOwner =
+        active instanceof HTMLElement
+          ? (active.getAttribute("aria-label") ??
+            active.id ??
+            active.getAttribute("data-testid") ??
+            active.tagName.toLowerCase())
+          : null
+      const complementary = {
+        name: pane?.getAttribute("aria-label") ?? null,
+        present: pane !== null && pane !== undefined,
+        role: pane?.tagName === "ASIDE" ? "complementary" : null,
       }
-    })
+      const filtersSnapshot = buttons.map((button) => {
+        const rect = button.getBoundingClientRect()
+        const center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+        const target = document.elementFromPoint(center.x, center.y)
+        const labelElement = button.querySelector("span")
+        const lineHeight =
+          labelElement === null ? 0 : Number.parseFloat(getComputedStyle(labelElement).lineHeight)
+        return {
+          ariaPressed: button.getAttribute("aria-pressed"),
+          center,
+          inViewport:
+            rect.left >= 0 &&
+            rect.right <= innerWidth &&
+            rect.top >= 0 &&
+            rect.bottom <= innerHeight,
+          nativeHit: target === button || button.contains(target),
+          noOverflow: labelElement !== null && labelElement.scrollWidth <= labelElement.clientWidth,
+          oneLine:
+            labelElement !== null &&
+            labelElement.getBoundingClientRect().height <= lineHeight * 1.1,
+        }
+      })
+      return {
+        complementary,
+        filters: filtersSnapshot,
+        focusOwner,
+        focusRestored:
+          active instanceof HTMLElement &&
+          active.getAttribute("aria-label")?.startsWith("새싹 네모식당") === true,
+        label: stateLabel,
+        mapRect,
+        mapScrollLeft: map?.scrollLeft ?? -1,
+        nonOverlapping: paneRect === null || mapRect === null || paneRect.left >= mapRect.right,
+        paneRect,
+        phase: pane?.getAttribute("data-detail-phase") ?? "closed",
+        railScrollLeft: map?.querySelector<HTMLElement>("fieldset")?.scrollLeft ?? -1,
+      }
+    }, label)
   const assertState = async (state: string, expectedPhase?: string) => {
-    const snapshot = await capture()
+    const snapshot = await capture(state)
     expect(snapshot.mapScrollLeft, state).toBe(0)
     expect(snapshot.railScrollLeft, state).toBe(0)
     if (expectedPhase !== undefined) expect(snapshot.phase, state).toBe(expectedPhase)
     expect(snapshot.filters, state).toHaveLength(5)
     expect(
       snapshot.filters.every(
-        ({ nativeHit, visible, labelSingleLine, labelNoOverflow }) =>
-          nativeHit && visible && labelSingleLine && labelNoOverflow,
+        ({ nativeHit, inViewport, oneLine, noOverflow }) =>
+          nativeHit && inViewport && oneLine && noOverflow,
       ),
       state,
     ).toBe(true)
-    if (snapshot.paneTag !== null) {
-      expect(snapshot.paneTag, state).toBe("ASIDE")
-      expect(snapshot.paneLabel, state).toBe("장소 상세")
-      expect(snapshot.paneLeft, state).toBeGreaterThanOrEqual(snapshot.paperRight)
+    if (snapshot.complementary.present) {
+      expect(snapshot.complementary.role, state).toBe("complementary")
+      expect(snapshot.complementary.name, state).toBe("장소 상세")
+      expect(snapshot.nonOverlapping, state).toBe(true)
       const paneRole = page.getByRole("complementary", { name: "장소 상세" })
       if (state.startsWith("closing")) await expect(paneRole).toHaveCount(1)
       else await expect(paneRole).toBeVisible()
     } else {
       await expect(page.getByRole("complementary", { name: "장소 상세" })).toHaveCount(0)
     }
+    if (state === "restored") expect(snapshot.focusRestored, state).toBe(true)
+    matrix.push(snapshot)
     return snapshot
   }
   const clickOne = async (state: string, index: number, expectedPhase?: string) => {
@@ -418,6 +480,18 @@ test("768 all-five filter clicks remain native through every detail lifecycle st
   await assertState("restored", "closed")
   await expect(marker).toBeFocused()
   await clickAll("restored", "closed", 1)
+
+  const artifact = { viewport: "768x1024", states: matrix }
+  await writeFile(
+    ".omo/evidence/task-7/fix-r14/768-state-matrix.json",
+    JSON.stringify(artifact, null, 2),
+  )
+  const written = JSON.parse(
+    await readFile(".omo/evidence/task-7/fix-r14/768-state-matrix.json", "utf8"),
+  ) as unknown
+  expect(written, "the serialized artifact must be the exact object asserted above").toEqual(
+    artifact,
+  )
 })
 
 test("desktop title focus does not scroll its map ancestor", async ({ page }) => {
@@ -436,7 +510,7 @@ test("desktop title focus does not scroll its map ancestor", async ({ page }) =>
 test("fallback geography stays bounded and connected", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 })
   await page.goto("/")
-  await page.screenshot({ path: ".omo/evidence/task-7/fix-r13/final-375-geography.png" })
+  await page.screenshot({ path: ".omo/evidence/task-7/fix-r14/final-375-geography.png" })
   const bounded = await page.getByTestId("map-stage").evaluate((map) => {
     const mapRect = map.getBoundingClientRect()
     return [...map.querySelectorAll("[data-map-water]")].every((water) => {
@@ -652,19 +726,19 @@ test("captures fresh production viewport and motion evidence", async ({ page }) 
     await page.setViewportSize(viewport)
     await page.goto("/")
     await page.screenshot({
-      path: `.omo/evidence/task-7/fix-r13/final-${viewport.name}-map.png`,
+      path: `.omo/evidence/task-7/fix-r14/final-${viewport.name}-map.png`,
     })
     await page.getByRole("button", { name: /새싹 네모식당/ }).click()
     await page.screenshot({
-      path: `.omo/evidence/task-7/fix-r13/final-${viewport.name}-start.png`,
+      path: `.omo/evidence/task-7/fix-r14/final-${viewport.name}-start.png`,
     })
     await page.waitForTimeout(120)
     await page.screenshot({
-      path: `.omo/evidence/task-7/fix-r13/final-${viewport.name}-120ms.png`,
+      path: `.omo/evidence/task-7/fix-r14/final-${viewport.name}-120ms.png`,
     })
     await page.waitForTimeout(200)
     await page.screenshot({
-      path: `.omo/evidence/task-7/fix-r13/final-${viewport.name}-settled.png`,
+      path: `.omo/evidence/task-7/fix-r14/final-${viewport.name}-settled.png`,
     })
     await page.getByRole("button", { name: "상세 닫기" }).click()
     await expect(page.getByTestId("place-detail")).toHaveCount(0)

@@ -5,7 +5,7 @@ test.describe.configure({ retries: 0 })
 test.use({ hasTouch: true })
 
 test.beforeAll(async () => {
-  await mkdir(".omo/evidence/task-7/fix-r13", { recursive: true })
+  await mkdir(".omo/evidence/task-7/fix-r14", { recursive: true })
   await mkdir(".omo/evidence/task-7/fix-r9", { recursive: true })
 })
 
@@ -93,7 +93,7 @@ test("native place-detail matrix covers filters, touch, scroll, history, share, 
       viewport: viewport.name,
     })
     await page.screenshot({
-      path: `.omo/evidence/task-7/fix-r13/native-${viewport.name}-open.png`,
+      path: `.omo/evidence/task-7/fix-r14/native-${viewport.name}-open.png`,
       fullPage: false,
     })
 
@@ -167,7 +167,7 @@ test("native place-detail matrix covers filters, touch, scroll, history, share, 
     }
   }
   await writeFile(
-    ".omo/evidence/task-7/fix-r13/native-matrix.json",
+    ".omo/evidence/task-7/fix-r14/native-matrix.json",
     JSON.stringify({ viewports: nativeMatrix }, null, 2),
   )
 })
