@@ -2,13 +2,22 @@ import { z } from "zod"
 import { HealthTagSchema, MenuIdSchema, PlaceIdSchema, PlaceSlugSchema } from "./contracts.ts"
 
 const HealthTagsSchema = z.array(HealthTagSchema).min(1).readonly()
-const NaverPlaceUrlSchema = z.url({
-  protocol: /^https$/,
-  hostname: /^(?:map[.]naver[.]com|m[.]place[.]naver[.]com|place[.]naver[.]com|naver[.]me)$/,
-})
+const NaverPlaceUrlSchema = z
+  .url({
+    protocol: /^https$/,
+    hostname: /^(?:map[.]naver[.]com|m[.]place[.]naver[.]com|place[.]naver[.]com|naver[.]me)$/,
+  })
+  .refine((value) => {
+    const url = new URL(value)
+    return url.username === "" && url.password === ""
+  }, "URL userinfo is not allowed")
 const ProductionEvidenceUrlSchema = z
   .url({ protocol: /^https$/ })
   .refine((url) => new URL(url).hostname !== "example.invalid", "example.invalid is mock-only")
+  .refine((value) => {
+    const url = new URL(value)
+    return url.username === "" && url.password === ""
+  }, "URL userinfo is not allowed")
 const MockPlaceUrlSchema = z
   .string()
   .regex(/^https:\/\/example\.invalid\/mock-directions\/mock-[a-z0-9-]+$/)

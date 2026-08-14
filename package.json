@@ -11,7 +11,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "deploy:smoke": "node scripts/deploy/production-smoke.mjs",
+    "deploy:smoke": "node --experimental-strip-types scripts/deploy/production-smoke.mjs",
     "deploy:validate": "node --experimental-strip-types scripts/deploy/validate-environment.mjs",
     "deploy:validate-env": "node --experimental-strip-types scripts/deploy/validate-environment.mjs",
     "deploy:validate:hosted": "node --experimental-strip-types scripts/deploy/validate-environment.mjs --hosted",

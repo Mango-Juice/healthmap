@@ -219,7 +219,115 @@ test("smoke runner rejects mock-only production evidence URLs", async () => {
   }
   await assert.rejects(
     () => runProductionSmoke(new URL(baseUrl), "production", createProductionFetch(invalidCatalog)),
-    /production menus lack the strict public shape or evidence provenance/,
+    /production records failed canonical public schema/,
+  )
+})
+
+test("smoke runner rejects production URL userinfo in NAVER and evidence provenance", async () => {
+  const hostilePlaceCatalog = {
+    ...productionCatalog,
+    places: productionCatalog.places.map((place) => ({
+      ...place,
+      naverPlaceUrl: "https://user:password@map.naver.com/p/place/1",
+    })),
+  }
+  const hostileMenuCatalog = {
+    ...productionCatalog,
+    menus: productionCatalog.menus.map((menu) => ({
+      ...menu,
+      evidenceUrl: "https://user:password@sources.example.test/evidence/1",
+    })),
+  }
+
+  await assert.rejects(
+    () =>
+      runProductionSmoke(
+        new URL(baseUrl),
+        "production",
+        createProductionFetch(hostilePlaceCatalog),
+      ),
+    /production records failed canonical public schema/,
+  )
+  await assert.rejects(
+    () =>
+      runProductionSmoke(new URL(baseUrl), "production", createProductionFetch(hostileMenuCatalog)),
+    /production records failed canonical public schema/,
+  )
+})
+
+test("smoke runner safety-scans an unsupported-method response before accepting HTTP 405", async () => {
+  await assert.rejects(
+    () =>
+      runProductionSmoke(new URL(baseUrl), "production", (input, init) => {
+        const url = new URL(input)
+        if (url.pathname === "/api/map-catalog" && init?.method === "POST") {
+          return Promise.resolve(
+            new Response("service_role should never be exposed", {
+              headers: { "set-cookie": "session=unsafe" },
+              status: 405,
+            }),
+          )
+        }
+        return createProductionFetch(productionCatalog)(input, init)
+      }),
+    /unexpectedly sets a cookie|credential-shaped value/,
+  )
+})
+
+test("smoke runner rejects malformed production record field types", async () => {
+  const malformedCatalog = {
+    ...productionCatalog,
+    places: productionCatalog.places.map((place) => ({ ...place, latitude: "37.5" })),
+  }
+
+  await assert.rejects(
+    () =>
+      runProductionSmoke(new URL(baseUrl), "production", createProductionFetch(malformedCatalog)),
+    /production records failed canonical public schema/,
+  )
+})
+
+test("smoke runner rejects unpublished and orphaned production rows", async () => {
+  const unpublishedCatalog = {
+    ...productionCatalog,
+    places: productionCatalog.places.map((place) => ({ ...place, published: false })),
+  }
+  const orphanedCatalog = {
+    ...productionCatalog,
+    menus: productionCatalog.menus.map((menu) => ({
+      ...menu,
+      placeId: "00000000-0000-4000-8000-000000000099",
+    })),
+  }
+  const mixedModeCatalog = {
+    dataMode: "production",
+    places: productionCatalog.places.map((place) => ({
+      ...place,
+      dataMode: "mock",
+      slug: "mock-place",
+      naverPlaceUrl: "https://example.invalid/mock-directions/mock-place",
+    })),
+    menus: productionCatalog.menus.map((menu) => ({
+      ...menu,
+      dataMode: "mock",
+      evidenceUrl: "https://example.invalid/mock-evidence/mock-menu",
+    })),
+  }
+
+  await assert.rejects(
+    () =>
+      runProductionSmoke(new URL(baseUrl), "production", createProductionFetch(unpublishedCatalog)),
+    /unpublished, orphaned, or mode-mismatched/,
+  )
+  await assert.rejects(
+    () =>
+      runProductionSmoke(new URL(baseUrl), "production", createProductionFetch(orphanedCatalog)),
+    /unpublished, orphaned, or mode-mismatched/,
+  )
+  await assert.rejects(
+    () =>
+      runProductionSmoke(new URL(baseUrl), "production", createProductionFetch(mixedModeCatalog)),
+    /unpublished, orphaned, or mode-mismatched/,
   )
 })
 
@@ -284,9 +392,11 @@ test("smoke runner rejects unknown fields and secret-shaped catalog bodies", asy
 })
 
 test("Vercel and CI pin frozen installs, quality gates, and deployment commands", async () => {
-  const [vercelConfig, ci] = await Promise.all([
+  const [vercelConfig, ci, operations, packageJson] = await Promise.all([
     readFile("vercel.json", "utf8"),
     readFile(".github/workflows/ci.yml", "utf8"),
+    readFile("docs/operations.md", "utf8"),
+    readFile("package.json", "utf8"),
   ])
 
   assert.match(vercelConfig, /"installCommand": "pnpm install --frozen-lockfile"/)
@@ -314,6 +424,20 @@ test("Vercel and CI pin frozen installs, quality gates, and deployment commands"
     ).length,
     2,
   )
+  assert.match(
+    packageJson,
+    /"deploy:smoke": "node --experimental-strip-types scripts\/deploy\/production-smoke\.mjs"/,
+  )
+  assert.match(
+    operations,
+    /env -u NEXT_PUBLIC_SUPABASE_URL -u NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY pnpm build/,
+  )
+  assert.match(
+    operations,
+    /env -u NEXT_PUBLIC_SUPABASE_URL -u NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY pnpm start/,
+  )
+  assert.match(operations, /no local `\.env\*` file defines `NEXT_PUBLIC_SUPABASE_URL`/)
+  assert.match(operations, /CI job follows the same policy/)
 })
 
 test("the public template names match the runtime validator", async () => {

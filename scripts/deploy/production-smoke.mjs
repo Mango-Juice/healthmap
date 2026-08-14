@@ -1,3 +1,5 @@
+import { MenuSchema, PlaceSchema } from "../../lib/domain/catalog.ts"
+
 const SMOKE_TIMEOUT_MS = 10_000
 const CREDENTIAL_PATTERN =
   /(?:authorization|bearer\s+|service_role|supabase_service_role|sk_(?:live|test)_)/i
@@ -156,6 +158,8 @@ export async function runProductionSmoke(
     redirect: "error",
     signal: AbortSignal.timeout(SMOKE_TIMEOUT_MS),
   })
+  const unsupportedBody = await unsupportedMethod.text()
+  assertSafeResponse(unsupportedMethod, unsupportedBody, "/api/map-catalog POST")
   if (unsupportedMethod.status !== 405) {
     fail("/api/map-catalog must reject unsupported methods with HTTP 405")
   }
@@ -168,57 +172,25 @@ function assertProductionCatalog(payload) {
     fail("/api/map-catalog production mode must include published places and menus")
   }
 
-  const placeKeys =
-    "address,dataMode,healthTags,id,latitude,longitude,name,naverPlaceUrl,primaryTag,published,slug"
-  if (
-    !payload.places.every(
-      (place) =>
-        isRecord(place) &&
-        Object.keys(place).sort().join(",") === placeKeys &&
-        place.dataMode === "production" &&
-        isNaverPlaceUrl(place.naverPlaceUrl),
-    )
-  ) {
-    fail("/api/map-catalog production places lack the strict public shape or NAVER provenance")
+  let places
+  let menus
+  try {
+    places = PlaceSchema.array().parse(payload.places)
+    menus = MenuSchema.array().parse(payload.menus)
+  } catch {
+    fail("/api/map-catalog production records failed canonical public schema validation")
   }
-
-  const menuKeys =
-    "dataMode,displayOrder,evidenceUrl,healthTags,id,name,placeId,published,verifiedAt"
+  const placeById = new Map(places.map((place) => [place.id, place]))
   if (
-    !payload.menus.every(
+    !places.every((place) => place.dataMode === "production" && place.published) ||
+    !menus.every(
       (menu) =>
-        isRecord(menu) &&
-        Object.keys(menu).sort().join(",") === menuKeys &&
         menu.dataMode === "production" &&
-        isProductionEvidenceUrl(menu.evidenceUrl),
+        menu.published &&
+        placeById.get(menu.placeId)?.dataMode === menu.dataMode,
     )
   ) {
-    fail("/api/map-catalog production menus lack the strict public shape or evidence provenance")
-  }
-}
-
-function isRecord(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-}
-
-function isNaverPlaceUrl(value) {
-  try {
-    const url = new URL(value)
-    return (
-      url.protocol === "https:" &&
-      ["map.naver.com", "m.place.naver.com", "place.naver.com", "naver.me"].includes(url.hostname)
-    )
-  } catch {
-    return false
-  }
-}
-
-function isProductionEvidenceUrl(value) {
-  try {
-    const url = new URL(value)
-    return url.protocol === "https:" && url.hostname !== "example.invalid"
-  } catch {
-    return false
+    fail("/api/map-catalog production rows are unpublished, orphaned, or mode-mismatched")
   }
 }
 

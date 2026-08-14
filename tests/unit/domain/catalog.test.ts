@@ -112,4 +112,20 @@ describe("catalog domain boundary", () => {
     // Then
     for (const attempt of attempts) expect(attempt).toThrow()
   })
+
+  it("Given production URLs with userinfo, when parsed, then the public provenance boundary rejects them", () => {
+    // Given
+    const hostilePlace = {
+      ...VALID_PLACE_ROW,
+      naver_place_url: "https://user:password@map.naver.com/p/place/1",
+    }
+    const hostileMenu = {
+      ...VALID_MENU_ROW,
+      evidence_url: "https://user:password@sources.example.test/evidence/1",
+    }
+
+    // When / Then
+    expect(() => parsePlaceRows([hostilePlace])).toThrow()
+    expect(() => parseMenuRows([hostileMenu])).toThrow()
+  })
 })
