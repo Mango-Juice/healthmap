@@ -532,7 +532,12 @@ export function MapDiscovery({
           장소 새로고침
         </button>
       </header>
-      <div className={styles["map"]} data-adapter-state={adapterState} data-testid="map-stage">
+      <div
+        className={styles["map"]}
+        data-adapter-state={adapterState}
+        data-detail-phase={selectedPlace ? detailPhase : "closed"}
+        data-testid="map-stage"
+      >
         <FallbackFieldGuide />
         <div aria-hidden="true" className={styles["sdkMap"]} ref={sdkContainer} />
         <div className={styles["filter"]}>

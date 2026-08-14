@@ -412,20 +412,49 @@ button:focus-visible {
 @media (min-width: 768px) {
   .map {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .map[data-detail-phase="opening"],
+  .map[data-detail-phase="open"],
+  .map[data-detail-phase="closing"] {
     grid-template-columns: minmax(0, 1fr) var(--hm-pane-wide);
   }
   .paperMap,
   .sdkMap {
+    inset-inline-end: 0;
+  }
+  .map[data-detail-phase="opening"] .paperMap,
+  .map[data-detail-phase="opening"] .sdkMap,
+  .map[data-detail-phase="open"] .paperMap,
+  .map[data-detail-phase="open"] .sdkMap,
+  .map[data-detail-phase="closing"] .paperMap,
+  .map[data-detail-phase="closing"] .sdkMap {
     inset-inline-end: var(--hm-pane-wide);
   }
   .filter {
+    inline-size: calc(100% - var(--hm-space-6));
+    inset-inline-end: var(--hm-space-3);
+  }
+  .map[data-detail-phase="opening"] .filter,
+  .map[data-detail-phase="open"] .filter,
+  .map[data-detail-phase="closing"] .filter {
     inline-size: calc(100% - var(--hm-pane-wide) - var(--hm-space-6));
     inset-inline-end: calc(var(--hm-pane-wide) + var(--hm-space-3));
   }
   .locate {
+    inset-inline-end: var(--hm-space-3);
+  }
+  .map[data-detail-phase="opening"] .locate,
+  .map[data-detail-phase="open"] .locate,
+  .map[data-detail-phase="closing"] .locate {
     inset-inline-end: calc(var(--hm-pane-wide) + var(--hm-space-3));
   }
   .markers {
+    inset-inline-end: 0;
+  }
+  .map[data-detail-phase="opening"] .markers,
+  .map[data-detail-phase="open"] .markers,
+  .map[data-detail-phase="closing"] .markers {
     inset-inline-end: var(--hm-pane-wide);
   }
   .detailSurface {
@@ -443,6 +472,11 @@ button:focus-visible {
 }
 @media (min-width: 768px) and (max-width: 900px) {
   .filter {
+    inline-size: calc(100% - var(--hm-space-6));
+  }
+  .map[data-detail-phase="opening"] .filter,
+  .map[data-detail-phase="open"] .filter,
+  .map[data-detail-phase="closing"] .filter {
     inline-size: calc(100% - var(--hm-pane-wide) - var(--hm-space-6));
   }
   .filter fieldset {
@@ -450,10 +484,11 @@ button:focus-visible {
   }
   .filter fieldset button {
     flex: 1 1 0;
+    font-size: var(--hm-type-caption);
     gap: var(--hm-space-1);
     min-inline-size: var(--hm-control-min);
-    padding-inline: var(--hm-space-2);
-    white-space: normal;
+    padding-inline: var(--hm-space-1);
+    white-space: nowrap;
   }
   .filter fieldset button svg {
     flex: 0 0 auto;

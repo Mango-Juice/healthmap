@@ -5,7 +5,7 @@ test.describe.configure({ retries: 0 })
 test.use({ hasTouch: true })
 
 test.beforeAll(async () => {
-  await mkdir(".omo/evidence/task-7/fix-r11", { recursive: true })
+  await mkdir(".omo/evidence/task-7/fix-r12", { recursive: true })
   await mkdir(".omo/evidence/task-7/fix-r9", { recursive: true })
 })
 
@@ -72,7 +72,9 @@ test("native place-detail matrix covers filters, touch, scroll, history, share, 
     for (let index = 0; index < 5; index += 1) await filters.nth(index).click()
     await filters.nth(0).click()
     await page.getByRole("button", { name: /새싹 네모식당/ }).tap()
-    await expect(page.locator("[data-detail-phase='open']")).toBeVisible()
+    await expect(
+      page.locator("[data-detail-phase='open']:not([data-testid='map-stage'])"),
+    ).toBeVisible()
     let openPaneFilterHit: boolean | null = null
     if (viewport.width === 768) {
       openPaneFilterHit = await filters.nth(4).evaluate((element) => {
@@ -91,7 +93,7 @@ test("native place-detail matrix covers filters, touch, scroll, history, share, 
       viewport: viewport.name,
     })
     await page.screenshot({
-      path: `.omo/evidence/task-7/fix-r11/native-${viewport.name}-open.png`,
+      path: `.omo/evidence/task-7/fix-r12/native-${viewport.name}-open.png`,
       fullPage: false,
     })
 
@@ -105,15 +107,21 @@ test("native place-detail matrix covers filters, touch, scroll, history, share, 
       await expect.poll(() => body.evaluate((element) => element.scrollTop)).toBeGreaterThan(0)
     }
     const activeBeforeTabs = await page.evaluate(
-      () => document.activeElement?.closest("[data-detail-phase]") !== null,
+      () =>
+        document.activeElement?.closest("[data-detail-phase]:not([data-testid='map-stage'])") !==
+        null,
     )
     await page.keyboard.press("Tab")
     const activeAfterTab = await page.evaluate(
-      () => document.activeElement?.closest("[data-detail-phase]") !== null,
+      () =>
+        document.activeElement?.closest("[data-detail-phase]:not([data-testid='map-stage'])") !==
+        null,
     )
     await page.keyboard.press("Shift+Tab")
     const activeAfterReverseTab = await page.evaluate(
-      () => document.activeElement?.closest("[data-detail-phase]") !== null,
+      () =>
+        document.activeElement?.closest("[data-detail-phase]:not([data-testid='map-stage'])") !==
+        null,
     )
     expect(activeBeforeTabs).toBe(true)
     expect(activeAfterTab).toBe(true)
@@ -127,7 +135,9 @@ test("native place-detail matrix covers filters, touch, scroll, history, share, 
     await expect(page.getByRole("button", { name: /새싹 네모식당/ })).toBeFocused()
 
     await page.getByRole("button", { name: /새싹 네모식당/ }).tap()
-    await expect(page.locator("[data-detail-phase='open']")).toBeVisible()
+    await expect(
+      page.locator("[data-detail-phase='open']:not([data-testid='map-stage'])"),
+    ).toBeVisible()
     await page.goBack()
     await expect(page.getByTestId("place-detail")).toHaveCount(0)
     await expect(page.getByRole("button", { name: /새싹 네모식당/ })).toBeFocused()
@@ -135,17 +145,21 @@ test("native place-detail matrix covers filters, touch, scroll, history, share, 
     if (viewport.width === 375) {
       for (let cycle = 0; cycle < 5; cycle += 1) {
         await page.getByRole("button", { name: /새싹 네모식당/ }).tap()
-        await expect(page.locator("[data-detail-phase='open']")).toBeVisible()
+        await expect(
+          page.locator("[data-detail-phase='open']:not([data-testid='map-stage'])"),
+        ).toBeVisible()
         await page.getByRole("button", { name: "상세 닫기" }).tap()
         await expect(page.getByTestId("place-detail")).toHaveCount(0)
         await expect(page.getByRole("button", { name: /새싹 네모식당/ })).toBeFocused()
       }
       await page.emulateMedia({ reducedMotion: "reduce" })
       await page.getByRole("button", { name: /새싹 네모식당/ }).tap()
-      const reduced = await page.locator("[data-detail-phase]").evaluate((element) => ({
-        phase: element.getAttribute("data-detail-phase"),
-        duration: getComputedStyle(element).transitionDuration,
-      }))
+      const reduced = await page
+        .locator("[data-detail-phase]:not([data-testid='map-stage'])")
+        .evaluate((element) => ({
+          phase: element.getAttribute("data-detail-phase"),
+          duration: getComputedStyle(element).transitionDuration,
+        }))
       expect(["opening", "open"]).toContain(reduced.phase)
       expect(["0s", "1e-05s"]).toContain(reduced.duration)
       await page.getByRole("button", { name: "상세 닫기" }).tap()
@@ -153,7 +167,7 @@ test("native place-detail matrix covers filters, touch, scroll, history, share, 
     }
   }
   await writeFile(
-    ".omo/evidence/task-7/fix-r11/native-matrix.json",
+    ".omo/evidence/task-7/fix-r12/native-matrix.json",
     JSON.stringify({ viewports: nativeMatrix }, null, 2),
   )
 })
