@@ -1,4 +1,12 @@
 .privacy-page {
+  --hm-ink: #17231c;
+  --hm-ink-muted: #536159;
+  --hm-border: #d7d2c6;
+  --hm-surface-subtle: #f8f5ed;
+  --hm-info: #225f86;
+  --hm-info-wash: #eaf4fa;
+  --hm-border-strong: #aba497;
+  --hm-surface: #fffdf8;
   --privacy-ink: var(--hm-ink);
   --privacy-muted: var(--hm-ink-muted);
   --privacy-line: var(--hm-border);
