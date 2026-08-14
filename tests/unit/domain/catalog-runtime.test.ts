@@ -24,6 +24,17 @@ describe("public catalog runtime provider", () => {
     expect(catalog.menus.every((menu) => menu.dataMode === "mock")).toBe(true)
   })
 
+  it("Given a whitespace-only Supabase URL without a key, when creating the provider, then it rejects configuration", () => {
+    // Given
+    const environment = { NEXT_PUBLIC_SUPABASE_URL: "   " }
+
+    // When
+    const create = () => createPublicCatalogRuntimeProvider(environment)
+
+    // Then
+    expect(create).toThrow(PublicCatalogConfigurationError)
+  })
+
   it("Given partial or malformed public Supabase configuration, when creating the provider, then it rejects configuration", () => {
     // Given
     const environments = [

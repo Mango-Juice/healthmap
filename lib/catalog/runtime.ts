@@ -91,10 +91,11 @@ export const createPublicCatalogRuntimeProvider = (
 ): PublicCatalogRuntimeProvider => {
   const config = parsePublicEnvironment(environment).catalog
   const hasCatalogConfiguration =
-    environment["NEXT_PUBLIC_SUPABASE_URL"]?.trim() ||
-    environment["NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"]?.trim()
-  if (hasCatalogConfiguration !== undefined && config === null)
+    environment["NEXT_PUBLIC_SUPABASE_URL"] !== undefined ||
+    environment["NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"] !== undefined
+  if (hasCatalogConfiguration && config === null) {
     throw new PublicCatalogConfigurationError()
+  }
   if (config === null) {
     const catalog = mockCatalog()
     return { mode: "mock", read: async () => catalog }
