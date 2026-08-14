@@ -27,6 +27,23 @@ if (!existsSync(vercelConfigUrl)) {
     failures.push("Vercel must use the repository build command")
   }
 
+  const headerRules = vercelConfig.headers
+  const expectedHeaders = new Map([
+    ["X-Content-Type-Options", "nosniff"],
+    ["Referrer-Policy", "strict-origin-when-cross-origin"],
+    ["X-Frame-Options", "SAMEORIGIN"],
+  ])
+  const configuredHeaders = new Map(
+    headerRules?.flatMap((rule) =>
+      rule.source === "/(.*)" ? rule.headers.map((header) => [header.key, header.value]) : [],
+    ) ?? [],
+  )
+  for (const [name, value] of expectedHeaders) {
+    if (configuredHeaders.get(name) !== value) {
+      failures.push(`Vercel must set ${name}=${value} for all routes`)
+    }
+  }
+
   if (packageJson.engines?.node !== ">=22 <23") {
     failures.push("package.json must constrain Vercel builds to Node.js 22")
   }

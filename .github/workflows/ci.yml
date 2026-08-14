@@ -35,14 +35,72 @@ jobs:
       - name: Check types
         run: pnpm typecheck
 
+      - name: Validate public deployment environment contract
+        env:
+          NEXT_PUBLIC_NAVER_MAP_CLIENT_ID: naver-client-placeholder
+          NEXT_PUBLIC_SUPABASE_URL: https://project.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: publishable-placeholder
+          NEXT_PUBLIC_POSTHOG_KEY: posthog-placeholder
+          NEXT_PUBLIC_POSTHOG_HOST: https://us.i.posthog.com
+          NEXT_PUBLIC_SITE_URL: https://healthmap.example.test
+        run: pnpm deploy:validate
+
+      - name: Check operations runbook
+        run: pnpm docs:check
+
       - name: Run unit tests
         run: pnpm test
 
+      - name: Run integration tests
+        run: pnpm test:integration
+
       - name: Audit React code
-        run: pnpm react:doctor --no-telemetry --no-cache --blocking warning
+        run: pnpm react:doctor --no-telemetry --no-cache
 
       - name: Build production application
         run: pnpm build
+
+      - name: Run deployment automation tests
+        run: pnpm test:deployment
+
+  production-http-smoke:
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install from lockfile
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and smoke the production server twice
+        env:
+          NEXT_PUBLIC_NAVER_MAP_CLIENT_ID: naver-client-placeholder
+          NEXT_PUBLIC_SUPABASE_URL: https://project.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: publishable-placeholder
+          NEXT_PUBLIC_POSTHOG_KEY: posthog-placeholder
+          NEXT_PUBLIC_POSTHOG_HOST: https://us.i.posthog.com
+          NEXT_PUBLIC_SITE_URL: https://healthmap.example.test
+        run: |
+          pnpm deploy:validate
+          pnpm build
+          PORT=3100
+          pnpm start --port "$PORT" > next-production.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do curl --fail --silent "http://127.0.0.1:$PORT/" >/dev/null && break; sleep 1; done
+          pnpm deploy:smoke -- --base-url http://127.0.0.1:$PORT
+          pnpm deploy:smoke -- --base-url http://127.0.0.1:$PORT
 
   browser-smoke:
     needs: quality
