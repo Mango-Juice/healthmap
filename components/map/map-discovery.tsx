@@ -605,7 +605,8 @@ export function MapDiscovery({
               <RotateCcwIcon /> 다시 시도
             </button>
           </div>
-        ) : visiblePlaces.length === 0 ? (
+        ) : null}
+        {visiblePlaces.length === 0 ? (
           <div className={styles["catalogFeedback"]} role="status">
             {isSampleCatalog ? "표시할 샘플 장소가 없습니다." : "표시할 장소가 없습니다."}
           </div>

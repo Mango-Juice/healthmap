@@ -215,6 +215,31 @@ test("recovers catalog failure and supports empty catalog", async ({ page }) => 
   await expect(page.getByRole("button", { name: /샘플/ })).toHaveCount(5)
 })
 
+test("keeps fallback markers interactive while catalog refresh loads or fails", async ({
+  page,
+}) => {
+  // Given
+  const requests: import("@playwright/test").Route[] = []
+  await page.route("**/api/map-catalog", async (route) => {
+    requests.push(route)
+  })
+  await page.goto("/")
+
+  // When
+  await page.getByRole("button", { name: "장소 새로고침" }).click()
+  await expect.poll(() => requests.length).toBe(1)
+
+  // Then
+  await expect(page.getByText("장소 데이터를 불러오는 중입니다.")).toBeVisible()
+  const marker = page.getByRole("button", { name: /새싹 네모식당/ })
+  await expect(marker).toBeVisible()
+  await marker.press("Enter")
+  await expect(page.getByText("장소를 선택했습니다.")).toBeVisible()
+  await requests[0]?.fulfill({ status: 503 })
+  await expect(page.getByText("장소 데이터를 불러오지 못했습니다.")).toBeVisible()
+  await expect(marker).toBeVisible()
+})
+
 test("rejects malformed catalog and ignores stale rapid refresh", async ({ page }) => {
   const requests: import("@playwright/test").Route[] = []
   await page.route("**/api/map-catalog", async (route) => {
