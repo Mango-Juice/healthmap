@@ -3,7 +3,11 @@ import { spawnSync } from "node:child_process"
 import { readFile } from "node:fs/promises"
 import { createServer } from "node:http"
 import { after, before, test } from "node:test"
-import { parseBaseUrl, runProductionSmoke } from "../../scripts/deploy/production-smoke.mjs"
+import {
+  parseBaseUrl,
+  parseDataMode,
+  runProductionSmoke,
+} from "../../scripts/deploy/production-smoke.mjs"
 import {
   formatValidationFailure,
   PUBLIC_ENVIRONMENT_NAMES,
@@ -89,8 +93,64 @@ test("smoke command rejects malformed origins without echoing their value", () =
   )
 })
 
+test("smoke command selects an explicit catalog mode", () => {
+  assert.equal(parseDataMode(["--data-mode", "production"]), "production")
+  assert.throws(
+    () => parseDataMode(["--data-mode", "staging"]),
+    /Smoke configuration invalid: --data-mode must be mock or production/,
+  )
+})
+
 let server
 let baseUrl
+
+const productionCatalog = {
+  dataMode: "production",
+  places: [
+    {
+      dataMode: "production",
+      id: "6dd657be-fc3b-4bb8-8e67-fabbee0f2ea0",
+      slug: "production-fixture-place",
+      name: "Production fixture place",
+      address: "Fixture address",
+      latitude: 37.5,
+      longitude: 127.03,
+      naverPlaceUrl: "https://map.naver.com/p/place/1",
+      primaryTag: "balanced",
+      healthTags: ["balanced"],
+      published: true,
+    },
+  ],
+  menus: [
+    {
+      dataMode: "production",
+      id: "bc6b1050-539e-4d28-8493-5920eae54248",
+      placeId: "6dd657be-fc3b-4bb8-8e67-fabbee0f2ea0",
+      name: "Production fixture menu",
+      healthTags: ["balanced"],
+      evidenceUrl: "https://sources.example.test/production-fixture",
+      verifiedAt: "2026-08-14",
+      displayOrder: 0,
+      published: true,
+    },
+  ],
+}
+
+const createProductionFetch = (catalog) => (input, init) => {
+  const url = new URL(input)
+  return url.pathname === "/" && init?.method !== "POST"
+    ? Promise.resolve(new Response("<main>건강식 지도</main>", { status: 200 }))
+    : url.pathname === "/privacy" && init?.method !== "POST"
+      ? Promise.resolve(new Response("개인정보 및 분석 안내", { status: 200 }))
+      : url.pathname === "/api/map-catalog" && init?.method !== "POST"
+        ? Promise.resolve(
+            new Response(JSON.stringify(catalog), {
+              headers: { "content-type": "application/json" },
+              status: 200,
+            }),
+          )
+        : fetch(input, init)
+}
 
 before(async () => {
   server = createServer((request, response) => {
@@ -101,8 +161,12 @@ before(async () => {
         "application/json",
         JSON.stringify({
           dataMode: "mock",
-          menus: Array.from({ length: 10 }, (_, index) => ({ name: `메뉴 ${index + 1} 샘플` })),
+          menus: Array.from({ length: 10 }, (_, index) => ({
+            dataMode: "mock",
+            name: `메뉴 ${index + 1} 샘플`,
+          })),
           places: Array.from({ length: 5 }, (_, index) => ({
+            dataMode: "mock",
             name: `장소 ${index + 1} 샘플`,
           })),
         }),
@@ -131,7 +195,32 @@ after(async () => {
 })
 
 test("smoke runner proves HTTP content, catalog shape, and route behavior", async () => {
-  assert.equal(await runProductionSmoke(new URL(baseUrl)), "Production smoke passed")
+  assert.equal(await runProductionSmoke(new URL(baseUrl), "mock"), "Production smoke passed")
+})
+
+test("smoke runner accepts production provenance without mock count or name assumptions", async () => {
+  assert.equal(
+    await runProductionSmoke(
+      new URL(baseUrl),
+      "production",
+      createProductionFetch(productionCatalog),
+    ),
+    "Production smoke passed",
+  )
+})
+
+test("smoke runner rejects mock-only production evidence URLs", async () => {
+  const invalidCatalog = {
+    ...productionCatalog,
+    menus: productionCatalog.menus.map((menu) => ({
+      ...menu,
+      evidenceUrl: "https://example.invalid/mock-evidence/fixture",
+    })),
+  }
+  await assert.rejects(
+    () => runProductionSmoke(new URL(baseUrl), "production", createProductionFetch(invalidCatalog)),
+    /production menus lack the strict public shape or evidence provenance/,
+  )
 })
 
 test("smoke runner rejects a misleading HTTP 200 response", async () => {
@@ -143,7 +232,7 @@ test("smoke runner rejects a misleading HTTP 200 response", async () => {
           ? Promise.resolve(new Response("not an application", { status: 200 }))
           : fetch(input, init)
       }),
-    /Korean application and sample-data markers/,
+    /Korean application marker/,
   )
 })
 

@@ -1,6 +1,7 @@
 const SMOKE_TIMEOUT_MS = 10_000
 const CREDENTIAL_PATTERN =
   /(?:authorization|bearer\s+|service_role|supabase_service_role|sk_(?:live|test)_)/i
+const CATALOG_MODES = new Set(["mock", "production"])
 
 function fail(message) {
   throw new Error(`Production smoke failed: ${message}`)
@@ -28,6 +29,17 @@ export function parseBaseUrl(argumentsList) {
   } catch {
     throw new Error("Smoke configuration invalid: --base-url must be an http(s) origin")
   }
+}
+
+export function parseDataMode(argumentsList) {
+  const dataModeIndex = argumentsList.indexOf("--data-mode")
+  if (dataModeIndex === -1) return "mock"
+
+  const dataMode = argumentsList[dataModeIndex + 1]
+  if (!CATALOG_MODES.has(dataMode)) {
+    throw new Error("Smoke configuration invalid: --data-mode must be mock or production")
+  }
+  return dataMode
 }
 
 function assertSafeResponse(response, body, path) {
@@ -67,18 +79,36 @@ async function request(baseUrl, path, fetchImplementation) {
   return { body, response }
 }
 
-export async function runProductionSmoke(baseUrl, fetchImplementation = fetch) {
-  const home = await request(baseUrl, "/", fetchImplementation)
-  if (!home.body.includes("건강식 지도") || !home.body.includes("샘플 데이터")) {
-    fail("/ returned HTTP 200 without the Korean application and sample-data markers")
+export async function runProductionSmoke(
+  baseUrl,
+  expectedDataModeOrFetch = "mock",
+  fetchImplementation = fetch,
+) {
+  const expectedDataMode =
+    typeof expectedDataModeOrFetch === "function" ? "mock" : expectedDataModeOrFetch
+  const requestImplementation =
+    typeof expectedDataModeOrFetch === "function" ? expectedDataModeOrFetch : fetchImplementation
+  if (!CATALOG_MODES.has(expectedDataMode)) {
+    throw new Error("Smoke configuration invalid: --data-mode must be mock or production")
   }
 
-  const privacy = await request(baseUrl, "/privacy", fetchImplementation)
-  if (!privacy.body.includes("개인정보 및 분석 안내") || !privacy.body.includes("목업 데이터")) {
-    fail("/privacy returned HTTP 200 without its privacy and mock-data markers")
+  const home = await request(baseUrl, "/", requestImplementation)
+  if (!home.body.includes("건강식 지도")) {
+    fail("/ returned HTTP 200 without the Korean application marker")
+  }
+  if (expectedDataMode === "mock" && !home.body.includes("샘플 데이터")) {
+    fail("/ returned HTTP 200 without the mock sample-data marker")
   }
 
-  const catalog = await request(baseUrl, "/api/map-catalog", fetchImplementation)
+  const privacy = await request(baseUrl, "/privacy", requestImplementation)
+  if (!privacy.body.includes("개인정보 및 분석 안내")) {
+    fail("/privacy returned HTTP 200 without its privacy marker")
+  }
+  if (expectedDataMode === "mock" && !privacy.body.includes("목업 데이터")) {
+    fail("/privacy returned HTTP 200 without its mock-data marker")
+  }
+
+  const catalog = await request(baseUrl, "/api/map-catalog", requestImplementation)
   if (!catalog.response.headers.get("content-type")?.includes("application/json")) {
     fail("/api/map-catalog did not return JSON")
   }
@@ -94,21 +124,34 @@ export async function runProductionSmoke(baseUrl, fetchImplementation = fetch) {
   const payloadKeys = Object.keys(payload).sort()
   if (payloadKeys.join(",") !== "dataMode,menus,places")
     fail("/api/map-catalog did not return the strict {dataMode, places, menus} contract")
-  if (
-    payload.dataMode !== "mock" ||
-    !Array.isArray(payload.places) ||
-    !Array.isArray(payload.menus)
-  )
-    fail("/api/map-catalog did not return the mock catalog contract")
-  if (payload.places.length !== 5 || payload.menus.length !== 10)
-    fail("/api/map-catalog did not return exactly five places and ten menus")
-  if (
-    !payload.places.every((place) => typeof place.name === "string" && place.name.includes("샘플"))
-  ) {
-    fail("/api/map-catalog records are not explicitly labeled as sample data")
+  if (payload.dataMode !== expectedDataMode) {
+    fail(`/api/map-catalog dataMode did not match the requested ${expectedDataMode} mode`)
+  }
+  if (!Array.isArray(payload.places) || !Array.isArray(payload.menus)) {
+    fail(`/api/map-catalog did not return the ${expectedDataMode} catalog contract`)
+  }
+  if (expectedDataMode === "mock") {
+    if (payload.places.length !== 5 || payload.menus.length !== 10)
+      fail("/api/map-catalog did not return exactly five places and ten menus")
+    if (
+      !payload.places.every(
+        (place) =>
+          place.dataMode === "mock" &&
+          typeof place.name === "string" &&
+          place.name.includes("샘플"),
+      ) ||
+      !payload.menus.every(
+        (menu) =>
+          menu.dataMode === "mock" && typeof menu.name === "string" && menu.name.includes("샘플"),
+      )
+    ) {
+      fail("/api/map-catalog records are not explicitly labeled as sample data")
+    }
+  } else {
+    assertProductionCatalog(payload)
   }
 
-  const unsupportedMethod = await fetchImplementation(new URL("/api/map-catalog", baseUrl), {
+  const unsupportedMethod = await requestImplementation(new URL("/api/map-catalog", baseUrl), {
     method: "POST",
     redirect: "error",
     signal: AbortSignal.timeout(SMOKE_TIMEOUT_MS),
@@ -120,10 +163,71 @@ export async function runProductionSmoke(baseUrl, fetchImplementation = fetch) {
   return "Production smoke passed"
 }
 
+function assertProductionCatalog(payload) {
+  if (payload.places.length === 0 || payload.menus.length === 0) {
+    fail("/api/map-catalog production mode must include published places and menus")
+  }
+
+  const placeKeys =
+    "address,dataMode,healthTags,id,latitude,longitude,name,naverPlaceUrl,primaryTag,published,slug"
+  if (
+    !payload.places.every(
+      (place) =>
+        isRecord(place) &&
+        Object.keys(place).sort().join(",") === placeKeys &&
+        place.dataMode === "production" &&
+        isNaverPlaceUrl(place.naverPlaceUrl),
+    )
+  ) {
+    fail("/api/map-catalog production places lack the strict public shape or NAVER provenance")
+  }
+
+  const menuKeys =
+    "dataMode,displayOrder,evidenceUrl,healthTags,id,name,placeId,published,verifiedAt"
+  if (
+    !payload.menus.every(
+      (menu) =>
+        isRecord(menu) &&
+        Object.keys(menu).sort().join(",") === menuKeys &&
+        menu.dataMode === "production" &&
+        isProductionEvidenceUrl(menu.evidenceUrl),
+    )
+  ) {
+    fail("/api/map-catalog production menus lack the strict public shape or evidence provenance")
+  }
+}
+
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function isNaverPlaceUrl(value) {
+  try {
+    const url = new URL(value)
+    return (
+      url.protocol === "https:" &&
+      ["map.naver.com", "m.place.naver.com", "place.naver.com", "naver.me"].includes(url.hostname)
+    )
+  } catch {
+    return false
+  }
+}
+
+function isProductionEvidenceUrl(value) {
+  try {
+    const url = new URL(value)
+    return url.protocol === "https:" && url.hostname !== "example.invalid"
+  } catch {
+    return false
+  }
+}
+
 if (process.argv[1] === new URL(import.meta.url).pathname) {
   try {
-    const baseUrl = parseBaseUrl(process.argv.slice(2))
-    console.log(await runProductionSmoke(baseUrl))
+    const argumentsList = process.argv.slice(2)
+    const baseUrl = parseBaseUrl(argumentsList)
+    const dataMode = parseDataMode(argumentsList)
+    console.log(await runProductionSmoke(baseUrl, dataMode))
   } catch (error) {
     console.error(error instanceof Error ? error.message : "Production smoke failed")
     process.exitCode = 1
