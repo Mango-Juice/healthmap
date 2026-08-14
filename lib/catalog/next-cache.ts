@@ -10,8 +10,9 @@ export const NEXT_PUBLIC_CATALOG_CACHE_POLICY = {
 
 export const createNextPublicCatalogReader = (
   repository: PublicCatalogRepository,
+  cacheIdentity: string = NEXT_PUBLIC_CATALOG_CACHE_POLICY.tag,
 ): PublicCatalogReader =>
-  unstable_cache(() => repository.getPublicCatalog(), [NEXT_PUBLIC_CATALOG_CACHE_POLICY.tag], {
+  unstable_cache(() => repository.getPublicCatalog(), [cacheIdentity], {
     revalidate: NEXT_PUBLIC_CATALOG_CACHE_POLICY.revalidateSeconds,
-    tags: [NEXT_PUBLIC_CATALOG_CACHE_POLICY.tag],
+    tags: [cacheIdentity],
   })

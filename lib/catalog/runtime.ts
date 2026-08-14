@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { z } from "zod"
 import catalogSource from "../../data/catalog.json"
 import { type DataMode, MenuSchema, PlaceSchema } from "../domain/catalog.ts"
@@ -80,6 +81,13 @@ const configuredValues = (
   return { key, url }
 }
 
+export const getPublicCatalogCacheIdentity = (url: string): string => {
+  const parsed = new URL(url)
+  const normalizedOrigin = `${parsed.protocol}//${parsed.host}${parsed.pathname.replace(/\/$/, "")}`
+  const discriminator = createHash("sha256").update(normalizedOrigin).digest("hex").slice(0, 16)
+  return `public-catalog-${discriminator}`
+}
+
 export const createSupabasePublicCatalogClient = (
   url: string,
   key: string,
@@ -108,7 +116,10 @@ export const createPublicCatalogRuntimeProvider = (
   const repository = createPublicCatalogRepository(
     createSupabasePublicCatalogClient(config.url, config.key),
   )
-  return { mode: "production", read: createNextPublicCatalogReader(repository) }
+  return {
+    mode: "production",
+    read: createNextPublicCatalogReader(repository, getPublicCatalogCacheIdentity(config.url)),
+  }
 }
 
 export const getPublicCatalogRuntimeProvider = (): PublicCatalogRuntimeProvider =>

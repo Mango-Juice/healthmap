@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   createPublicCatalogRuntimeProvider,
   createSupabasePublicCatalogClient,
+  getPublicCatalogCacheIdentity,
   PublicCatalogConfigurationError,
 } from "../../../lib/catalog/runtime"
 import { VALID_MENU_ROW, VALID_PLACE_ROW } from "./fixtures"
@@ -63,5 +64,21 @@ describe("public catalog runtime provider", () => {
         authorization: "Bearer publishable",
       })
     }
+  })
+
+  it("Given configured catalog origins and key rotation, when cache identities are derived, then origin changes isolate cache while credentials do not", () => {
+    // Given
+    const firstOrigin = "https://first-catalog.example.test/"
+    const secondOrigin = "https://second-catalog.example.test/"
+
+    // When
+    const firstIdentity = getPublicCatalogCacheIdentity(firstOrigin)
+    const rotatedKeyIdentity = getPublicCatalogCacheIdentity(firstOrigin)
+    const secondIdentity = getPublicCatalogCacheIdentity(secondOrigin)
+
+    // Then
+    expect(firstIdentity).toBe(rotatedKeyIdentity)
+    expect(firstIdentity).not.toBe(secondIdentity)
+    expect(firstIdentity).not.toContain("first-catalog.example.test")
   })
 })
