@@ -89,16 +89,19 @@ export async function runProductionSmoke(baseUrl, fetchImplementation = fetch) {
   } catch {
     fail("/api/map-catalog returned malformed JSON")
   }
-  if (!Array.isArray(payload?.places) || payload.places.length !== 5) {
-    fail("/api/map-catalog did not return exactly five mock catalog records")
-  }
-  const menuCount = payload.places.reduce(
-    (count, place) => count + (Array.isArray(place.menus) ? place.menus.length : 0),
-    0,
+  if (typeof payload !== "object" || payload === null || Array.isArray(payload))
+    fail("/api/map-catalog did not return a catalog object")
+  const payloadKeys = Object.keys(payload).sort()
+  if (payloadKeys.join(",") !== "dataMode,menus,places")
+    fail("/api/map-catalog did not return the strict {dataMode, places, menus} contract")
+  if (
+    payload.dataMode !== "mock" ||
+    !Array.isArray(payload.places) ||
+    !Array.isArray(payload.menus)
   )
-  if (payload.data_mode !== "mock" || menuCount !== 10) {
-    fail("/api/map-catalog did not return the five-place ten-menu mock catalog")
-  }
+    fail("/api/map-catalog did not return the mock catalog contract")
+  if (payload.places.length !== 5 || payload.menus.length !== 10)
+    fail("/api/map-catalog did not return exactly five places and ten menus")
   if (
     !payload.places.every((place) => typeof place.name === "string" && place.name.includes("샘플"))
   ) {

@@ -1,41 +1,10 @@
-export const PUBLIC_ENVIRONMENT_NAMES = [
-  "NEXT_PUBLIC_NAVER_MAP_CLIENT_ID",
-  "NEXT_PUBLIC_SUPABASE_URL",
-  "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
-  "NEXT_PUBLIC_POSTHOG_KEY",
-  "NEXT_PUBLIC_POSTHOG_HOST",
-  "NEXT_PUBLIC_SITE_URL",
-]
+import { PUBLIC_ENVIRONMENT_NAMES, parsePublicEnvironment } from "../../app/public-environment.ts"
 
-const URL_ENVIRONMENT_NAMES = new Set([
-  "NEXT_PUBLIC_SUPABASE_URL",
-  "NEXT_PUBLIC_POSTHOG_HOST",
-  "NEXT_PUBLIC_SITE_URL",
-])
-
-function isValidPublicUrl(value) {
-  try {
-    const url = new URL(value)
-    return url.protocol === "https:" && url.hostname.length > 0
-  } catch {
-    return false
-  }
-}
+export { PUBLIC_ENVIRONMENT_NAMES }
 
 export function validatePublicEnvironment(environment) {
-  const missing = []
-  const malformed = []
-
-  for (const name of PUBLIC_ENVIRONMENT_NAMES) {
-    const value = environment[name]?.trim()
-    if (!value) {
-      missing.push(name)
-    } else if (URL_ENVIRONMENT_NAMES.has(name) && !isValidPublicUrl(value)) {
-      malformed.push(name)
-    }
-  }
-
-  return { malformed, missing }
+  const parsed = parsePublicEnvironment(environment)
+  return { malformed: parsed.invalid, missing: parsed.missing }
 }
 
 export function formatValidationFailure(result) {

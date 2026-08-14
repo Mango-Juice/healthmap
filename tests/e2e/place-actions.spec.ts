@@ -77,6 +77,16 @@ test("Given a mock place, when directions and sharing are requested, then direct
   await expect(page.getByLabel("공유 URL")).toBeVisible()
 })
 
+test("Given a mock place detail, when it is opened, then its sample copy remains explicit", async ({
+  page,
+}) => {
+  await page.goto("/?place=mock-sprout-square&src=place_share")
+
+  const detail = page.getByTestId("place-detail")
+  await expect(detail.getByText("샘플 데이터", { exact: true })).toBeVisible()
+  await expect(detail.getByRole("region", { name: "샘플 건강식 메뉴" })).toBeVisible()
+})
+
 test("Given an open place sheet, when it is closed by the button or Escape, then the map remains available", async ({
   page,
 }) => {

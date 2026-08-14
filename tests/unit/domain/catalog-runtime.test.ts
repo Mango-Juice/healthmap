@@ -33,11 +33,29 @@ describe("public catalog runtime provider", () => {
         NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "publishable",
         NEXT_PUBLIC_SUPABASE_URL: "not-a-url",
       },
+      {
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "publishable",
+        NEXT_PUBLIC_SUPABASE_URL: "http://catalog.example.test",
+      },
     ] as const
 
     // When
     const create = () =>
       environments.map((environment) => createPublicCatalogRuntimeProvider(environment))
+
+    // Then
+    expect(create).toThrow(PublicCatalogConfigurationError)
+  })
+
+  it("Given a loopback public Supabase origin, when the provider is created, then it rejects the non-HTTPS runtime endpoint", () => {
+    // Given
+    const environment = {
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "publishable",
+      NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321",
+    }
+
+    // When
+    const create = () => createPublicCatalogRuntimeProvider(environment)
 
     // Then
     expect(create).toThrow(PublicCatalogConfigurationError)

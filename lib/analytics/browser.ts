@@ -2,6 +2,7 @@
 
 import PostHog from "posthog-js-lite"
 
+import { parsePlaywrightPublicEnvironment } from "../../app/public-environment.ts"
 import { type AnalyticsEvent, parseAnalyticsEvent } from "../domain/analytics"
 import {
   createPrivacySafeAnalytics,
@@ -9,15 +10,17 @@ import {
   sanitizeAnalyticsTransportEvent,
 } from "./privacy-safe"
 
-type BrowserAnalyticsEnvironment = {
-  readonly host: string | undefined
-  readonly key: string | undefined
-}
+type BrowserAnalyticsEnvironment = Readonly<Record<string, string | undefined>>
+
+type ConfiguredBrowserAnalyticsEnvironment = Readonly<{
+  readonly host: string
+  readonly key: string
+}>
 
 type AnalyticsLifecycleState = {
   analytics: PrivacySafeAnalytics | null
   client: PostHog | null
-  configuredEnvironment: BrowserAnalyticsEnvironment | null
+  configuredEnvironment: ConfiguredBrowserAnalyticsEnvironment | null
   generation: number
   initialization: Promise<void> | null
   lifecycle: "idle" | "starting" | "ready"
@@ -131,8 +134,8 @@ const startConfiguredAnalytics = (): Promise<void> => {
   const environment = state.configuredEnvironment
   if (environment === null || getProductAnalyticsOptOut()) return Promise.resolve()
 
-  const key = asNonEmptyString(environment.key)
-  const host = asNonEmptyString(environment.host)
+  const key = asNonEmptyString(environment["key"])
+  const host = asNonEmptyString(environment["host"])
   if (key === null || host === null) {
     state.queuedEvents.length = 0
     return Promise.resolve()
@@ -166,7 +169,14 @@ const startConfiguredAnalytics = (): Promise<void> => {
 }
 
 export const initializeProductAnalytics = (environment: BrowserAnalyticsEnvironment): void => {
-  getAnalyticsState().configuredEnvironment = environment
+  const parsed = parsePlaywrightPublicEnvironment({
+    NEXT_PUBLIC_POSTHOG_HOST: environment["host"],
+    NEXT_PUBLIC_POSTHOG_KEY: environment["key"],
+    NEXT_PUBLIC_PLAYWRIGHT_TEST: environment["playwrightTest"],
+    NEXT_PUBLIC_TEST_ALLOW_HTTP_LOOPBACK: environment["testAllowHttpLoopback"],
+  })
+  getAnalyticsState().configuredEnvironment =
+    parsed.analytics === null ? null : { host: parsed.analytics.url, key: parsed.analytics.key }
   void startConfiguredAnalytics()
 }
 

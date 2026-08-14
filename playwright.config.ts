@@ -30,6 +30,8 @@ export default defineConfig({
         process.env["NEXT_PUBLIC_NAVER_MAP_CLIENT_ID"] ?? "test-client",
       NEXT_PUBLIC_POSTHOG_HOST: process.env["NEXT_PUBLIC_POSTHOG_HOST"] ?? "http://127.0.0.1:3498",
       NEXT_PUBLIC_POSTHOG_KEY: process.env["NEXT_PUBLIC_POSTHOG_KEY"] ?? "playwright-test-key",
+      NEXT_PUBLIC_PLAYWRIGHT_TEST: "1",
+      NEXT_PUBLIC_TEST_ALLOW_HTTP_LOOPBACK: "1",
     },
     url: baseURL,
     reuseExistingServer: !isContinuousIntegration,

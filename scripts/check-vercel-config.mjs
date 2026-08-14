@@ -23,8 +23,16 @@ if (!existsSync(vercelConfigUrl)) {
     failures.push("Vercel must install with the committed pnpm lockfile")
   }
 
-  if (vercelConfig.buildCommand !== "pnpm build") {
-    failures.push("Vercel must use the repository build command")
+  const buildCommands = vercelConfig.buildCommand?.split(" && ")
+  if (
+    !Array.isArray(buildCommands) ||
+    buildCommands.length !== 2 ||
+    buildCommands[0] !== "pnpm deploy:validate:hosted" ||
+    buildCommands[1] !== "pnpm build"
+  ) {
+    failures.push(
+      "Vercel must validate hosted public environment before the repository build command",
+    )
   }
 
   const headerRules = vercelConfig.headers
@@ -32,6 +40,7 @@ if (!existsSync(vercelConfigUrl)) {
     ["X-Content-Type-Options", "nosniff"],
     ["Referrer-Policy", "strict-origin-when-cross-origin"],
     ["X-Frame-Options", "SAMEORIGIN"],
+    ["Permissions-Policy", "geolocation=(self), camera=(), microphone=(), payment=()"],
   ])
   const configuredHeaders = new Map(
     headerRules?.flatMap((rule) =>
@@ -42,6 +51,15 @@ if (!existsSync(vercelConfigUrl)) {
     if (configuredHeaders.get(name) !== value) {
       failures.push(`Vercel must set ${name}=${value} for all routes`)
     }
+  }
+  const contentSecurityPolicy = configuredHeaders.get("Content-Security-Policy")
+  if (
+    typeof contentSecurityPolicy !== "string" ||
+    !contentSecurityPolicy.includes("default-src 'self'") ||
+    !contentSecurityPolicy.includes("object-src 'none'") ||
+    !contentSecurityPolicy.includes("connect-src 'self' https://oapi.map.naver.com")
+  ) {
+    failures.push("Vercel must set the reviewed Content-Security-Policy for all routes")
   }
 
   if (packageJson.engines?.node !== ">=22 <23") {

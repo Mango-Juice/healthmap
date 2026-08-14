@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto"
 import { z } from "zod"
+import { parsePublicEnvironment } from "../../app/public-environment.ts"
 import catalogSource from "../../data/catalog.json"
 import { type DataMode, MenuSchema, PlaceSchema } from "../domain/catalog.ts"
 import { requestJson } from "../http/request.ts"
@@ -10,7 +11,6 @@ import {
   type SupabaseCatalogClient,
 } from "./repository.ts"
 
-const PublicSupabaseUrlSchema = z.url({ protocol: /^https?$/ })
 const RawRowsSchema = z.array(z.unknown()).readonly()
 
 export class PublicCatalogConfigurationError extends Error {
@@ -26,10 +26,7 @@ export type PublicCatalogRuntimeProvider = {
   readonly read: PublicCatalogReader
 }
 
-type PublicCatalogEnvironment = Readonly<{
-  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?: string | undefined
-  NEXT_PUBLIC_SUPABASE_URL?: string | undefined
-}>
+type PublicCatalogEnvironment = Readonly<Record<string, string | undefined>>
 
 const mockCatalog = (): PublicCatalog => {
   const places = catalogSource.places.map((entry) =>
@@ -65,22 +62,6 @@ const mockCatalog = (): PublicCatalog => {
   return { places, menus }
 }
 
-const configuredValues = (
-  environment: PublicCatalogEnvironment,
-):
-  | {
-      readonly key: string
-      readonly url: string
-    }
-  | undefined => {
-  const url = environment.NEXT_PUBLIC_SUPABASE_URL?.trim()
-  const key = environment.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim()
-  if (url === undefined && key === undefined) return undefined
-  if (url === undefined || key === undefined || !PublicSupabaseUrlSchema.safeParse(url).success)
-    throw new PublicCatalogConfigurationError()
-  return { key, url }
-}
-
 export const getPublicCatalogCacheIdentity = (url: string): string => {
   const parsed = new URL(url)
   const normalizedOrigin = `${parsed.protocol}//${parsed.host}${parsed.pathname.replace(/\/$/, "")}`
@@ -108,8 +89,13 @@ export const createSupabasePublicCatalogClient = (
 export const createPublicCatalogRuntimeProvider = (
   environment: PublicCatalogEnvironment,
 ): PublicCatalogRuntimeProvider => {
-  const config = configuredValues(environment)
-  if (config === undefined) {
+  const config = parsePublicEnvironment(environment).catalog
+  const hasCatalogConfiguration =
+    environment["NEXT_PUBLIC_SUPABASE_URL"]?.trim() ||
+    environment["NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"]?.trim()
+  if (hasCatalogConfiguration !== undefined && config === null)
+    throw new PublicCatalogConfigurationError()
+  if (config === null) {
     const catalog = mockCatalog()
     return { mode: "mock", read: async () => catalog }
   }

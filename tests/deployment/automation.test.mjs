@@ -40,16 +40,39 @@ test("environment validation accepts safe configured placeholders", () => {
   assert.deepEqual(validatePublicEnvironment(safeEnvironment), { malformed: [], missing: [] })
 })
 
-test("environment validator CLI fails safely for malformed values", () => {
-  const result = spawnSync(process.execPath, ["scripts/deploy/validate-environment.mjs"], {
-    cwd: process.cwd(),
-    encoding: "utf8",
-    env: {
-      ...process.env,
-      ...safeEnvironment,
-      NEXT_PUBLIC_POSTHOG_HOST: "http://bad-host.invalid",
-    },
+test("environment validation rejects remote HTTP and script-shaped origins by name only", () => {
+  const secretLikeValue = "sk_live_do-not-echo"
+  const result = validatePublicEnvironment({
+    ...safeEnvironment,
+    NEXT_PUBLIC_POSTHOG_HOST: "http://analytics.example.test",
+    NEXT_PUBLIC_SITE_URL: "javascript:alert('do-not-echo')",
+    NEXT_PUBLIC_SUPABASE_URL: "data:text/plain,do-not-echo",
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: secretLikeValue,
   })
+  const message = formatValidationFailure(result)
+
+  assert.deepEqual(result.malformed, [
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "NEXT_PUBLIC_POSTHOG_HOST",
+    "NEXT_PUBLIC_SITE_URL",
+  ])
+  assert.doesNotMatch(message, /do-not-echo|sk_live/)
+})
+
+test("environment validator CLI fails safely for malformed values", () => {
+  const result = spawnSync(
+    process.execPath,
+    ["--experimental-strip-types", "scripts/deploy/validate-environment.mjs"],
+    {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        ...safeEnvironment,
+        NEXT_PUBLIC_POSTHOG_HOST: "http://bad-host.invalid",
+      },
+    },
+  )
 
   assert.equal(result.status, 1)
   assert.match(result.stderr, /NEXT_PUBLIC_POSTHOG_HOST/)
@@ -77,12 +100,10 @@ before(async () => {
       "/api/map-catalog": [
         "application/json",
         JSON.stringify({
-          data_mode: "mock",
+          dataMode: "mock",
+          menus: Array.from({ length: 10 }, (_, index) => ({ name: `메뉴 ${index + 1} 샘플` })),
           places: Array.from({ length: 5 }, (_, index) => ({
             name: `장소 ${index + 1} 샘플`,
-            menus: Array.from({ length: 2 }, (_, menuIndex) => ({
-              name: `메뉴 ${menuIndex + 1} 샘플`,
-            })),
           })),
         }),
       ],
@@ -126,7 +147,7 @@ test("smoke runner rejects a misleading HTTP 200 response", async () => {
   )
 })
 
-test("smoke runner rejects a catalog that is not the five-place ten-menu mock dataset", async () => {
+test("smoke runner rejects wrong mode, counts, and legacy contract keys", async () => {
   await assert.rejects(
     () =>
       runProductionSmoke(new URL(baseUrl), (input, init) => {
@@ -138,15 +159,38 @@ test("smoke runner rejects a catalog that is not the five-place ten-menu mock da
                   data_mode: "production",
                   places: Array.from({ length: 5 }, (_, index) => ({
                     name: `장소 ${index + 1} 샘플`,
-                    menus: [],
                   })),
+                  menus: [],
                 }),
                 { headers: { "content-type": "application/json" }, status: 200 },
               ),
             )
           : fetch(input, init)
       }),
-    /five-place ten-menu mock catalog/,
+    /strict \{dataMode, places, menus\} contract/,
+  )
+})
+
+test("smoke runner rejects unknown fields and secret-shaped catalog bodies", async () => {
+  await assert.rejects(
+    () =>
+      runProductionSmoke(new URL(baseUrl), (input, init) => {
+        const url = new URL(input)
+        return url.pathname === "/api/map-catalog" && init?.method !== "POST"
+          ? Promise.resolve(
+              new Response(
+                JSON.stringify({
+                  dataMode: "mock",
+                  menus: Array.from({ length: 10 }),
+                  places: Array.from({ length: 5 }, () => ({ name: "장소 샘플" })),
+                  service_role: "should-not-leak",
+                }),
+                { headers: { "content-type": "application/json" }, status: 200 },
+              ),
+            )
+          : fetch(input, init)
+      }),
+    /credential-shaped value/,
   )
 })
 
@@ -158,6 +202,9 @@ test("Vercel and CI pin frozen installs, quality gates, and deployment commands"
 
   assert.match(vercelConfig, /"installCommand": "pnpm install --frozen-lockfile"/)
   assert.match(vercelConfig, /"X-Content-Type-Options"/)
+  assert.match(vercelConfig, /"Content-Security-Policy"/)
+  assert.match(vercelConfig, /"Permissions-Policy"/)
+  assert.match(vercelConfig, /pnpm deploy:validate:hosted && pnpm build/)
   assert.match(ci, /pnpm deploy:validate/)
   assert.match(ci, /pnpm docs:check/)
   assert.match(ci, /pnpm test:integration/)

@@ -112,6 +112,8 @@ const startFixtureServer = async (): Promise<FixtureServer> => {
         NEXT_PUBLIC_DISABLE_REACT_DEVTOOLS: "1",
         NEXT_PUBLIC_POSTHOG_HOST: `${baseUrl}/posthog`,
         NEXT_PUBLIC_POSTHOG_KEY: "task7-fixture-key",
+        NEXT_PUBLIC_PLAYWRIGHT_TEST: "1",
+        NEXT_PUBLIC_TEST_ALLOW_HTTP_LOOPBACK: "1",
         TASK7_FIXTURE_DIST_DIR: distDirectory,
       },
       stdio: "pipe",
@@ -172,6 +174,22 @@ test("Given the typed published production fixture, when directions is selected,
     "https://map.naver.com/p/directions/127.0311,37.5032,place,%ED%85%8C%EC%8A%A4%ED%8A%B8%20%EC%83%9D%EC%82%B0%20%EA%B2%BD%EB%A1%9C%20%EC%8B%9D%EB%8B%B9/-/walk",
   )
   await directionsPage.close()
+})
+
+test("Given a typed production fixture detail, when it is opened, then detail copy contains no sample wording", async ({
+  page,
+}) => {
+  const server = fixtureServer
+  if (server === undefined) throw new Error("Fixture server was not started")
+  await page.goto(server.baseUrl)
+  await page.getByRole("button", { name: "테스트 생산 경로 식당" }).click()
+
+  const detail = page.getByTestId("place-detail")
+  await expect(detail.getByText("장소 정보", { exact: true })).toBeVisible()
+  await expect(detail.getByRole("region", { name: "건강식 메뉴" })).toBeVisible()
+  await expect(detail).not.toContainText("샘플")
+  await expect(detail).not.toHaveAttribute("aria-label", /샘플/)
+  await expect(detail.locator("[aria-label*='샘플']")).toHaveCount(0)
 })
 
 test("Given the typed production fixture, when directions opens, then its redacted transport event is emitted", async ({
