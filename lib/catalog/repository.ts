@@ -27,14 +27,9 @@ export const createPublicCatalogRepository = (
       places.every((place) => place.published) &&
       menus.every((menu) => {
         const parent = placeById.get(menu.placeId)
-        return menu.published && parent !== undefined && parent.dataMode === menu.dataMode
+        return menu.published && parent !== undefined
       })
-    const mode = places[0]?.dataMode ?? menus[0]?.dataMode
-    const isSingleMode =
-      mode === undefined ||
-      (places.every((place) => place.dataMode === mode) &&
-        menus.every((menu) => menu.dataMode === mode))
-    if (!isPublic || !isSingleMode) throw new PublicCatalogIntegrityError()
+    if (!isPublic) throw new PublicCatalogIntegrityError()
     return { places, menus }
   },
 })

@@ -9,11 +9,9 @@ import {
   ActionButton,
   EmptyState,
   FilterRail,
-  MapMarker,
   SkeletonDetail,
   StatusAlert,
 } from "../../components/ui/health-map-primitives"
-import { MapShell } from "./map-shell"
 import styles from "./showcase.module.css"
 import galleryStyles from "./showcase-gallery.module.css"
 
@@ -27,7 +25,6 @@ const buttonStates = [
 export function ShowcaseClient() {
   return (
     <div className={styles["showcaseBody"]}>
-      <MapShell />
       <section aria-labelledby="control-states-heading" className={styles["showcaseSection"]}>
         <div className={styles["sectionHeading"]}>
           <div>
@@ -67,38 +64,6 @@ export function ShowcaseClient() {
         <div className={galleryStyles["filterExamples"]}>
           <FilterRail selected="vegetables" />
           <FilterRail disabled selected="all" />
-        </div>
-      </section>
-
-      <section aria-labelledby="marker-heading" className={styles["showcaseSection"]}>
-        <div className={styles["sectionHeading"]}>
-          <div>
-            <span className={styles["stateLabel"]}>CATEGORY + PLACE</span>
-            <h2 id="marker-heading">대표 태그 마커</h2>
-          </div>
-          <span>녹색 핀과 텍스트 이름에 작은 색상 노치를 더합니다.</span>
-        </div>
-        <div className={galleryStyles["markerGallery"]}>
-          <div>
-            <MapMarker category="vegetables" label="채소 중심 장소" />
-            <span>채소</span>
-          </div>
-          <div>
-            <MapMarker category="protein" label="단백질 중심 장소" selected />
-            <span>단백질 · 선택</span>
-          </div>
-          <div>
-            <MapMarker category="balanced" label="균형식 중심 장소" />
-            <span>균형식</span>
-          </div>
-          <div>
-            <MapMarker category="plant_based" label="식물성 중심 장소" />
-            <span>식물성</span>
-          </div>
-          <div>
-            <MapMarker category="plant_based" disabled label="비활성 장소" />
-            <span>비활성</span>
-          </div>
         </div>
       </section>
 

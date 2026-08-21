@@ -7,8 +7,7 @@ import {
   MapPinIcon,
   RotateCcwIcon,
 } from "./health-map-icons"
-import markerStyles from "./health-map-marker.module.css"
-import { CATEGORY_LABELS, FILTER_OPTIONS, type FilterValue } from "./health-map-options"
+import { FILTER_OPTIONS, type FilterValue } from "./health-map-options"
 import styles from "./health-map-primitives.module.css"
 
 type FilterRailProperties = {
@@ -72,42 +71,6 @@ export function ActionButton({
   )
 }
 
-type MarkerCategory = Exclude<FilterValue, "all">
-
-type MapMarkerProperties = {
-  readonly category: MarkerCategory
-  readonly disabled?: boolean
-  readonly label: string
-  readonly onSelect?: () => void
-  readonly selected?: boolean
-}
-
-export function MapMarker({
-  category,
-  disabled = false,
-  label,
-  onSelect,
-  selected = false,
-}: MapMarkerProperties) {
-  return (
-    <button
-      aria-label={`${label}, ${CATEGORY_LABELS[category]}`}
-      aria-pressed={selected}
-      className={markerStyles["markerTarget"]}
-      data-category={category}
-      disabled={disabled}
-      onClick={onSelect}
-      type="button"
-    >
-      <span className={markerStyles["markerVisual"]}>
-        <MapPinIcon className={markerStyles["markerPin"]} />
-        <LeafIcon className={markerStyles["markerLeaf"]} />
-        <span aria-hidden="true" className={markerStyles["markerNotch"]} />
-      </span>
-    </button>
-  )
-}
-
 type StatusAlertProperties = {
   readonly action?: ReactNode
   readonly description: ReactNode
@@ -158,7 +121,7 @@ export function EmptyState({ action, description, title }: EmptyStateProperties)
   return (
     <div className={feedbackStyles["emptyState"]}>
       <span aria-hidden="true" className={feedbackStyles["emptyGlyph"]}>
-        <LeafIcon />
+        <MapPinIcon />
       </span>
       <strong>{title}</strong>
       <p>{description}</p>

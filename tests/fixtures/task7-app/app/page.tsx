@@ -5,7 +5,7 @@ function Task7FixturePage() {
   return (
     <main>
       <MapDiscovery
-        clientId={undefined}
+        clientId={process.env["NEXT_PUBLIC_NAVER_MAP_CLIENT_ID"]}
         directionsTargets={task7ActionCatalog.directionsTargets}
         initialMenus={task7ActionCatalog.menus}
         initialPlaces={task7ActionCatalog.places}

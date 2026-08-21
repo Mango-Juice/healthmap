@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test"
+import { expect, test } from "./map-test"
 
 test.beforeEach(async ({ context }) => {
   await context.addInitScript(() => {
@@ -22,7 +22,7 @@ test("Given a marker selection, when it is opened and closed through browser his
   await page.getByRole("button", { name: /무지개 한그릇 연구소/ }).click()
 
   // Then
-  await expect(page).toHaveURL(/place=mock-rainbow-bowl&src=place_share/)
+  await expect(page).toHaveURL(/place=test-rainbow-bowl&src=place_share/)
   await expect(page.getByRole("heading", { name: /무지개 한그릇 연구소/ })).toBeFocused()
   await page.goBack()
   await page.waitForURL(/lat=37.501&lng=127.033&z=15&tag=balanced&src=map_share/)
@@ -32,7 +32,7 @@ test("Given a marker selection, when it is opened and closed through browser his
     "aria-pressed",
     "true",
   )
-  await expect(page.getByRole("button", { name: /샘플/ })).toHaveCount(3)
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(3)
   await expect(page.getByTestId("map-view")).toHaveText(originalView ?? "")
 })
 
@@ -40,12 +40,12 @@ test("Given valid and invalid deep links, when the map loads, then published pla
   page,
 }) => {
   await page.goto(
-    "/?place=mock-sprout-square&lat=37.501&lng=127.033&z=15&tag=balanced&src=map_share",
+    "/?place=test-sprout-square&lat=37.501&lng=127.033&z=15&tag=balanced&src=map_share",
   )
 
   // Then
   await expect(page.getByRole("heading", { name: /새싹 네모식당/ })).toBeVisible()
-  await expect(page).toHaveURL(/\?place=mock-sprout-square&src=place_share$/)
+  await expect(page).toHaveURL(/\?place=test-sprout-square&src=place_share$/)
 
   // When
   await page.goto("/?place=not-published&src=place_share")
@@ -55,7 +55,7 @@ test("Given valid and invalid deep links, when the map loads, then published pla
   await expect(page).toHaveURL(/\/$/)
 })
 
-test("Given a mock place, when directions and sharing are requested, then directions stay local and sharing falls back to a selectable URL", async ({
+test("Given a production place, when directions and sharing are requested, then directions use its coordinates and sharing remains available", async ({
   page,
 }) => {
   // Given
@@ -65,26 +65,35 @@ test("Given a mock place, when directions and sharing are requested, then direct
       configurable: true,
       value: { writeText: () => Promise.reject(new DOMException("blocked")) },
     })
+    Object.defineProperty(window, "open", {
+      configurable: true,
+      value: (url: string | URL) => {
+        sessionStorage.setItem("directions-url", url.toString())
+        return null
+      },
+    })
   })
-  await page.goto("/?place=mock-sprout-square&src=place_share")
+  await page.goto("/?place=test-sprout-square&src=place_share")
 
   // When
   await page.getByRole("button", { name: "길찾기" }).click()
 
   // Then
-  await expect(page.getByText("샘플 데이터에서는 길찾기를 제공하지 않습니다.")).toBeVisible()
+  await expect
+    .poll(() => page.evaluate(() => sessionStorage.getItem("directions-url")))
+    .toContain("map.naver.com/p/directions/")
   await page.getByRole("button", { name: "공유", exact: true }).click()
   await expect(page.getByLabel("공유 URL")).toBeVisible()
 })
 
-test("Given a mock place detail, when it is opened, then its sample copy remains explicit", async ({
+test("Given a production place detail, when it is opened, then its production copy is explicit", async ({
   page,
 }) => {
-  await page.goto("/?place=mock-sprout-square&src=place_share")
+  await page.goto("/?place=test-sprout-square&src=place_share")
 
   const detail = page.getByTestId("place-detail")
-  await expect(detail.getByText("샘플 데이터", { exact: true })).toBeVisible()
-  await expect(detail.getByRole("region", { name: "샘플 건강식 메뉴" })).toBeVisible()
+  await expect(detail.getByText("장소 정보", { exact: true })).toBeVisible()
+  await expect(detail.getByRole("region", { name: "건강식 메뉴" })).toBeVisible()
 })
 
 test("Given an open place sheet, when it is closed by the button or Escape, then the map remains available", async ({
@@ -102,13 +111,19 @@ test("Given an open place sheet, when it is closed by the button or Escape, then
   await expect(page.getByTestId("map-stage")).toBeVisible()
 })
 
-test("Given each sample place, when directions is selected, then no external navigation is attempted", async ({
+test("Given each production place, when directions is selected, then each coordinate route is produced", async ({
   page,
 }) => {
-  const popup = page.waitForEvent("popup", { timeout: 500 }).then(
-    () => "opened",
-    () => "none",
-  )
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "open", {
+      configurable: true,
+      value: (url: string | URL) => {
+        const urls = JSON.parse(sessionStorage.getItem("directions-urls") ?? "[]") as string[]
+        sessionStorage.setItem("directions-urls", JSON.stringify([...urls, url.toString()]))
+        return null
+      },
+    })
+  })
   await page.goto("/")
   for (const name of [
     "새싹 네모식당",
@@ -119,10 +134,13 @@ test("Given each sample place, when directions is selected, then no external nav
   ]) {
     await page.getByRole("button", { name: new RegExp(name) }).click()
     await page.getByRole("button", { name: "길찾기" }).click()
-    await expect(page.getByText("샘플 데이터에서는 길찾기를 제공하지 않습니다.")).toBeVisible()
     await page.getByRole("button", { name: "상세 닫기" }).click()
   }
-  await expect(popup).resolves.toBe("none")
+  const urls = await page.evaluate(
+    () => JSON.parse(sessionStorage.getItem("directions-urls") ?? "[]") as string[],
+  )
+  expect(urls).toHaveLength(5)
+  expect(urls.every((url) => url.includes("map.naver.com/p/directions/"))).toBe(true)
   await expect(page).toHaveURL(/\/$/)
 })
 
@@ -135,7 +153,7 @@ test("Given Web Share and Clipboard outcomes, when place sharing is requested, t
       value: () => Promise.resolve(),
     })
   })
-  await page.goto("/?place=mock-sprout-square&src=place_share")
+  await page.goto("/?place=test-sprout-square&src=place_share")
   await page.getByRole("button", { name: "공유", exact: true }).click()
   await expect(page.getByText("공유 창을 열었습니다.")).toBeVisible()
 })
@@ -153,7 +171,7 @@ test("Given rejected Web Share and available Clipboard, when map sharing is requ
       value: { writeText: () => Promise.resolve() },
     })
   })
-  await page.goto("/?place=mock-sprout-square&src=place_share")
+  await page.goto("/?place=test-sprout-square&src=place_share")
   await page.getByRole("button", { name: "지도 공유" }).click()
   await expect(page.getByText("공유 URL을 클립보드에 복사했습니다.")).toBeVisible()
 })

@@ -20,7 +20,6 @@ export const buildProductionDirections = (
     longitude: place.longitude,
   },
 ): ProductionDirections | undefined => {
-  if (place.dataMode !== "production") return undefined
   if (
     target.kind === "route" &&
     isFiniteCoordinate(target.latitude) &&

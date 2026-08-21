@@ -14,12 +14,14 @@ import {
   readMapSnapshot,
   storeMapSnapshot,
 } from "./detail-history"
+import type { CatalogState } from "./use-catalog"
 import { useDetailSurface } from "./use-detail-surface"
 import { useSharedEntryAnalytics } from "./use-shared-entry-analytics"
 
 export type { DetailMotion, DetailPhase } from "./detail-history"
 
 type DetailSelectionInput = {
+  readonly catalogState: CatalogState
   readonly filter: PlaceFilter
   readonly initialPlaces: readonly Place[]
   readonly setFilter: (filter: PlaceFilter) => void
@@ -30,6 +32,7 @@ type DetailSelectionInput = {
 const DETAIL_TRANSITION_BUFFER_MS = 48
 
 export function useDetailSelection({
+  catalogState,
   filter,
   initialPlaces,
   setFilter,
@@ -43,7 +46,6 @@ export function useDetailSelection({
   const [motion, setMotion] = useState<DetailMotion>("settled")
   const didInitializeUrl = useRef(false)
   const mapSnapshot = useRef<HistorySnapshot | undefined>(undefined)
-  const selectionTrigger = useRef<HTMLElement | undefined>(undefined)
   const selectedSlugRef = useRef<string | undefined>(undefined)
   const phaseRef = useRef<DetailPhase>("closed")
   const openingFrame = useRef<number | undefined>(undefined)
@@ -68,16 +70,10 @@ export function useDetailSelection({
     selectedSlugRef.current = undefined
     setPhase("closed")
     setSelectedSlug(undefined)
-    const trigger = selectionTrigger.current
-    selectionTrigger.current = undefined
-    if (trigger?.isConnected) {
-      trigger.focus({ preventScroll: true })
-    } else if (triggerSlug !== undefined) {
+    if (triggerSlug !== undefined)
       document
-        .querySelector<HTMLElement>(`[data-place-slug="${triggerSlug}"]`)
-        ?.querySelector<HTMLElement>("button")
+        .querySelector<HTMLElement>("fieldset button[aria-pressed='true']")
         ?.focus({ preventScroll: true })
-    }
   }, [])
 
   const beginClose = useCallback((): void => {
@@ -133,6 +129,7 @@ export function useDetailSelection({
   }, [phase, selectedSlug])
 
   useEffect(() => {
+    if (catalogState !== "ready") return
     const recoverFromUrl = (): void => {
       const wasSelected = selectedSlugRef.current !== undefined
       const shareState = parseShareUrl(window.location.href)
@@ -208,7 +205,7 @@ export function useDetailSelection({
     setDidResolveEntry(true)
     window.addEventListener("popstate", recoverFromUrl)
     return () => window.removeEventListener("popstate", recoverFromUrl)
-  }, [beginClose, initialPlaces, setFilter, setView, sharedEntrySource])
+  }, [beginClose, catalogState, initialPlaces, setFilter, setView, sharedEntrySource])
 
   const open = useCallback(
     (place: Place): void => {
@@ -217,8 +214,6 @@ export function useDetailSelection({
         window.clearTimeout(closeSafetyTimer.current)
         closeSafetyTimer.current = undefined
       }
-      const activeElement = document.activeElement
-      selectionTrigger.current = activeElement instanceof HTMLElement ? activeElement : undefined
       setLinkNotice(undefined)
       const snapshot = { filter, url: `${window.location.pathname}${window.location.search}`, view }
       storeMapSnapshot(snapshot)

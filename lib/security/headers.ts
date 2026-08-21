@@ -26,9 +26,34 @@ const configuredConnectionOrigin = (value: string | undefined): string | null =>
 const connectionOrigins = (): readonly string[] =>
   [
     "https://oapi.map.naver.com",
+    "https://nrbe.map.naver.net",
+    "https://kr-col-ext.nelo.navercorp.com",
+    ...(process.env["NODE_ENV"] === "development"
+      ? ["http://oapi.map.naver.com", "http://nrbe.map.naver.net"]
+      : []),
     configuredConnectionOrigin(process.env["NEXT_PUBLIC_SUPABASE_URL"]),
     configuredConnectionOrigin(process.env["NEXT_PUBLIC_POSTHOG_HOST"]),
   ].flatMap((origin) => (origin === null ? [] : [origin]))
+
+const naverScriptOrigins = (): string =>
+  [
+    "https://oapi.map.naver.com",
+    "https://nrbe.map.naver.net",
+    ...(process.env["NODE_ENV"] === "development"
+      ? ["http://oapi.map.naver.com", "http://nrbe.map.naver.net"]
+      : []),
+  ].join(" ")
+
+const naverImageOrigins = (): string =>
+  [
+    "https://static.naver.net",
+    "https://nrbe.map.naver.net",
+    "https://map.pstatic.net",
+    "https://ssl.pstatic.net",
+    ...(process.env["NODE_ENV"] === "development"
+      ? ["http://static.naver.net", "http://nrbe.map.naver.net"]
+      : []),
+  ].join(" ")
 
 // Next injects inline styles at runtime; eval is restricted to Next development mode.
 export const CONTENT_SECURITY_POLICY = (): string =>
@@ -36,9 +61,9 @@ export const CONTENT_SECURITY_POLICY = (): string =>
     "default-src 'self'",
     "base-uri 'self'",
     "object-src 'none'",
-    `script-src 'self' 'unsafe-inline'${process.env["NODE_ENV"] === "development" ? " 'unsafe-eval'" : ""} https://oapi.map.naver.com`,
+    `script-src 'self' 'unsafe-inline'${process.env["NODE_ENV"] === "development" ? " 'unsafe-eval'" : ""} ${naverScriptOrigins()}`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: https://map.pstatic.net https://ssl.pstatic.net",
+    `img-src 'self' data: ${naverImageOrigins()}`,
     `connect-src 'self' ${connectionOrigins().join(" ")}`,
     "font-src 'self'",
     "form-action 'self'",

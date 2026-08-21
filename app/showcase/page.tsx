@@ -12,12 +12,9 @@ export default function ShowcasePage() {
   return (
     <main className={styles["showcase"]}>
       <header className={styles["pageHeader"]}>
-        <span className={styles["eyebrow"]}>DESIGN SYSTEM / TODO 2</span>
+        <span className={styles["eyebrow"]}>DESIGN SYSTEM</span>
         <h1>프리미티브 쇼케이스</h1>
-        <p>
-          지도 위에서 쓰일 필터, 마커, 버튼, 상태 피드백과 반응형 상세 표면을 실제 상호작용으로
-          검증합니다.
-        </p>
+        <p>필터, 버튼, 상태 피드백을 실제 상호작용으로 검증합니다.</p>
       </header>
       <ShowcaseClient />
     </main>

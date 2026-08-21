@@ -14,7 +14,7 @@ export default function PrivacyPage() {
       <header className="privacy-heading">
         <p>건강식 지도</p>
         <h1>개인정보 및 분석 안내</h1>
-        <p>이 서비스의 장소와 메뉴 정보는 실제 운영 정보가 아닌 명시적인 목업 데이터입니다.</p>
+        <p>장소와 메뉴 정보는 공개된 운영 데이터만 표시하며, 현재 상태는 제공처 기준입니다.</p>
       </header>
 
       <PrivacyPreference />

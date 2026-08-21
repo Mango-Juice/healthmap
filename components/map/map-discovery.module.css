@@ -1,8 +1,6 @@
 .shell {
   --hm-canvas: #f4f0e7;
   --hm-map: #ebe8dc;
-  --hm-map-land: #dde5d2;
-  --hm-map-road: #fffdf8;
   --hm-surface: #fffdf8;
   --hm-surface-subtle: #f8f5ed;
   --hm-ink: #17231c;
@@ -13,16 +11,12 @@
   --hm-green-800: #18563b;
   --hm-green-600: #2f7651;
   --hm-green-100: #e1ece3;
-  --hm-coral: #d85b42;
-  --hm-amber: #b66a00;
   --hm-blue: #26699c;
-  --hm-moss: #527638;
   --hm-info: #225f86;
   --hm-info-wash: #eaf4fa;
   --hm-error: #b53a2f;
   --hm-error-wash: #fff0ec;
   --hm-shadow-control: 0 1px 2px rgba(13, 52, 37, 0.08), 0 4px 12px rgba(13, 52, 37, 0.06);
-  --hm-shadow-marker: 0 2px 4px rgba(13, 52, 37, 0.16), 0 6px 14px rgba(13, 52, 37, 0.12);
   --hm-shadow-detail: 0 1px 1px rgba(13, 52, 37, 0.1), 0 12px 32px rgba(13, 52, 37, 0.12);
   --hm-space-1: 4px;
   --hm-space-2: 8px;
@@ -32,14 +26,9 @@
   --hm-space-12: 48px;
   --hm-radius-control: 999px;
   --hm-radius-card: 8px;
-  --hm-radius-marker: 50%;
   --hm-border-width: 1px;
   --hm-focus-ring: 3px;
   --hm-control-min: 44px;
-  --hm-marker-visual: 36px;
-  --hm-marker-leaf-offset: 7px;
-  --hm-marker-ring-gap: 5px;
-  --hm-marker-notch-border: 2px;
   --hm-icon-md: 20px;
   --hm-icon-sm: 16px;
   --hm-icon-lg: 24px;
@@ -79,12 +68,10 @@
   --hm-sheet-block-min: 272px;
   --hm-pane-wide: 360px;
   --hm-press-offset: 1px;
-  --hm-marker-lift: -2px;
   --hm-active-brightness: 0.86;
   --hm-layer-map: 0;
   --hm-layer-controls: 10;
   --hm-layer-detail: 20;
-  --hm-layer-focus: 30;
   background: var(--hm-canvas);
   color: var(--hm-ink);
   display: grid;
@@ -113,14 +100,14 @@
   line-height: var(--hm-leading-tight);
   margin: 0;
 }
-.sample {
-  background: var(--hm-info-wash);
-  border: var(--hm-border-width) solid var(--hm-info);
-  border-radius: var(--hm-radius-card);
-  color: var(--hm-info);
-  flex: none;
-  font-size: var(--hm-type-caption);
-  padding: var(--hm-space-2) var(--hm-space-3);
+.visuallyHidden {
+  block-size: var(--hm-visually-hidden-size);
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  inline-size: var(--hm-visually-hidden-size);
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
 }
 .header > button {
   min-block-size: var(--hm-control-min);
@@ -128,97 +115,70 @@
 }
 .map {
   background: var(--hm-map);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   min-block-size: 0;
   overflow: hidden;
   position: relative;
-}
-.paperMap {
-  background-color: var(--hm-map);
-  inset: 0;
-  position: absolute;
 }
 .sdkMap {
   inset: 0;
   position: absolute;
   z-index: var(--hm-layer-map);
 }
-.paperLabel {
-  background: var(--hm-surface-subtle);
-  border: var(--hm-border-width) solid var(--hm-border);
-  border-radius: var(--hm-radius-control);
-  color: var(--hm-ink-muted);
-  font-size: var(--hm-type-caption);
-  font-weight: var(--hm-weight-label);
-  letter-spacing: 0;
-  padding: var(--hm-space-1) var(--hm-space-2);
-  position: absolute;
-  z-index: 3;
-}
-.paperArea,
-.paperJunction,
-.paperLabel,
-.paperParcel,
-.paperRoad,
-.paperWater {
-  inset-block-start: var(--geo-y);
-  inset-inline-start: var(--geo-x);
-  transform: rotate(var(--geo-rotate));
-}
-.paperArea,
-.paperParcel,
-.paperRoad,
-.paperWater {
-  block-size: var(--geo-block);
-  inline-size: var(--geo-inline);
-}
-.paperArea {
-  background: var(--hm-green-100);
-  border: var(--hm-border-width) solid var(--hm-green-300);
-  border-radius: var(--hm-radius-card);
-  pointer-events: none;
-  position: absolute;
-  z-index: 0;
-}
-.paperWater {
+.mapState {
+  align-content: center;
   background: var(--hm-info-wash);
   border: var(--hm-border-width) solid var(--hm-info);
   border-radius: var(--hm-radius-card);
-  pointer-events: none;
+  color: var(--hm-info);
+  display: grid;
+  gap: var(--hm-space-2);
+  inset: 50% auto auto 50%;
+  justify-items: center;
+  max-inline-size: min(28rem, calc(100% - var(--hm-space-8)));
+  padding: var(--hm-space-6);
   position: absolute;
-  z-index: 0;
-}
-.paperParcel {
-  background: var(--hm-surface-subtle);
-  border: var(--hm-border-width) solid var(--hm-border);
-  border-radius: var(--hm-radius-card);
-  pointer-events: none;
-  position: absolute;
-  z-index: 1;
-}
-.paperRoad {
-  background: var(--hm-map-road);
-  block-size: var(--geo-block);
-  box-shadow: 0 0 0 var(--hm-border-width) var(--hm-border);
-  inline-size: var(--geo-inline);
-  pointer-events: none;
-  position: absolute;
-  z-index: 2;
-}
-.paperJunction {
-  background: var(--hm-map-road);
-  border: var(--hm-border-width) solid var(--hm-border-strong);
-  border-radius: var(--hm-radius-marker);
-  block-size: var(--geo-block);
-  inline-size: var(--geo-inline);
-  pointer-events: none;
-  position: absolute;
+  text-align: center;
   transform: translate(-50%, -50%);
-  z-index: 3;
+  z-index: var(--hm-layer-controls);
 }
-.paperLabel {
-  inset-block-start: var(--geo-y);
-  inset-inline-start: var(--geo-x);
-  transform: rotate(var(--geo-rotate));
+.mapState[data-tone="error"] {
+  background: var(--hm-error-wash);
+  border-color: var(--hm-error);
+  color: var(--hm-error);
+}
+.mapState strong {
+  font-size: var(--hm-type-subheading);
+  line-height: var(--hm-leading-body);
+  word-break: keep-all;
+}
+.mapState span {
+  color: var(--hm-ink-muted);
+  font-size: var(--hm-type-body);
+  line-height: var(--hm-leading-body);
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+.mapState button {
+  align-items: center;
+  display: flex;
+  gap: var(--hm-space-2);
+  min-block-size: var(--hm-control-min);
+  padding-inline: var(--hm-space-4);
+}
+.mapStateButtonIcon,
+.mapStateIcon {
+  block-size: var(--hm-icon-md);
+  inline-size: var(--hm-icon-md);
+}
+.mapState[role="status"] .mapStateIcon {
+  animation: map-state-spin var(--hm-motion-spinner) linear infinite;
+}
+@keyframes map-state-spin {
+  to {
+    transform: rotate(var(--hm-spinner-turn));
+  }
 }
 .filter {
   inset-block-start: var(--hm-space-3);
@@ -317,49 +277,6 @@
   opacity: 1;
   transform: translateY(0);
 }
-.markers {
-  inset: 0;
-  pointer-events: none;
-  position: absolute;
-}
-.markers > span {
-  pointer-events: auto;
-  position: absolute;
-  z-index: var(--hm-layer-controls);
-}
-.markers > span:nth-child(1) {
-  inset-block-start: 28%;
-  inset-inline-start: 24%;
-}
-.markers > span:nth-child(2) {
-  inset-block-start: 39%;
-  inset-inline-start: 66%;
-}
-.markers > span:nth-child(3) {
-  inset-block-start: 55%;
-  inset-inline-start: 43%;
-}
-.markers > span:nth-child(4) {
-  inset-block-start: 70%;
-  inset-inline-start: 72%;
-}
-.markers > span:nth-child(5) {
-  inset-block-start: 24%;
-  inset-inline-start: 80%;
-}
-.userMarker {
-  background: var(--hm-blue);
-  border: var(--hm-marker-notch-border) solid var(--hm-surface);
-  border-radius: var(--hm-radius-marker);
-  block-size: var(--hm-space-4);
-  box-shadow: 0 0 0 var(--hm-space-1) var(--hm-blue);
-  display: block;
-  inline-size: var(--hm-space-4);
-  inset-block-start: 50%;
-  inset-inline-start: 50%;
-  position: absolute;
-  z-index: var(--hm-layer-controls);
-}
 .catalogFeedback {
   inset: 50% auto auto 50%;
   max-inline-size: 18rem;
@@ -402,32 +319,21 @@ button:focus-visible {
   .location span {
     word-break: keep-all;
   }
-  .markers > span:nth-child(5) {
-    inset-inline-start: 76%;
-  }
   .detailSurface {
     max-block-size: var(--hm-sheet-max);
   }
 }
 @media (min-width: 768px) {
-  .map {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-  }
   .map[data-detail-phase="opening"],
   .map[data-detail-phase="open"],
   .map[data-detail-phase="closing"] {
     grid-template-columns: minmax(0, 1fr) var(--hm-pane-wide);
   }
-  .paperMap,
   .sdkMap {
     inset-inline-end: 0;
   }
-  .map[data-detail-phase="opening"] .paperMap,
   .map[data-detail-phase="opening"] .sdkMap,
-  .map[data-detail-phase="open"] .paperMap,
   .map[data-detail-phase="open"] .sdkMap,
-  .map[data-detail-phase="closing"] .paperMap,
   .map[data-detail-phase="closing"] .sdkMap {
     inset-inline-end: var(--hm-pane-wide);
   }
@@ -448,14 +354,6 @@ button:focus-visible {
   .map[data-detail-phase="open"] .locate,
   .map[data-detail-phase="closing"] .locate {
     inset-inline-end: calc(var(--hm-pane-wide) + var(--hm-space-3));
-  }
-  .markers {
-    inset-inline-end: 0;
-  }
-  .map[data-detail-phase="opening"] .markers,
-  .map[data-detail-phase="open"] .markers,
-  .map[data-detail-phase="closing"] .markers {
-    inset-inline-end: var(--hm-pane-wide);
   }
   .detailSurface {
     border-block-start: 0;
@@ -498,6 +396,9 @@ button:focus-visible {
   .shell * {
     scroll-behavior: auto;
     transition-duration: var(--hm-motion-reduced);
+  }
+  .mapState[role="status"] .mapStateIcon {
+    animation: none;
   }
   .detailSurface[data-detail-phase="opening"][data-detail-motion="start"],
   .detailSurface[data-detail-phase="closing"],

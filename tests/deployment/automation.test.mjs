@@ -3,11 +3,7 @@ import { spawnSync } from "node:child_process"
 import { readFile } from "node:fs/promises"
 import { createServer } from "node:http"
 import { after, before, test } from "node:test"
-import {
-  parseBaseUrl,
-  parseDataMode,
-  runProductionSmoke,
-} from "../../scripts/deploy/production-smoke.mjs"
+import { parseBaseUrl, runProductionSmoke } from "../../scripts/deploy/production-smoke.mjs"
 import {
   formatValidationFailure,
   PUBLIC_ENVIRONMENT_NAMES,
@@ -93,14 +89,6 @@ test("smoke command rejects malformed origins without echoing their value", () =
   )
 })
 
-test("smoke command selects an explicit catalog mode", () => {
-  assert.equal(parseDataMode(["--data-mode", "production"]), "production")
-  assert.throws(
-    () => parseDataMode(["--data-mode", "staging"]),
-    /Smoke configuration invalid: --data-mode must be mock or production/,
-  )
-})
-
 let server
 let baseUrl
 
@@ -155,22 +143,9 @@ const createProductionFetch = (catalog) => (input, init) => {
 before(async () => {
   server = createServer((request, response) => {
     const responses = {
-      "/": ["text/html; charset=utf-8", "<main>건강식 지도 샘플 데이터</main>"],
-      "/privacy": ["text/html; charset=utf-8", "개인정보 및 분석 안내 목업 데이터"],
-      "/api/map-catalog": [
-        "application/json",
-        JSON.stringify({
-          dataMode: "mock",
-          menus: Array.from({ length: 10 }, (_, index) => ({
-            dataMode: "mock",
-            name: `메뉴 ${index + 1} 샘플`,
-          })),
-          places: Array.from({ length: 5 }, (_, index) => ({
-            dataMode: "mock",
-            name: `장소 ${index + 1} 샘플`,
-          })),
-        }),
-      ],
+      "/": ["text/html; charset=utf-8", "<main>건강식 지도</main>"],
+      "/privacy": ["text/html; charset=utf-8", "개인정보 및 분석 안내"],
+      "/api/map-catalog": ["application/json", JSON.stringify(productionCatalog)],
     }
     const current = responses[request.url]
     if (request.method === "POST" && request.url === "/api/map-catalog") {
@@ -195,16 +170,12 @@ after(async () => {
 })
 
 test("smoke runner proves HTTP content, catalog shape, and route behavior", async () => {
-  assert.equal(await runProductionSmoke(new URL(baseUrl), "mock"), "Production smoke passed")
+  assert.equal(await runProductionSmoke(new URL(baseUrl)), "Production smoke passed")
 })
 
 test("smoke runner accepts production provenance without mock count or name assumptions", async () => {
   assert.equal(
-    await runProductionSmoke(
-      new URL(baseUrl),
-      "production",
-      createProductionFetch(productionCatalog),
-    ),
+    await runProductionSmoke(new URL(baseUrl), createProductionFetch(productionCatalog)),
     "Production smoke passed",
   )
 })
@@ -218,7 +189,7 @@ test("smoke runner rejects mock-only production evidence URLs", async () => {
     })),
   }
   await assert.rejects(
-    () => runProductionSmoke(new URL(baseUrl), "production", createProductionFetch(invalidCatalog)),
+    () => runProductionSmoke(new URL(baseUrl), createProductionFetch(invalidCatalog)),
     /production records failed canonical public schema/,
   )
 })
@@ -240,17 +211,11 @@ test("smoke runner rejects production URL userinfo in NAVER and evidence provena
   }
 
   await assert.rejects(
-    () =>
-      runProductionSmoke(
-        new URL(baseUrl),
-        "production",
-        createProductionFetch(hostilePlaceCatalog),
-      ),
+    () => runProductionSmoke(new URL(baseUrl), createProductionFetch(hostilePlaceCatalog)),
     /production records failed canonical public schema/,
   )
   await assert.rejects(
-    () =>
-      runProductionSmoke(new URL(baseUrl), "production", createProductionFetch(hostileMenuCatalog)),
+    () => runProductionSmoke(new URL(baseUrl), createProductionFetch(hostileMenuCatalog)),
     /production records failed canonical public schema/,
   )
 })
@@ -258,7 +223,7 @@ test("smoke runner rejects production URL userinfo in NAVER and evidence provena
 test("smoke runner safety-scans an unsupported-method response before accepting HTTP 405", async () => {
   await assert.rejects(
     () =>
-      runProductionSmoke(new URL(baseUrl), "production", (input, init) => {
+      runProductionSmoke(new URL(baseUrl), (input, init) => {
         const url = new URL(input)
         if (url.pathname === "/api/map-catalog" && init?.method === "POST") {
           return Promise.resolve(
@@ -281,8 +246,7 @@ test("smoke runner rejects malformed production record field types", async () =>
   }
 
   await assert.rejects(
-    () =>
-      runProductionSmoke(new URL(baseUrl), "production", createProductionFetch(malformedCatalog)),
+    () => runProductionSmoke(new URL(baseUrl), createProductionFetch(malformedCatalog)),
     /production records failed canonical public schema/,
   )
 })
@@ -315,19 +279,16 @@ test("smoke runner rejects unpublished and orphaned production rows", async () =
   }
 
   await assert.rejects(
-    () =>
-      runProductionSmoke(new URL(baseUrl), "production", createProductionFetch(unpublishedCatalog)),
+    () => runProductionSmoke(new URL(baseUrl), createProductionFetch(unpublishedCatalog)),
     /unpublished, orphaned, or mode-mismatched/,
   )
   await assert.rejects(
-    () =>
-      runProductionSmoke(new URL(baseUrl), "production", createProductionFetch(orphanedCatalog)),
+    () => runProductionSmoke(new URL(baseUrl), createProductionFetch(orphanedCatalog)),
     /unpublished, orphaned, or mode-mismatched/,
   )
   await assert.rejects(
-    () =>
-      runProductionSmoke(new URL(baseUrl), "production", createProductionFetch(mixedModeCatalog)),
-    /unpublished, orphaned, or mode-mismatched/,
+    () => runProductionSmoke(new URL(baseUrl), createProductionFetch(mixedModeCatalog)),
+    /production records failed canonical public schema/,
   )
 })
 
@@ -407,37 +368,12 @@ test("Vercel and CI pin frozen installs, quality gates, and deployment commands"
   assert.match(ci, /pnpm deploy:validate/)
   assert.match(ci, /pnpm docs:check/)
   assert.match(ci, /pnpm test:integration/)
-  assert.match(ci, /pnpm start --port "\$PORT"/)
-  assert.match(ci, /pnpm deploy:smoke -- --base-url http:\/\/127\.0\.0\.1:\$PORT/)
-  assert.match(
-    ci,
-    /env -u NEXT_PUBLIC_SUPABASE_URL -u NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY pnpm start --port "\$PORT"/,
-  )
-  assert.match(
-    ci,
-    /env -u NEXT_PUBLIC_SUPABASE_URL -u NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY pnpm build/,
-  )
-  assert.equal(
-    (
-      ci.match(/pnpm deploy:smoke -- --base-url http:\/\/127\.0\.0\.1:\$PORT --data-mode mock/g) ??
-      []
-    ).length,
-    2,
-  )
+  assert.doesNotMatch(ci, /--data-mode/)
   assert.match(
     packageJson,
     /"deploy:smoke": "node --experimental-strip-types scripts\/deploy\/production-smoke\.mjs"/,
   )
-  assert.match(
-    operations,
-    /env -u NEXT_PUBLIC_SUPABASE_URL -u NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY pnpm build/,
-  )
-  assert.match(
-    operations,
-    /env -u NEXT_PUBLIC_SUPABASE_URL -u NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY pnpm start/,
-  )
-  assert.match(operations, /no local `\.env\*` file defines `NEXT_PUBLIC_SUPABASE_URL`/)
-  assert.match(operations, /CI job follows the same policy/)
+  assert.doesNotMatch(operations, /--data-mode/)
 })
 
 test("the public template names match the runtime validator", async () => {

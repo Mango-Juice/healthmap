@@ -57,7 +57,11 @@ if (!existsSync(vercelConfigUrl)) {
     typeof contentSecurityPolicy !== "string" ||
     !contentSecurityPolicy.includes("default-src 'self'") ||
     !contentSecurityPolicy.includes("object-src 'none'") ||
-    !contentSecurityPolicy.includes("connect-src 'self' https://oapi.map.naver.com")
+    !contentSecurityPolicy.includes(
+      "script-src 'self' 'unsafe-inline' https://oapi.map.naver.com https://nrbe.map.naver.net",
+    ) ||
+    !contentSecurityPolicy.includes("https://static.naver.net") ||
+    !contentSecurityPolicy.includes("https://kr-col-ext.nelo.navercorp.com")
   ) {
     failures.push("Vercel must set the reviewed Content-Security-Policy for all routes")
   }

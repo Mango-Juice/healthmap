@@ -137,7 +137,7 @@
   align-items: center;
   background: var(--hm-green-100);
   block-size: var(--hm-empty-glyph);
-  border-radius: var(--hm-radius-marker);
+  border-radius: var(--hm-radius-control);
   color: var(--hm-green-800);
   display: inline-flex;
   inline-size: var(--hm-empty-glyph);

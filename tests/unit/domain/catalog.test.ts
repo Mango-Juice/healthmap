@@ -44,38 +44,13 @@ describe("catalog domain boundary", () => {
     })
   })
 
-  it("Given all committed mock rows, when parsed, then dataMode is retained", async () => {
-    // Given
-    const catalog = (await import("../../../data/catalog.json")).default
-    const placeRows = catalog.places.map(
-      ({ menus: _menus, marker_offset: _markerOffset, ...place }) => ({
-        ...place,
-        data_mode: catalog.data_mode,
-      }),
-    )
-    const menuRows = catalog.places.flatMap((place) =>
-      place.menus.map((menu) => ({ ...menu, place_id: place.id, data_mode: catalog.data_mode })),
-    )
-
-    // When
-    const result = { places: parsePlaceRows(placeRows), menus: parseMenuRows(menuRows) }
-
-    // Then
-    expect(result.places).toHaveLength(5)
-    expect(result.menus).toHaveLength(10)
-    expect(result.places.every((place) => place.dataMode === "mock")).toBe(true)
-    expect(result.menus.every((menu) => menu.dataMode === "mock")).toBe(true)
-  })
-
-  it("Given rows without mode or with an invalid mode/url pairing, when parsed, then they are rejected", () => {
+  it("Given rows without production mode, when parsed, then they are rejected", () => {
     // Given
     const invalidPlaces = [
       { ...VALID_PLACE_ROW, data_mode: undefined },
       {
         ...VALID_PLACE_ROW,
-        data_mode: "mock",
-        slug: "mock-place",
-        naver_place_url: VALID_PLACE_ROW.naver_place_url,
+        data_mode: "sample",
       },
     ]
     const invalidMenus = [

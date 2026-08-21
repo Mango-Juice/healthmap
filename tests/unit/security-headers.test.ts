@@ -19,6 +19,28 @@ describe("security headers", () => {
     expect(CONTENT_SECURITY_POLICY()).not.toContain("'unsafe-eval'")
   })
 
+  it("Given development mode, when NAVER Maps loads on localhost, then its HTTP runtime assets are permitted", () => {
+    vi.stubEnv("NODE_ENV", "development")
+
+    const policy = CONTENT_SECURITY_POLICY()
+
+    expect(policy).toContain("http://oapi.map.naver.com")
+    expect(policy).toContain("http://nrbe.map.naver.net")
+    expect(policy).toContain("http://static.naver.net")
+  })
+
+  it("Given production mode, when the CSP is generated, then only HTTPS NAVER runtime assets are permitted", () => {
+    vi.stubEnv("NODE_ENV", "production")
+
+    const policy = CONTENT_SECURITY_POLICY()
+
+    expect(policy).toContain("https://nrbe.map.naver.net")
+    expect(policy).toContain("https://static.naver.net")
+    expect(policy).not.toContain("http://oapi.map.naver.com")
+    expect(policy).not.toContain("http://nrbe.map.naver.net")
+    expect(policy).not.toContain("http://static.naver.net")
+  })
+
   it("Given a development loopback flag without the typed Playwright mode, when the CSP is generated, then the local analytics origin remains blocked", () => {
     vi.stubEnv("NODE_ENV", "development")
     vi.stubEnv("NEXT_PUBLIC_TEST_ALLOW_HTTP_LOOPBACK", "1")

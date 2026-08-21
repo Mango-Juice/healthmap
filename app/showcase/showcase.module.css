@@ -1,8 +1,5 @@
 .showcase {
   --hm-canvas: #f4f0e7;
-  --hm-map: #ebe8dc;
-  --hm-map-land: #dde5d2;
-  --hm-map-road: #fffdf8;
   --hm-surface: #fffdf8;
   --hm-surface-subtle: #f8f5ed;
   --hm-ink: #17231c;
@@ -14,18 +11,11 @@
   --hm-green-600: #2f7651;
   --hm-green-300: #98bba5;
   --hm-green-100: #e1ece3;
-  --hm-coral: #d85b42;
-  --hm-amber: #b66a00;
   --hm-blue: #26699c;
-  --hm-moss: #527638;
   --hm-error: #b53a2f;
   --hm-error-wash: #fff0ec;
   --hm-info: #225f86;
   --hm-info-wash: #eaf4fa;
-  --hm-scrim: rgba(13, 52, 37, 0.24);
-  --hm-shadow-control: 0 1px 2px rgba(13, 52, 37, 0.08), 0 4px 12px rgba(13, 52, 37, 0.06);
-  --hm-shadow-detail: 0 1px 1px rgba(13, 52, 37, 0.1), 0 12px 32px rgba(13, 52, 37, 0.12);
-  --hm-shadow-marker: 0 2px 4px rgba(13, 52, 37, 0.16), 0 6px 14px rgba(13, 52, 37, 0.12);
   --hm-space-1: 4px;
   --hm-space-2: 8px;
   --hm-space-3: 12px;
@@ -36,23 +26,12 @@
   --hm-space-12: 48px;
   --hm-radius-control: 999px;
   --hm-radius-card: 8px;
-  --hm-radius-marker: 50%;
   --hm-border-width: 1px;
   --hm-focus-ring: 3px;
   --hm-control-min: 44px;
-  --hm-marker-visual: 36px;
-  --hm-marker-leaf-offset: 7px;
-  --hm-marker-ring-gap: 5px;
-  --hm-marker-notch-border: 2px;
-  --hm-pane-wide: 360px;
-  --hm-pane-narrow: 280px;
   --hm-content-max: 1180px;
-  --hm-map-block-mobile: 640px;
-  --hm-map-block-wide: 560px;
-  --hm-sheet-block-min: 272px;
   --hm-feedback-column-min: 260px;
   --hm-state-column-min: 152px;
-  --hm-marker-column-min: 128px;
   --hm-skeleton-block: 132px;
   --hm-empty-block: 220px;
   --hm-empty-glyph: 48px;
@@ -63,8 +42,6 @@
   --hm-visually-hidden-size: 1px;
   --hm-copy-measure: 62ch;
   --hm-empty-copy-measure: 30ch;
-  --hm-sheet-max: 52%;
-  --hm-sheet-close-offset: 100%;
   --hm-skeleton-line-short: 65%;
   --hm-icon-sm: 16px;
   --hm-icon-md: 20px;
@@ -84,12 +61,9 @@
   --hm-leading-title: 32px;
   --hm-motion-press: 120ms;
   --hm-motion-micro: 180ms;
-  --hm-motion-standard: 240ms;
   --hm-motion-spinner: 800ms;
   --hm-motion-skeleton: 1200ms;
-  --hm-motion-reduced: 0.01ms;
   --hm-press-offset: 1px;
-  --hm-marker-lift: -2px;
   --hm-spinner-turn: 360deg;
   --hm-disabled-opacity: 0.52;
   --hm-skeleton-opacity-low: 0.48;
@@ -97,22 +71,8 @@
   --hm-active-brightness: 0.86;
   --hm-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   --hm-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
-  --hm-layer-map: 0;
-  --hm-layer-controls: 10;
-  --hm-layer-detail: 20;
-  --hm-layer-focus: 30;
-  --hm-marker-one-block: 31%;
-  --hm-marker-one-inline: 24%;
-  --hm-marker-two-block: 42%;
-  --hm-marker-two-inline: 68%;
-  --hm-marker-three-block: 56%;
-  --hm-marker-three-inline: 43%;
-  --hm-marker-four-block: 28%;
-  --hm-marker-four-inline: 82%;
-  --hm-marker-four-inline-mobile: 78%;
   background: var(--hm-canvas);
   color: var(--hm-ink);
-  font-family: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   letter-spacing: 0;
   min-block-size: var(--hm-viewport-block);
   overflow-x: clip;
@@ -163,7 +123,6 @@
   padding-block-end: var(--hm-space-12);
 }
 
-.mapSection,
 .showcaseSection,
 .stressSection {
   display: grid;

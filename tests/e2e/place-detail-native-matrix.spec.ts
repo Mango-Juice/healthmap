@@ -1,5 +1,5 @@
 import { mkdir, writeFile } from "node:fs/promises"
-import { expect, test } from "@playwright/test"
+import { expect, test } from "./map-test"
 
 test.describe.configure({ retries: 0 })
 test.use({ hasTouch: true })
@@ -132,7 +132,7 @@ test("native place-detail matrix covers filters, touch, scroll, history, share, 
     await expect(page.getByText("공유 URL을 선택했습니다.")).toBeVisible()
     await page.keyboard.press("Escape")
     await expect(page.getByTestId("place-detail")).toHaveCount(0)
-    await expect(page.getByRole("button", { name: /새싹 네모식당/ })).toBeFocused()
+    await expect(page.locator("fieldset button[aria-pressed='true']")).toBeFocused()
 
     await page.getByRole("button", { name: /새싹 네모식당/ }).tap()
     await expect(
@@ -140,7 +140,7 @@ test("native place-detail matrix covers filters, touch, scroll, history, share, 
     ).toBeVisible()
     await page.goBack()
     await expect(page.getByTestId("place-detail")).toHaveCount(0)
-    await expect(page.getByRole("button", { name: /새싹 네모식당/ })).toBeFocused()
+    await expect(page.locator("fieldset button[aria-pressed='true']")).toBeFocused()
 
     if (viewport.width === 375) {
       for (let cycle = 0; cycle < 5; cycle += 1) {
@@ -150,7 +150,7 @@ test("native place-detail matrix covers filters, touch, scroll, history, share, 
         ).toBeVisible()
         await page.getByRole("button", { name: "상세 닫기" }).tap()
         await expect(page.getByTestId("place-detail")).toHaveCount(0)
-        await expect(page.getByRole("button", { name: /새싹 네모식당/ })).toBeFocused()
+        await expect(page.locator("fieldset button[aria-pressed='true']")).toBeFocused()
       }
       await page.emulateMedia({ reducedMotion: "reduce" })
       await page.getByRole("button", { name: /새싹 네모식당/ }).tap()

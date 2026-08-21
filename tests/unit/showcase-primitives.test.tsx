@@ -1,12 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 
-import {
-  ActionButton,
-  FilterRail,
-  MapMarker,
-  StatusAlert,
-} from "../../components/ui/health-map-primitives"
+import { ActionButton, FilterRail, StatusAlert } from "../../components/ui/health-map-primitives"
 
 describe("health map primitives", () => {
   it("Given a loading action, When rendered, Then busy and disabled semantics preserve its label", () => {
@@ -30,16 +25,6 @@ describe("health map primitives", () => {
     // Then
     expect(markup.match(/aria-pressed="true"/g)).toHaveLength(1)
     expect(markup).toContain("단백질")
-  })
-
-  it("Given a category marker, When rendered, Then place and category are named", () => {
-    // Given / When
-    const markup = renderToStaticMarkup(
-      <MapMarker category="vegetables" label="그린테이블 강남점" />,
-    )
-
-    // Then
-    expect(markup).toContain('aria-label="그린테이블 강남점, 채소"')
   })
 
   it("Given an error alert, When rendered, Then assistive technology receives an alert", () => {

@@ -1,6 +1,6 @@
 import type { GeoPoint, MapView } from "../domain/geo"
 
-export type MapAdapterState = "fallback" | "loading" | "ready" | "error"
+export type MapAdapterState = "loading" | "ready" | "error"
 
 export type NaverMap = {
   readonly destroy?: () => void
@@ -9,23 +9,51 @@ export type NaverMap = {
 }
 export type MapContainer = { readonly dataset: DOMStringMap }
 export type NaverLatLng = object
+export type NaverMapListener = object
+export type NaverMarker = {
+  readonly setMap: (map: NaverMap | null) => void
+}
 export type NaverMapsApi = {
+  readonly Event: {
+    readonly addListener: (
+      target: object,
+      eventName: string,
+      listener: () => void,
+    ) => NaverMapListener
+    readonly removeListener: (listener: NaverMapListener) => void
+  }
   readonly LatLng: new (latitude: number, longitude: number) => NaverLatLng
   readonly Map: new (
     container: MapContainer,
     options: { readonly center: NaverLatLng; readonly zoom: number },
   ) => NaverMap
+  readonly Marker: new (options: {
+    readonly clickable: boolean
+    readonly map: NaverMap
+    readonly position: NaverLatLng
+    readonly title: string
+  }) => NaverMarker
 }
 
 declare global {
   interface Window {
     naver?: { readonly maps?: NaverMapsApi }
+    navermap_authFailure?: (() => void) | undefined
   }
 }
 
 export interface MapAdapter {
   destroy(): void
   recenter(point: GeoPoint, zoom: number): void
+  syncMarkers(markers: readonly MapMarkerSpec[]): void
+  waitUntilReady(): Promise<void>
+}
+
+export type MapMarkerSpec = {
+  readonly label: string
+  readonly latitude: number
+  readonly longitude: number
+  readonly onSelect: () => void
 }
 
 export type SdkScript = {
@@ -90,9 +118,31 @@ export const createNaverMapAdapter = (
     center: new maps.LatLng(view.latitude, view.longitude),
     zoom: view.zoom,
   })
+  let markers: Array<{
+    readonly listener: NaverMapListener
+    readonly marker: NaverMarker
+  }> = []
+  const clearMarkers = (): void => {
+    for (const entry of markers) {
+      maps.Event.removeListener(entry.listener)
+      entry.marker.setMap(null)
+    }
+    markers = []
+  }
+  let readinessListener: NaverMapListener | undefined
+  const readiness = new Promise<void>((resolve) => {
+    readinessListener = maps.Event.addListener(map, "tilesloaded", () => {
+      if (readinessListener !== undefined) maps.Event.removeListener(readinessListener)
+      readinessListener = undefined
+      resolve()
+    })
+  })
   container.dataset["mapConstructed"] = "true"
   return {
     destroy: () => {
+      clearMarkers()
+      if (readinessListener !== undefined) maps.Event.removeListener(readinessListener)
+      readinessListener = undefined
       map.destroy?.()
       delete container.dataset["mapConstructed"]
     },
@@ -100,6 +150,32 @@ export const createNaverMapAdapter = (
       map.setCenter(new maps.LatLng(point.latitude, point.longitude))
       map.setZoom(zoom)
     },
+    syncMarkers: (specs) => {
+      clearMarkers()
+      markers = specs.map((spec) => {
+        const marker = new maps.Marker({
+          clickable: true,
+          map,
+          position: new maps.LatLng(spec.latitude, spec.longitude),
+          title: spec.label,
+        })
+        return {
+          listener: maps.Event.addListener(marker, "click", spec.onSelect),
+          marker,
+        }
+      })
+    },
+    waitUntilReady: () => readiness,
+  }
+}
+
+export const subscribeToNaverMapsAuthFailure = (listener: () => void): (() => void) => {
+  const previousListener = window.navermap_authFailure
+  window.navermap_authFailure = listener
+  return () => {
+    if (window.navermap_authFailure !== listener) return
+    if (previousListener === undefined) delete window.navermap_authFailure
+    else window.navermap_authFailure = previousListener
   }
 }
 
@@ -112,6 +188,10 @@ const browserSdkLoader = createSdkLoader({
 })
 export const loadNaverMaps = (clientId: string): Promise<void> => browserSdkLoader.load(clientId)
 export const cancelNaverMapsLoad = (): void => browserSdkLoader.cancel()
+export const resetNaverMapsLoad = (): void => {
+  browserSdkLoader.cancel()
+  delete window.naver
+}
 
 export class MapSdkLoadError extends Error {
   readonly name = "MapSdkLoadError"

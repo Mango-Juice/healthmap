@@ -34,8 +34,37 @@ export function MapDiscovery({
     initialPlaces,
     initialState: initialCatalogState,
   })
-  const naverMap = useNaverMapAdapter({ clientId, view })
-  const detail = useDetailSelection({ filter, initialPlaces, setFilter, setView, view })
+  const publishedPlaces = useMemo(
+    () => catalog.places.filter((place) => place.published),
+    [catalog.places],
+  )
+  const visiblePlaces = useMemo(
+    () => filterPlaces(publishedPlaces, filter),
+    [filter, publishedPlaces],
+  )
+  const detail = useDetailSelection({
+    catalogState: catalog.state,
+    filter,
+    initialPlaces: publishedPlaces,
+    setFilter,
+    setView,
+    view,
+  })
+  const selectedPlace = useMemo(
+    () => publishedPlaces.find((place) => place.slug === detail.selectedSlug),
+    [detail.selectedSlug, publishedPlaces],
+  )
+  const markers = useMemo(
+    () =>
+      visiblePlaces.map((place) => ({
+        label: place.name,
+        latitude: place.latitude,
+        longitude: place.longitude,
+        onSelect: () => detail.open(place),
+      })),
+    [detail.open, visiblePlaces],
+  )
+  const naverMap = useNaverMapAdapter({ clientId, markers, view })
   const recordLocationExploration = useCallback(
     () => detail.recordSharedExploration("location"),
     [detail.recordSharedExploration],
@@ -45,19 +74,6 @@ export function MapDiscovery({
     onSharedExploration: recordLocationExploration,
     setView,
   })
-  const publishedPlaces = useMemo(
-    () => catalog.places.filter((place) => place.published),
-    [catalog.places],
-  )
-  const visiblePlaces = useMemo(
-    () => filterPlaces(publishedPlaces, filter),
-    [filter, publishedPlaces],
-  )
-  const selectedPlace = useMemo(
-    () => publishedPlaces.find((place) => place.slug === detail.selectedSlug),
-    [detail.selectedSlug, publishedPlaces],
-  )
-  const isSampleCatalog = catalog.places.every((place) => place.dataMode === "mock")
 
   return (
     <MapDiscoverySurface
@@ -68,7 +84,6 @@ export function MapDiscovery({
           state: naverMap.state,
         },
         catalog: {
-          isSample: isSampleCatalog,
           reload: catalog.reload,
           state: catalog.state,
           visiblePlaces,
@@ -95,7 +110,6 @@ export function MapDiscovery({
           },
         },
         location: { request: location.request, state: location.location },
-        openPlace: detail.open,
         view,
       }}
     />

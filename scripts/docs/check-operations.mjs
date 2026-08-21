@@ -32,32 +32,27 @@ const requiredSections = [
   "preview",
   "production",
   "supabase",
-  "mock",
   "naver",
   "posthog",
   "smoke",
   "rollback",
   "incident",
-  "real-data",
+  "data import",
 ]
 const requiredTerms = [
-  ["secret handling", /service.role|service_role|secret|server.only/i],
+  ["secret handling", /service[._-]?role|secret|server[._-]?only/i],
+  ["production-only catalog", /production.catalog only|only production rows/i],
   [
-    "mock disclaimer",
-    /mock.{0,80}(not|never|non).{0,80}(launch|production)|not launch.ready|launch.ready/i,
+    "atomic production import",
+    /complete dataset.{0,100}(transaction|commit)|transaction.{0,100}(complete|partial)/i,
   ],
-  [
-    "atomic real-data promotion",
-    /atomic.{0,100}(replace|promotion)|transaction.{0,100}mock|cutover.{0,100}rollback/i,
-  ],
+  ["native coordinate markers", /native default marker.{0,120}supabase coordinate/i],
   ["NAVER allowlist", /allowed.domain|allowlist|allowed origin/i],
   ["PostHog privacy", /posthog.{0,120}(privacy|autocapture|person_profiles|session recording)/i],
 ]
 const requiredCommands = [
   "pnpm build",
   "pnpm start",
-  "pnpm data:audit",
-  "pnpm data:seed:generate",
   "pnpm supabase:start",
   "pnpm supabase:status",
   "pnpm supabase:reset",

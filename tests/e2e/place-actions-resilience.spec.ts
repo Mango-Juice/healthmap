@@ -1,7 +1,7 @@
-import { expect, test } from "@playwright/test"
+import { expect, installMapTestRoutes, test } from "./map-test"
 
 const MAP_SHARE = "/?lat=37.501&lng=127.033&z=15&tag=balanced&src=map_share"
-const PLACE_SHARE = "/?place=mock-sprout-square&src=place_share"
+const PLACE_SHARE = "/?place=test-sprout-square&src=place_share"
 const MAP_VIEW = "37.5010, 127.0330 · 확대 15"
 
 test.beforeEach(async ({ context }) => {
@@ -72,7 +72,7 @@ test("malformed duplicate and partial links recover while a mixed place link can
   await expect(page).toHaveURL("/")
 
   await page.goto(
-    "/?place=mock-sprout-square&lat=37.501&lng=127.033&z=15&tag=balanced&src=map_share",
+    "/?place=test-sprout-square&lat=37.501&lng=127.033&z=15&tag=balanced&src=map_share",
   )
   await expect(page).toHaveURL(PLACE_SHARE)
   await expect(page.getByRole("heading", { name: "새싹 네모식당" })).toBeVisible()
@@ -116,6 +116,7 @@ test("rejected Web Share and unavailable Web Share copy exact canonical URLs", a
   browser,
 }) => {
   const rejectedContext = await browser.newContext()
+  await installMapTestRoutes(rejectedContext)
   await rejectedContext.addInitScript(() => {
     Reflect.set(globalThis, "healthmapCopiedUrl", "")
     Object.defineProperty(navigator, "geolocation", {
@@ -146,6 +147,7 @@ test("rejected Web Share and unavailable Web Share copy exact canonical URLs", a
   await rejectedContext.close()
 
   const unavailableContext = await browser.newContext()
+  await installMapTestRoutes(unavailableContext)
   await unavailableContext.addInitScript(() => {
     Reflect.set(globalThis, "healthmapCopiedUrl", "")
     Object.defineProperty(navigator, "geolocation", {
@@ -317,5 +319,5 @@ test("mobile detail is a contained dialog with an explicit recovery scroll and v
   await expect(page.getByRole("button", { name: "URL 선택" })).toBeVisible()
 
   await close.click()
-  await expect(marker).toBeFocused()
+  await expect(page.locator("fieldset button[aria-pressed='true']")).toBeFocused()
 })

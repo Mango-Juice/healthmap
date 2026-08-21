@@ -14,6 +14,9 @@ class FakeLatLng {
     readonly longitude: number,
   ) {}
 }
+class FakeNativeMarker {
+  setMap() {}
+}
 type FakeScript = SdkScript & { dispatch(type: "load" | "error"): void }
 const fakeScript = (): FakeScript => {
   const listeners = new Map<string, () => void>()
@@ -47,11 +50,13 @@ describe("NAVER map adapter", () => {
     await expect(first).rejects.toThrow("constructor is unavailable")
     const retry = loader.load("client")
     maps = {
+      Event: { addListener: () => ({}), removeListener() {} },
       LatLng: FakeLatLng,
       Map: class {
         setCenter() {}
         setZoom() {}
       },
+      Marker: FakeNativeMarker,
     } satisfies NaverMapsApi
     scripts[1]?.dispatch("load")
     await expect(retry).resolves.toBeUndefined()
@@ -103,12 +108,68 @@ describe("NAVER map adapter", () => {
     }
     const dataset: DOMStringMap = {}
     const container = { dataset }
-    const maps = { LatLng: FakeLatLng, Map: FakeMap } satisfies NaverMapsApi
+    const maps = {
+      Event: { addListener: () => ({}), removeListener() {} },
+      LatLng: FakeLatLng,
+      Map: FakeMap,
+      Marker: FakeNativeMarker,
+    } satisfies NaverMapsApi
     const adapter = createNaverMapAdapter(container, DEFAULT_VIEW, maps)
     adapter.recenter({ latitude: 37.5, longitude: 127.03 }, 15)
     adapter.destroy()
     expect(events).toEqual(["construct", "center", "zoom", "destroy"])
     expect(container.dataset["mapConstructed"]).toBeUndefined()
+  })
+
+  it("places catalog entries at their real coordinates with NAVER markers", () => {
+    const markerEvents: string[] = []
+    const listeners: Array<() => void> = []
+    class FakeMap {
+      setCenter() {}
+      setZoom() {}
+    }
+    class FakeMarker {
+      constructor(options: ConstructorParameters<NaverMapsApi["Marker"]>[0]) {
+        if (!(options.position instanceof FakeLatLng)) throw new TypeError("unexpected position")
+        markerEvents.push(
+          `create:${options.title}:${options.position.latitude}:${options.position.longitude}`,
+        )
+      }
+      setMap(map: object | null) {
+        if (map === null) markerEvents.push("remove")
+      }
+    }
+    const maps = {
+      Event: {
+        addListener: (_target: object, eventName: string, listener: () => void) => {
+          if (eventName === "click") listeners.push(listener)
+          return {}
+        },
+        removeListener: () => markerEvents.push("unlisten"),
+      },
+      LatLng: FakeLatLng,
+      Map: FakeMap,
+      Marker: FakeMarker,
+    } satisfies NaverMapsApi
+    const adapter = createNaverMapAdapter({ dataset: {} }, DEFAULT_VIEW, maps)
+    let selected = ""
+
+    adapter.syncMarkers([
+      {
+        label: "실제 장소",
+        latitude: 37.5042,
+        longitude: 127.0411,
+        onSelect: () => {
+          selected = "place-1"
+        },
+      },
+    ])
+    listeners[0]?.()
+    adapter.syncMarkers([])
+
+    expect(markerEvents).toContain("create:실제 장소:37.5042:127.0411")
+    expect(selected).toBe("place-1")
+    expect(markerEvents).toContain("remove")
   })
 
   it("does not expose a constructed state when provider construction fails", () => {
@@ -121,12 +182,17 @@ describe("NAVER map adapter", () => {
     }
     const dataset: DOMStringMap = {}
     const container = { dataset }
-    const maps = { LatLng: FakeLatLng, Map: BrokenMap } satisfies NaverMapsApi
+    const maps = {
+      Event: { addListener: () => ({}), removeListener() {} },
+      LatLng: FakeLatLng,
+      Map: BrokenMap,
+      Marker: FakeNativeMarker,
+    } satisfies NaverMapsApi
     expect(() => createNaverMapAdapter(container, DEFAULT_VIEW, maps)).toThrow("provider failed")
     expect(container.dataset["mapConstructed"]).toBeUndefined()
   })
 
-  it("describes the deterministic fallback view", () => {
+  it("describes the deterministic default view", () => {
     expect(viewLabel(DEFAULT_VIEW)).toBe("37.5007, 127.0328 · 확대 15")
   })
 })

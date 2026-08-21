@@ -19,7 +19,7 @@ for (const viewport of viewports) {
     await expect(
       page.getByRole("heading", { level: 1, name: "개인정보 및 분석 안내" }),
     ).toBeVisible()
-    await expect(page.getByText("명시적인 목업 데이터")).toBeVisible()
+    await expect(page.getByText("공개된 운영 데이터만 표시")).toBeVisible()
     await expect(page.getByText("수집하지 않는 정보")).toBeVisible()
     await expect(page.getByRole("switch", { name: "분석 데이터 수집 설정" })).toBeVisible()
     const geometry = await page.evaluate(() => ({

@@ -1,5 +1,5 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises"
-import { expect, test } from "@playwright/test"
+import { expect, test } from "./map-test"
 
 type MatrixRect = {
   readonly bottom: number
@@ -234,6 +234,7 @@ test("768 split-pane acceptance keeps every filter stable through opening and re
 }) => {
   await page.setViewportSize({ width: 768, height: 1024 })
   await page.goto("/")
+  await expect(page.getByText("NAVER 지도 연결됨")).toBeVisible()
   const map = page.getByTestId("map-stage")
   const rail = map.locator("fieldset")
   const filters = rail.getByRole("button")
@@ -244,7 +245,9 @@ test("768 split-pane acceptance keeps every filter stable through opening and re
       const pane = document.querySelector<HTMLElement>(
         "[data-detail-phase]:not([data-testid='map-stage'])",
       )
-      const mapRect = mapElement?.querySelector("[data-field-guide-map]")?.getBoundingClientRect()
+      const mapRect = mapElement
+        ?.querySelector("[data-testid='naver-map']")
+        ?.getBoundingClientRect()
       const paneRect = pane?.getBoundingClientRect()
       const filters = [...document.querySelectorAll<HTMLElement>("fieldset button")].map(
         (element) => {
@@ -310,7 +313,7 @@ test("768 split-pane acceptance keeps every filter stable through opening and re
   const restored = await capture()
   expect(restored.mapScrollLeft).toBe(0)
   expect(restored.filters.every(({ visible, nativeHit }) => visible && nativeHit)).toBe(true)
-  await expect(page.getByRole("button", { name: /새싹 네모식당/ })).toBeFocused()
+  await expect(page.locator("fieldset button[aria-pressed='true']")).toBeFocused()
 })
 
 test("768 closed map stays map-first and keeps every Korean filter label on one line", async ({
@@ -320,7 +323,7 @@ test("768 closed map stays map-first and keeps every Korean filter label on one 
   await page.goto("/")
   const map = page.getByTestId("map-stage")
   const layout = await map.evaluate((element) => {
-    const paper = element.querySelector<HTMLElement>("[data-field-guide-map]")
+    const paper = element.querySelector<HTMLElement>("[data-testid='naver-map']")
     const buttons = [...element.querySelectorAll<HTMLButtonElement>("fieldset button")]
     return {
       detailCount: element.querySelectorAll("[data-detail-phase]").length,
@@ -346,6 +349,7 @@ test("768 all-five filter clicks remain native through every detail lifecycle st
 }) => {
   await page.setViewportSize({ width: 768, height: 1024 })
   await page.goto("/")
+  await expect(page.getByText("NAVER 지도 연결됨")).toBeVisible()
   const filters = page.getByTestId("map-stage").locator("fieldset button")
   const matrix: MatrixSnapshot[] = []
   const capture = async (label: string): Promise<MatrixSnapshot> =>
@@ -355,7 +359,7 @@ test("768 all-five filter clicks remain native through every detail lifecycle st
           ? null
           : { bottom: rect.bottom, left: rect.left, right: rect.right, top: rect.top }
       const map = document.querySelector<HTMLElement>("[data-testid='map-stage']")
-      const paper = map?.querySelector<HTMLElement>("[data-field-guide-map]")
+      const paper = map?.querySelector<HTMLElement>("[data-testid='naver-map']")
       const pane = map?.querySelector<HTMLElement>(
         "[data-detail-phase]:not([data-testid='map-stage'])",
       )
@@ -402,8 +406,7 @@ test("768 all-five filter clicks remain native through every detail lifecycle st
         filters: filtersSnapshot,
         focusOwner,
         focusRestored:
-          active instanceof HTMLElement &&
-          active.getAttribute("aria-label")?.startsWith("새싹 네모식당") === true,
+          active instanceof HTMLElement && active.getAttribute("aria-pressed") === "true",
         label: stateLabel,
         mapRect,
         mapScrollLeft: map?.scrollLeft ?? -1,
@@ -478,7 +481,7 @@ test("768 all-five filter clicks remain native through every detail lifecycle st
   await clickOne("closing", 0, "closing")
   await expect(page.getByTestId("place-detail")).toHaveCount(0)
   await assertState("restored", "closed")
-  await expect(marker).toBeFocused()
+  await expect(page.locator("fieldset button[aria-pressed='true']")).toBeFocused()
   await clickAll("restored", "closed", 1)
 
   const artifact = { viewport: "768x1024", states: matrix }
@@ -507,28 +510,10 @@ test("desktop title focus does not scroll its map ancestor", async ({ page }) =>
   expect(await map.evaluate((element) => element.scrollLeft)).toBe(0)
 })
 
-test("fallback geography stays bounded and connected", async ({ page }) => {
-  await page.setViewportSize({ width: 375, height: 812 })
-  await page.goto("/")
-  await page.screenshot({ path: ".omo/evidence/task-7/fix-r14/final-375-geography.png" })
-  const bounded = await page.getByTestId("map-stage").evaluate((map) => {
-    const mapRect = map.getBoundingClientRect()
-    return [...map.querySelectorAll("[data-map-water]")].every((water) => {
-      const rect = water.getBoundingClientRect()
-      return (
-        rect.left >= mapRect.left &&
-        rect.right <= mapRect.right &&
-        rect.top >= mapRect.top &&
-        rect.bottom <= mapRect.bottom
-      )
-    })
-  })
-  expect(bounded).toBe(true)
-})
-
 test("place detail opening exposes start, in-flight, and settled states", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 })
   await page.goto("/")
+  await expect(page.getByText("NAVER 지도 연결됨")).toBeVisible()
   const surface = page.locator("[data-detail-phase]:not([data-testid='map-stage'])")
   const start = await page.evaluate(
     () =>
@@ -573,45 +558,31 @@ test("place detail opening exposes start, in-flight, and settled states", async 
   expect(end.opacity).toBe("1")
 })
 
-test("fallback map remains solid and nonblank with five live markers", async ({ page }) => {
+test("NAVER map host remains bounded with five native markers", async ({ page }) => {
   await page.goto("/")
   const map = page.getByTestId("map-stage")
-  await expect(map.locator("[aria-label*='샘플 장소']")).toBeVisible()
-  await expect(map.locator("section[aria-label^='샘플 장소'] button")).toHaveCount(5)
-  const background = await map
-    .locator("div")
-    .first()
-    .evaluate((element) => {
-      const styles = getComputedStyle(element)
-      return { image: styles.backgroundImage, color: styles.backgroundColor }
-    })
-  expect(background.image).toBe("none")
-  expect(background.color).not.toBe("rgba(0, 0, 0, 0)")
-  await expect(map.locator("[data-map-water]")).toBeVisible()
-  await expect(map.locator("[data-map-area]").first()).toBeVisible()
-  await expect(map.locator("[data-map-junction]").first()).toBeVisible()
+  const naverMap = page.getByTestId("naver-map")
+  await expect(naverMap).toBeVisible()
+  await expect(naverMap.locator("canvas[data-test-naver-map]")).toBeVisible()
+  await expect(map.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
+  const bounded = await naverMap.evaluate((element) => {
+    const mapRect = element.parentElement?.getBoundingClientRect()
+    const rect = element.getBoundingClientRect()
+    return (
+      mapRect !== undefined &&
+      rect.left >= mapRect.left &&
+      rect.right <= mapRect.right &&
+      rect.top >= mapRect.top &&
+      rect.bottom <= mapRect.bottom
+    )
+  })
+  expect(bounded).toBe(true)
 })
 
-test("fallback map carries a layered field-guide hierarchy", async ({ page }) => {
+test("NAVER map composition preserves the detail anatomy", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 })
   await page.goto("/")
-  const map = page.getByTestId("map-stage")
-  await expect(map.locator("[data-map-road]").first()).toBeVisible()
-  await expect(map.locator("[data-map-block]").first()).toBeVisible()
-  await expect(map.locator("[data-map-label]").first()).toBeVisible()
-  await expect(map.locator("fieldset svg")).toHaveCount(5)
-  await expect(page.getByRole("button", { name: /새싹 네모식당/ })).toBeVisible()
-})
-
-test("field-guide composition has dense live map structure and detail anatomy", async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 375, height: 812 })
-  await page.goto("/")
-  const map = page.getByTestId("map-stage")
-  await expect(map.locator("[data-map-road]").first()).toBeVisible()
-  await expect(map.locator("[data-map-block]").first()).toBeVisible()
-  await expect(map.locator("[data-map-label]").first()).toBeVisible()
+  await expect(page.getByTestId("naver-map")).toBeVisible()
   await page.getByRole("button", { name: /새싹 네모식당/ }).click()
   const detail = page.getByTestId("place-detail")
   await expect(detail.locator("[data-detail-summary]")).toBeVisible()
@@ -619,15 +590,11 @@ test("field-guide composition has dense live map structure and detail anatomy", 
   await expect(detail.locator("[data-detail-menu]")).toBeVisible()
 })
 
-test("desktop detail is complementary and the field guide has connected terrain layers", async ({
-  page,
-}) => {
+test("desktop detail is complementary beside the NAVER map", async ({ page }) => {
   await page.setViewportSize({ width: 768, height: 1024 })
   await page.goto("/")
   const map = page.getByTestId("map-stage")
-  await expect(map.locator("[data-map-water]")).toBeVisible()
-  await expect(map.locator("[data-map-area]").first()).toBeVisible()
-  await expect(map.locator("[data-map-junction]").first()).toBeVisible()
+  await expect(page.getByTestId("naver-map")).toBeVisible()
   await page.getByRole("button", { name: /새싹 네모식당/ }).click()
   await expect(page.getByRole("complementary", { name: "장소 상세" })).toBeVisible()
   const fifth = map.locator("fieldset button").nth(4)
@@ -705,7 +672,7 @@ test("Back during opening and the first rapid mobile close complete deterministi
   await page.goBack()
   await page.waitForTimeout(350)
   await expect(page.getByTestId("place-detail")).toHaveCount(0)
-  await expect(marker).toBeFocused()
+  await expect(page.locator("fieldset button[aria-pressed='true']")).toBeFocused()
 
   await page.setViewportSize({ width: 375, height: 812 })
   await page.goto("/")
@@ -713,7 +680,7 @@ test("Back during opening and the first rapid mobile close complete deterministi
   await page.getByRole("button", { name: "상세 닫기" }).click()
   await page.waitForTimeout(350)
   await expect(page.getByTestId("place-detail")).toHaveCount(0)
-  await expect(marker).toBeFocused()
+  await expect(page.locator("fieldset button[aria-pressed='true']")).toBeFocused()
 })
 
 test("captures fresh production viewport and motion evidence", async ({ page }) => {
@@ -763,5 +730,5 @@ test("reduced motion removes the sheet delay and still restores focus", async ({
   expect(motion.transform).toBe("none")
   await page.getByRole("button", { name: "상세 닫기" }).click()
   await expect(page.getByTestId("place-detail")).toHaveCount(0)
-  await expect(marker).toBeFocused()
+  await expect(page.locator("fieldset button[aria-pressed='true']")).toBeFocused()
 })

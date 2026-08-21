@@ -16,8 +16,7 @@
 }
 
 .stateCell > span,
-.feedbackCell > span,
-.markerGallery span {
+.feedbackCell > span {
   color: var(--hm-ink-muted);
   font-size: var(--hm-type-caption);
   font-weight: var(--hm-weight-label);
@@ -50,23 +49,6 @@
   gap: var(--hm-space-3);
   min-inline-size: 0;
   padding: var(--hm-space-4);
-}
-
-.markerGallery {
-  background: var(--hm-surface);
-  border: var(--hm-border-width) solid var(--hm-border);
-  border-radius: var(--hm-radius-card);
-  display: grid;
-  gap: var(--hm-space-3);
-  grid-template-columns: repeat(auto-fit, minmax(min(var(--hm-marker-column-min), 100%), 1fr));
-  padding: var(--hm-space-4);
-}
-
-.markerGallery > div {
-  align-items: center;
-  display: flex;
-  gap: var(--hm-space-2);
-  min-inline-size: 0;
 }
 
 .feedbackGrid {

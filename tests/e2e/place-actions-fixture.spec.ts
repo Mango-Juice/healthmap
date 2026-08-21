@@ -3,7 +3,7 @@ import { readFile, rm, writeFile } from "node:fs/promises"
 import { createServer } from "node:net"
 import { join } from "node:path"
 import { gunzipSync } from "node:zlib"
-import { expect, test } from "@playwright/test"
+import { expect, test } from "./map-test"
 
 test.describe.configure({ retries: 0 })
 
@@ -24,9 +24,6 @@ const fixtureNextEnvContent = `/// <reference types="next" />
 // NOTE: This file should not be edited
 // see https://nextjs.org/docs/app/api-reference/config/typescript for more information.
 `
-
-const isCatalogResponse = (value: unknown): value is { readonly places: readonly unknown[] } =>
-  typeof value === "object" && value !== null && "places" in value && Array.isArray(value.places)
 
 type AnalyticsEvent = {
   readonly event: string
@@ -110,6 +107,7 @@ const startFixtureServer = async (): Promise<FixtureServer> => {
       env: {
         ...process.env,
         NEXT_PUBLIC_DISABLE_REACT_DEVTOOLS: "1",
+        NEXT_PUBLIC_NAVER_MAP_CLIENT_ID: "test-client",
         NEXT_PUBLIC_POSTHOG_HOST: `${baseUrl}/posthog`,
         NEXT_PUBLIC_POSTHOG_KEY: "task7-fixture-key",
         NEXT_PUBLIC_PLAYWRIGHT_TEST: "1",
@@ -162,7 +160,7 @@ test("Given the typed published production fixture, when directions is selected,
   const server = fixtureServer
   if (server === undefined) throw new Error("Fixture server was not started")
   await page.goto(server.baseUrl)
-  await page.getByRole("button", { name: "테스트 생산 경로 식당" }).click()
+  await page.getByRole("button", { name: "테스트 생산 경로 식당" }).dispatchEvent("click")
 
   // When
   const popup = page.waitForEvent("popup")
@@ -182,7 +180,7 @@ test("Given a typed production fixture detail, when it is opened, then detail co
   const server = fixtureServer
   if (server === undefined) throw new Error("Fixture server was not started")
   await page.goto(server.baseUrl)
-  await page.getByRole("button", { name: "테스트 생산 경로 식당" }).click()
+  await page.getByRole("button", { name: "테스트 생산 경로 식당" }).dispatchEvent("click")
 
   const detail = page.getByTestId("place-detail")
   await expect(detail.getByText("장소 정보", { exact: true })).toBeVisible()
@@ -204,7 +202,7 @@ test("Given the typed production fixture, when directions opens, then its redact
     await route.fulfill({ status: 200, body: '{"status":1}' })
   })
   await page.goto(server.baseUrl)
-  await page.getByRole("button", { name: "테스트 생산 경로 식당" }).click()
+  await page.getByRole("button", { name: "테스트 생산 경로 식당" }).dispatchEvent("click")
   const popup = page.waitForEvent("popup")
   await page.getByRole("button", { name: "길찾기" }).click()
   const directionsPage = await popup
@@ -247,7 +245,7 @@ test("Given a typed route-incomplete production fixture, when directions is sele
   const server = fixtureServer
   if (server === undefined) throw new Error("Fixture server was not started")
   await page.goto(server.baseUrl)
-  await page.getByRole("button", { name: "테스트 저장 장소 식당" }).click()
+  await page.getByRole("button", { name: "테스트 저장 장소 식당" }).dispatchEvent("click")
 
   // When
   const popup = page.waitForEvent("popup")
@@ -299,20 +297,18 @@ test("Given an actual unpublished production fixture, when the recovered map is 
   await expect(page.getByRole("button", { name: "테스트 비공개 식당" })).toHaveCount(0)
 })
 
-test("Given the normal application runtime, when the fixture suite completes, then only the five committed mock records remain", async ({
+test("Given the normal application runtime without Supabase, when the fixture suite completes, then no test records leak into the app", async ({
+  context,
   page,
 }) => {
   // Given / When
+  await context.unroute("**/api/map-catalog")
   const catalogResponse = await page.request.get("/api/map-catalog")
   await page.goto("/")
 
   // Then
-  expect(catalogResponse.ok()).toBe(true)
-  const catalog: unknown = await catalogResponse.json()
-  if (!isCatalogResponse(catalog))
-    throw new TypeError("Normal catalog response has no places array")
-  expect(catalog.places).toHaveLength(5)
-  await expect(page.getByRole("button", { name: /샘플/ })).toHaveCount(5)
+  expect(catalogResponse.status()).toBe(503)
+  await expect(page.getByText("장소 데이터를 불러오지 못했습니다.")).toBeVisible()
   await expect(page.getByRole("button", { name: "테스트 생산 경로 식당" })).toHaveCount(0)
   await expect(page.getByRole("button", { name: "테스트 비공개 식당" })).toHaveCount(0)
 })

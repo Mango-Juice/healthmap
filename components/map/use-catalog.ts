@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { loadPublicCatalog } from "../../lib/catalog/public-catalog-client"
 import type { Menu, Place } from "../../lib/domain/catalog"
 
@@ -17,6 +17,7 @@ export function useCatalog({ initialMenus, initialPlaces, initialState }: Catalo
   const [menus, setMenus] = useState(initialMenus)
   const [state, setState] = useState<CatalogState>(initialState)
   const generation = useRef(0)
+  const didRetryInitialError = useRef(false)
 
   const reload = useCallback(async (): Promise<void> => {
     const requestGeneration = generation.current + 1
@@ -32,6 +33,12 @@ export function useCatalog({ initialMenus, initialPlaces, initialState }: Catalo
       if (requestGeneration === generation.current) setState("error")
     }
   }, [])
+
+  useEffect(() => {
+    if (initialState !== "error" || didRetryInitialError.current) return
+    didRetryInitialError.current = true
+    void reload()
+  }, [initialState, reload])
 
   return { menus, places, reload, state }
 }

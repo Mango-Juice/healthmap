@@ -1,5 +1,9 @@
 # HealthMap
 
-HealthMap is currently shipped with five clearly labeled mock places and ten mock menus. It is not a real-data launch.
+HealthMap is a Korean map-first healthy-food discovery application backed by NAVER Maps and a
+public-read Supabase catalog. Product runtime is production-catalog only: missing catalog configuration
+or unavailable data produces an explicit error and never substitutes committed sample places or markers.
 
-Operational setup, release ownership, privacy configuration, rollback, incident response, and the evidence-gated real-data promotion procedure are documented in [`docs/operations.md`](docs/operations.md).
+Local setup, provider configuration, release checks, data import, rollback, and incident response are
+documented in [`docs/operations.md`](docs/operations.md). Repository checks do not prove that a hosted
+provider or deployment is live.

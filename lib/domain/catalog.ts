@@ -13,20 +13,14 @@ const NaverPlaceUrlSchema = z
   }, "URL userinfo is not allowed")
 const ProductionEvidenceUrlSchema = z
   .url({ protocol: /^https$/ })
-  .refine((url) => new URL(url).hostname !== "example.invalid", "example.invalid is mock-only")
+  .refine(
+    (url) => new URL(url).hostname !== "example.invalid",
+    "placeholder evidence is not allowed",
+  )
   .refine((value) => {
     const url = new URL(value)
     return url.username === "" && url.password === ""
   }, "URL userinfo is not allowed")
-const MockPlaceUrlSchema = z
-  .string()
-  .regex(/^https:\/\/example\.invalid\/mock-directions\/mock-[a-z0-9-]+$/)
-const MockEvidenceUrlSchema = z
-  .string()
-  .regex(/^https:\/\/example\.invalid\/mock-evidence\/mock-[a-z0-9-]+$/)
-
-export const DataModeSchema = z.enum(["production", "mock"])
-
 const PlaceFields = {
   id: PlaceIdSchema,
   slug: PlaceSlugSchema,
@@ -69,19 +63,7 @@ export const ProductionPlaceSchema = z
   .strict()
   .readonly()
   .superRefine(enforcePrimaryTag)
-export const MockPlaceSchema = z
-  .object({
-    ...PlaceFields,
-    dataMode: z.literal("mock"),
-    slug: PlaceSlugSchema.regex(/^mock-[a-z0-9]+(?:-[a-z0-9]+)*$/),
-    naverPlaceUrl: MockPlaceUrlSchema,
-  })
-  .strict()
-  .readonly()
-  .superRefine(enforcePrimaryTag)
-export const PlaceSchema = z
-  .discriminatedUnion("dataMode", [ProductionPlaceSchema, MockPlaceSchema])
-  .readonly()
+export const PlaceSchema = ProductionPlaceSchema
 
 export const ProductionMenuSchema = z
   .object({
@@ -91,17 +73,7 @@ export const ProductionMenuSchema = z
   })
   .strict()
   .readonly()
-export const MockMenuSchema = z
-  .object({
-    ...MenuFields,
-    dataMode: z.literal("mock"),
-    evidenceUrl: MockEvidenceUrlSchema,
-  })
-  .strict()
-  .readonly()
-export const MenuSchema = z
-  .discriminatedUnion("dataMode", [ProductionMenuSchema, MockMenuSchema])
-  .readonly()
+export const MenuSchema = ProductionMenuSchema
 
 const RawPlaceFields = {
   id: z.string(),
@@ -128,25 +100,14 @@ const RawMenuFields = {
 const ProductionPlaceRowSchema = z
   .object({ ...RawPlaceFields, data_mode: z.literal("production") })
   .strict()
-const MockPlaceRowSchema = z.object({ ...RawPlaceFields, data_mode: z.literal("mock") }).strict()
 const ProductionMenuRowSchema = z
   .object({ ...RawMenuFields, data_mode: z.literal("production") })
   .strict()
-const MockMenuRowSchema = z.object({ ...RawMenuFields, data_mode: z.literal("mock") }).strict()
-const PlaceRowSchema = z.discriminatedUnion("data_mode", [
-  ProductionPlaceRowSchema,
-  MockPlaceRowSchema,
-])
-const MenuRowSchema = z.discriminatedUnion("data_mode", [
-  ProductionMenuRowSchema,
-  MockMenuRowSchema,
-])
+const PlaceRowSchema = ProductionPlaceRowSchema
+const MenuRowSchema = ProductionMenuRowSchema
 
 type RawPlace = z.infer<typeof PlaceRowSchema>
 type RawMenu = z.infer<typeof MenuRowSchema>
-const assertNever = (_value: never): never => {
-  throw new TypeError("Unhandled data mode")
-}
 const toPlace = (row: RawPlace): Place => {
   const fields = {
     id: row.id,
@@ -160,14 +121,7 @@ const toPlace = (row: RawPlace): Place => {
     healthTags: row.health_tags,
     published: row.published,
   }
-  switch (row.data_mode) {
-    case "production":
-      return ProductionPlaceSchema.parse({ ...fields, dataMode: row.data_mode })
-    case "mock":
-      return MockPlaceSchema.parse({ ...fields, dataMode: row.data_mode })
-    default:
-      return assertNever(row)
-  }
+  return ProductionPlaceSchema.parse({ ...fields, dataMode: row.data_mode })
 }
 const toMenu = (row: RawMenu): Menu => {
   const fields = {
@@ -180,17 +134,9 @@ const toMenu = (row: RawMenu): Menu => {
     displayOrder: row.display_order,
     published: row.published,
   }
-  switch (row.data_mode) {
-    case "production":
-      return ProductionMenuSchema.parse({ ...fields, dataMode: row.data_mode })
-    case "mock":
-      return MockMenuSchema.parse({ ...fields, dataMode: row.data_mode })
-    default:
-      return assertNever(row)
-  }
+  return ProductionMenuSchema.parse({ ...fields, dataMode: row.data_mode })
 }
 
-export type DataMode = z.infer<typeof DataModeSchema>
 export type Place = z.infer<typeof PlaceSchema>
 export type Menu = z.infer<typeof MenuSchema>
 export const parsePlaceRows = (rows: readonly unknown[]): readonly Place[] =>

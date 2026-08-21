@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { parseMenuRows, parsePlaceRows } from "../../scripts/data/catalog-row-parser"
+import { parseMenuRows, parsePlaceRows } from "../../lib/domain/catalog"
 
 const VALID_PLACE_ROW = {
   id: "bc6b1050-539e-4d28-8493-5920eae54248",

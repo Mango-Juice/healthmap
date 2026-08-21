@@ -36,7 +36,6 @@ const copyUrl = async (url: string): Promise<boolean> => {
 }
 
 export function PlaceDetail({ directionsTarget, menus, onClose, place, shareMap }: Properties) {
-  const isMockPlace = place.dataMode === "mock"
   const title = useRef<HTMLHeadingElement>(null)
   const manualUrl = useRef<HTMLInputElement>(null)
   const [notice, setNotice] = useState<string>()
@@ -85,11 +84,7 @@ export function PlaceDetail({ directionsTarget, menus, onClose, place, shareMap 
   const openDirections = (): void => {
     const directions = buildProductionDirections(place, directionsTarget)
     if (directions === undefined) {
-      setNotice(
-        isMockPlace
-          ? "샘플 데이터에서는 길찾기를 제공하지 않습니다."
-          : "길찾기 정보를 사용할 수 없습니다.",
-      )
+      setNotice("길찾기 정보를 사용할 수 없습니다.")
       return
     }
     window.open(directions.url, "_blank", "noopener,noreferrer")
@@ -117,7 +112,7 @@ export function PlaceDetail({ directionsTarget, menus, onClose, place, shareMap 
     >
       <header className={styles["header"]}>
         <div>
-          <strong>{isMockPlace ? "샘플 데이터" : "장소 정보"}</strong>
+          <strong>장소 정보</strong>
           <h2 id="place-detail-title" ref={title} tabIndex={-1}>
             {place.name}
           </h2>
@@ -145,7 +140,7 @@ export function PlaceDetail({ directionsTarget, menus, onClose, place, shareMap 
             </div>
           </div>
         </div>
-        <section aria-label={isMockPlace ? "샘플 건강식 메뉴" : "건강식 메뉴"} data-detail-menu>
+        <section aria-label="건강식 메뉴" data-detail-menu>
           <h3>건강식 메뉴</h3>
           <ul>
             {visibleMenus.map((menu) => (

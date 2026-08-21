@@ -10,18 +10,8 @@ import { VALID_MENU_ROW, VALID_PLACE_ROW } from "./fixtures"
 afterEach(() => vi.restoreAllMocks())
 
 describe("public catalog runtime provider", () => {
-  it("Given no public Supabase configuration, when read, then it returns exactly the committed mock catalog", async () => {
-    // Given
-    const provider = createPublicCatalogRuntimeProvider({})
-
-    // When
-    const catalog = await provider.read()
-
-    // Then
-    expect(provider.mode).toBe("mock")
-    expect(catalog.places).toHaveLength(5)
-    expect(catalog.places.every((place) => place.dataMode === "mock")).toBe(true)
-    expect(catalog.menus.every((menu) => menu.dataMode === "mock")).toBe(true)
+  it("Given no public Supabase configuration, when creating the provider, then it fails closed", () => {
+    expect(() => createPublicCatalogRuntimeProvider({})).toThrow(PublicCatalogConfigurationError)
   })
 
   it("Given a whitespace-only Supabase URL without a key, when creating the provider, then it rejects configuration", () => {

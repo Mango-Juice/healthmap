@@ -1,5 +1,5 @@
 import { gunzipSync } from "node:zlib"
-import { expect, test } from "@playwright/test"
+import { expect, test } from "./map-test"
 
 type TransportEvent = {
   readonly event: string
@@ -17,7 +17,7 @@ const forbiddenTransportText = [
   "place_name",
   "menu",
   "referrer",
-  "mock-sprout-square",
+  "test-sprout-square",
   "37.5007",
   "127.0328",
   "새싹 네모식당",
@@ -159,7 +159,7 @@ test("Given web share, when a place is shared, then the configured PostHog batch
     })
   })
   const transport = await installAnalyticsInterceptor(page)
-  await page.goto("/?place=mock-sprout-square&src=place_share")
+  await page.goto("/?place=test-sprout-square&src=place_share")
   await expect(page.getByRole("heading", { name: "새싹 네모식당" })).toBeVisible()
 
   // When
@@ -187,7 +187,7 @@ test("Given rejected web share and clipboard, when map sharing is requested, the
     })
   })
   const transport = await installAnalyticsInterceptor(page)
-  await page.goto("/?place=mock-sprout-square&src=place_share")
+  await page.goto("/?place=test-sprout-square&src=place_share")
 
   // When
   await page.getByRole("button", { name: "지도 공유" }).click()
@@ -210,7 +210,7 @@ test("Given unavailable share APIs, when a share URL is selected, then manual co
     })
   })
   const transport = await installAnalyticsInterceptor(page)
-  await page.goto("/?place=mock-sprout-square&src=place_share")
+  await page.goto("/?place=test-sprout-square&src=place_share")
 
   // When
   await page.getByRole("button", { name: "공유", exact: true }).click()
@@ -229,7 +229,7 @@ test("Given a shared place entry, when it only loads, then it emits no explorati
   const transport = await installAnalyticsInterceptor(page)
 
   // When
-  await page.goto("/?place=mock-sprout-square&src=place_share")
+  await page.goto("/?place=test-sprout-square&src=place_share")
 
   // Then
   await expect(page.getByRole("heading", { name: "새싹 네모식당" })).toBeVisible()
@@ -292,15 +292,17 @@ test("Given a shared map entry, when current location is requested, then it repo
   ).toHaveLength(1)
 })
 
-test("Given every mock place, when directions is requested, then no popup or directions transport event is produced", async ({
+test("Given every production place, when directions is requested, then each redacted directions event is produced", async ({
   page,
 }) => {
   // Given
   const transport = await installAnalyticsInterceptor(page)
-  const popup = page.waitForEvent("popup", { timeout: 500 }).then(
-    () => "opened",
-    () => "none",
-  )
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "open", {
+      configurable: true,
+      value: () => null,
+    })
+  })
   await page.goto("/")
 
   // When
@@ -313,13 +315,13 @@ test("Given every mock place, when directions is requested, then no popup or dir
   ]) {
     await page.getByRole("button", { name: new RegExp(name) }).click()
     await page.getByRole("button", { name: "길찾기" }).click()
-    await expect(page.getByText("샘플 데이터에서는 길찾기를 제공하지 않습니다.")).toBeVisible()
     await page.getByRole("button", { name: "상세 닫기" }).click()
   }
 
   // Then
-  await expect(popup).resolves.toBe("none")
-  expect(transport.events.filter(({ event }) => event === "directions_opened")).toEqual([])
+  await expect
+    .poll(() => transport.events.filter(({ event }) => event === "directions_opened").length)
+    .toBe(5)
   assertPrivateTransport(transport.events, transport.rawRequests)
 })
 
@@ -334,7 +336,7 @@ test("Given an analytics endpoint failure, when sharing and map actions run, the
     })
   })
   await page.route(`${analyticsHost}/**`, (route) => route.fulfill({ status: 503 }))
-  await page.goto("/?place=mock-sprout-square&src=place_share")
+  await page.goto("/?place=test-sprout-square&src=place_share")
 
   // When
   await page.getByRole("button", { name: "공유", exact: true }).click()
@@ -343,5 +345,5 @@ test("Given an analytics endpoint failure, when sharing and map actions run, the
 
   // Then
   await expect(page.getByText("공유 창을 열었습니다.")).toHaveCount(0)
-  await expect(page.getByRole("button", { name: /샘플/ })).toHaveCount(3)
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(3)
 })
