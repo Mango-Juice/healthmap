@@ -88,9 +88,11 @@ const ignoreSdkLifecycleFailure = (operation: Promise<void> | undefined): void =
   void operation?.catch(() => undefined)
 }
 
-const createPostHogConfig = (host: string): PostHogOptions => ({
+const createPostHogConfig = (host: string, anonymousId: string): PostHogOptions => ({
   autocapture: false,
-  defaultOptIn: true,
+  bootstrap: { distinctId: anonymousId },
+  defaultOptIn: false,
+  disableGeoip: true,
   disableRemoteFeatureFlags: true,
   flushAt: 1,
   flushInterval: 0,
@@ -103,10 +105,11 @@ const createPostHogConfig = (host: string): PostHogOptions => ({
     const safeEvent = sanitizeAnalyticsTransportEvent(event.event, event.properties ?? {})
     if (safeEvent === null) return null
 
-    const token = event.properties?.["token"]
-    const properties =
-      typeof token === "string" ? { ...safeEvent.properties, token } : { ...safeEvent.properties }
-    return { ...event, event: safeEvent.event, properties: toPostHogProperties(properties) }
+    return {
+      ...event,
+      event: safeEvent.event,
+      properties: { ...toPostHogProperties(safeEvent.properties), $geoip_disable: true },
+    }
   },
 })
 
@@ -155,7 +158,8 @@ const startConfiguredAnalytics = (): Promise<void> => {
     createId: () => crypto.randomUUID(),
   })
 
-  state.client = new PostHog(key, createPostHogConfig(host))
+  state.client = new PostHog(key, createPostHogConfig(host, localAnalytics.anonymousId))
+  ignoreSdkLifecycleFailure(state.client.optIn())
   state.analytics = localAnalytics
   state.initialization = Promise.resolve().then(() => {
     if (state.generation !== currentGeneration || getProductAnalyticsOptOut()) {
@@ -212,4 +216,4 @@ export const setProductAnalyticsOptOut = async (optedOut: boolean): Promise<void
 }
 
 export const getProductAnalyticsOptOut = (): boolean =>
-  browserStorage.getItem("healthmap.analytics.opt-out.v1") === "true"
+  browserStorage.getItem("healthmap.analytics.opt-out.v1") !== "false"

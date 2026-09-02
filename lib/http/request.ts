@@ -11,7 +11,9 @@ export class HttpRequestError extends Error {
 }
 
 type RequestOptions = {
+  readonly body?: string
   readonly headers?: Readonly<Record<string, string>>
+  readonly method?: "GET" | "POST"
   readonly timeoutMilliseconds?: number
 }
 
@@ -27,7 +29,9 @@ export const requestJson = async <Schema extends z.ZodType>(
   )
   try {
     const requestOptions: RequestInit = { cache: "no-store", signal: controller.signal }
+    if (options.body !== undefined) requestOptions.body = options.body
     if (options.headers !== undefined) requestOptions.headers = options.headers
+    if (options.method !== undefined) requestOptions.method = options.method
     const response = await fetch(url, requestOptions)
     if (!response.ok) throw new HttpRequestError("status")
     const body: unknown = await response.json()

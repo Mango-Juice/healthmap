@@ -1,148 +1,35 @@
 "use client"
 
-import type {
-  KeyboardEvent as ReactKeyboardEvent,
-  TransitionEvent as ReactTransitionEvent,
-  RefObject,
-} from "react"
-import type { Menu, Place } from "../../lib/domain/catalog"
-import type { DirectionsTarget } from "../../lib/domain/directions"
-import type { PlaceFilter } from "../../lib/domain/filter"
-import type { LocationState, MapView } from "../../lib/domain/geo"
-import type { MapAdapterState } from "../../lib/map/adapter"
+import type { LocationState } from "../../lib/domain/geo"
 import { viewLabel } from "../../lib/map/adapter"
-import { AlertTriangleIcon, LoaderIcon, LocateIcon, RotateCcwIcon } from "../ui/health-map-icons"
+import {
+  AlertTriangleIcon,
+  ChevronDownIcon,
+  LoaderIcon,
+  LocateIcon,
+  RotateCcwIcon,
+} from "../ui/health-map-icons"
 import { FilterRail } from "../ui/health-map-primitives"
+import { DetailSurface } from "./detail-surface"
 import styles from "./map-discovery.module.css"
-import { PlaceDetail } from "./place-detail"
-import type { CatalogState } from "./use-catalog"
-import type { DetailMotion, DetailPhase } from "./use-detail-selection"
+import type { MapDiscoverySurfaceModel } from "./map-discovery-model"
+import { PlaceResults } from "./place-results"
 
 const LOCATION_COPY: Record<LocationState["kind"], string> = {
   requesting: "현재 위치를 확인하고 있습니다.",
   inside: "현재 위치를 지도에 표시했습니다.",
-  outside: "서비스 범위 밖입니다. 현재 지도 위치를 유지합니다.",
-  denied: "위치 권한이 거부되었습니다. 현재 지도 위치를 유지합니다.",
-  timeout: "위치 확인 시간이 초과되었습니다. 다시 시도할 수 있습니다.",
-  unsupported: "이 브라우저에서는 위치 기능을 지원하지 않습니다.",
-}
-
-type MapDiscoverySurfaceModel = {
-  readonly adapter: {
-    readonly containerRef: RefObject<HTMLDivElement | null>
-    readonly retry: () => void
-    readonly state: MapAdapterState
-  }
-  readonly catalog: {
-    readonly reload: () => void
-    readonly state: CatalogState
-    readonly visiblePlaces: readonly Place[]
-  }
-  readonly detail: {
-    readonly clear: () => void
-    readonly directionsTargets?:
-      | Readonly<Partial<Record<Place["id"], DirectionsTarget>>>
-      | undefined
-    readonly finishClose: () => void
-    readonly isMobile: boolean
-    readonly linkNotice: string | undefined
-    readonly menus: readonly Menu[]
-    readonly motion: DetailMotion
-    readonly phase: DetailPhase
-    readonly selectedPlace: Place | undefined
-    readonly setPhase: (phase: DetailPhase) => void
-    readonly setSurfaceRef: (element: HTMLElement | null) => void
-  }
-  readonly filter: {
-    readonly onSelect: (filter: PlaceFilter) => void
-    readonly selected: PlaceFilter
-  }
-  readonly location: {
-    readonly request: (isUserRequested: boolean) => void
-    readonly state: LocationState
-  }
-  readonly view: MapView
-}
-
-type DetailSurfaceProperties = {
-  readonly model: MapDiscoverySurfaceModel
-  readonly place: Place
-}
-
-function DetailSurface({ model, place }: DetailSurfaceProperties) {
-  const { detail, filter, view } = model
-  const content = (
-    <PlaceDetail
-      key={place.slug}
-      directionsTarget={detail.directionsTargets?.[place.id]}
-      menus={detail.menus}
-      onClose={detail.clear}
-      place={place}
-      shareMap={{
-        latitude: view.latitude,
-        longitude: view.longitude,
-        zoom: view.zoom,
-        tag: filter.selected === "all" ? "balanced" : filter.selected,
-      }}
-    />
-  )
-  const handleTransitionEnd = (event: ReactTransitionEvent<HTMLElement>): void => {
-    if (event.target !== event.currentTarget) return
-    if (detail.phase === "closing") detail.finishClose()
-    if (detail.phase === "opening" && event.propertyName === "opacity") detail.setPhase("open")
-  }
-
-  if (!detail.isMobile)
-    return (
-      <aside
-        aria-label="장소 상세"
-        className={styles["detailSurface"]}
-        data-detail-motion={detail.motion}
-        data-detail-phase={detail.phase}
-        ref={detail.setSurfaceRef}
-        onTransitionEnd={handleTransitionEnd}
-      >
-        {content}
-      </aside>
-    )
-
-  return (
-    <div
-      aria-label="장소 상세"
-      aria-modal="true"
-      className={styles["detailSurface"]}
-      data-detail-motion={detail.motion}
-      data-detail-phase={detail.phase}
-      ref={detail.setSurfaceRef}
-      onKeyDown={(event: ReactKeyboardEvent<HTMLDivElement>) => {
-        if (event.key !== "Tab") return
-        const focusable = Array.from(
-          event.currentTarget.querySelectorAll<HTMLElement>(
-            "button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex='-1'])",
-          ),
-        ).filter((element) => element.getClientRects().length > 0)
-        const first = focusable[0]
-        const last = focusable[focusable.length - 1]
-        if (first === undefined || last === undefined) return
-        if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault()
-          last.focus()
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault()
-          first.focus()
-        }
-      }}
-      onTransitionEnd={handleTransitionEnd}
-      role="dialog"
-    >
-      {content}
-    </div>
-  )
+  outside: "서비스 범위 밖입니다.",
+  denied: "위치 권한이 거부되었습니다.",
+  timeout: "위치 확인 시간이 초과되었습니다.",
+  unsupported: "위치 기능을 지원하지 않습니다.",
 }
 
 export function MapDiscoverySurface({ model }: { readonly model: MapDiscoverySurfaceModel }) {
-  const { adapter, catalog, detail, filter, location, view } = model
+  const { adapter, catalog, detail, discovery, filter, location, view } = model
   const { selectedPlace } = detail
+  const locationNeedsAttention = ["outside", "denied", "timeout", "unsupported"].includes(
+    location.state.kind,
+  )
   return (
     <section aria-label="건강식 지도" className={styles["shell"]}>
       <header className={styles["header"]}>
@@ -158,6 +45,7 @@ export function MapDiscoverySurface({ model }: { readonly model: MapDiscoverySur
         className={styles["map"]}
         data-adapter-state={adapter.state}
         data-detail-phase={selectedPlace ? detail.phase : "closed"}
+        data-location-attention={locationNeedsAttention}
         data-testid="map-stage"
       >
         <div
@@ -187,6 +75,11 @@ export function MapDiscoverySurface({ model }: { readonly model: MapDiscoverySur
             <div className={styles["filter"]}>
               <FilterRail selected={filter.selected} onSelect={filter.onSelect} />
             </div>
+            {discovery.pending ? (
+              <button className={styles["areaSearch"]} onClick={discovery.applyArea} type="button">
+                이 지역 검색
+              </button>
+            ) : null}
             <div aria-live="polite" className={styles["status"]}>
               <span>NAVER 지도 연결됨</span>
             </div>
@@ -216,21 +109,52 @@ export function MapDiscoverySurface({ model }: { readonly model: MapDiscoverySur
                 </button>
               </div>
             ) : null}
-            {catalog.state === "ready" && catalog.visiblePlaces.length === 0 ? (
+            {catalog.state === "ready" && catalog.results.length === 0 && !discovery.query ? (
               <div className={styles["catalogFeedback"]} role="status">
                 표시할 장소가 없습니다.
               </div>
-            ) : catalog.visiblePlaces.length > 0 ? (
+            ) : catalog.results.length > 0 ? (
               <span aria-live="polite" className={styles["visuallyHidden"]}>
-                지도에 장소 {catalog.visiblePlaces.length}곳을 표시했습니다.
+                지도와 목록에 장소 {catalog.results.length}곳을 표시했습니다.
               </span>
             ) : null}
             {detail.linkNotice || selectedPlace ? (
-              <p className={styles["selection"]} role="status">
+              <p
+                className={styles["selection"]}
+                data-selection-kind={detail.linkNotice ? "recovery" : "ordinary"}
+                role="status"
+              >
                 {detail.linkNotice ?? "장소를 선택했습니다."}
               </p>
             ) : null}
-            {selectedPlace ? <DetailSurface model={model} place={selectedPlace} /> : null}
+            <button
+              aria-expanded={discovery.trayExpanded}
+              aria-label={`검색 결과 ${catalog.results.length}곳 ${discovery.trayExpanded ? "접기" : "보기"}`}
+              className={styles["trayToggle"]}
+              onClick={() => discovery.setTrayExpanded(!discovery.trayExpanded)}
+              type="button"
+            >
+              검색 결과 {catalog.results.length}곳
+              <ChevronDownIcon />
+            </button>
+            {selectedPlace ? (
+              <DetailSurface model={model} place={selectedPlace} />
+            ) : (
+              <aside
+                aria-label="검색 결과 패널"
+                className={styles["discoverySurface"]}
+                data-expanded={discovery.trayExpanded}
+              >
+                <PlaceResults
+                  menus={catalog.menus}
+                  onQueryChange={discovery.setQuery}
+                  onSearchCommit={discovery.onSearchCommit}
+                  onSelect={(place, trigger) => detail.onSelectPlace(place, "list", trigger)}
+                  query={discovery.query}
+                  results={catalog.results}
+                />
+              </aside>
+            )}
           </>
         )}
       </div>

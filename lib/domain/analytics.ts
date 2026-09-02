@@ -10,10 +10,14 @@ export const ANALYTICS_EVENT_NAMES = [
   "share_invoked",
   "share_completed",
   "shared_visit_explored",
+  "search_used",
+  "search_area_applied",
+  "result_list_opened",
 ] as const
 
 const EntrySourceSchema = z.enum(["direct", "map", "place_share", "map_share"])
 const ShareTargetSchema = z.enum(["place", "map"])
+const ResultCountBucketSchema = z.enum(["0", "1_5", "6_20", "21_plus"])
 
 const AnalyticsEventSchema = z.discriminatedUnion("event", [
   z
@@ -47,7 +51,7 @@ const AnalyticsEventSchema = z.discriminatedUnion("event", [
     .object({
       event: z.literal("place_opened"),
       properties: z
-        .object({ place_id: PlaceIdSchema, source: EntrySourceSchema })
+        .object({ place_id: PlaceIdSchema, source: z.enum(["map", "list", "shared_link"]) })
         .strict()
         .readonly(),
     })
@@ -93,6 +97,27 @@ const AnalyticsEventSchema = z.discriminatedUnion("event", [
         })
         .strict()
         .readonly(),
+    })
+    .strict()
+    .readonly(),
+  z
+    .object({
+      event: z.literal("search_used"),
+      properties: z.object({ result_count_bucket: ResultCountBucketSchema }).strict().readonly(),
+    })
+    .strict()
+    .readonly(),
+  z
+    .object({
+      event: z.literal("search_area_applied"),
+      properties: z.object({}).strict().readonly(),
+    })
+    .strict()
+    .readonly(),
+  z
+    .object({
+      event: z.literal("result_list_opened"),
+      properties: z.object({}).strict().readonly(),
     })
     .strict()
     .readonly(),

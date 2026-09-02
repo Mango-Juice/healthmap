@@ -6,7 +6,7 @@ export async function GET() {
   try {
     const provider = getPublicCatalogRuntimeProvider()
     const catalog = await provider.read()
-    return Response.json({ dataMode: "production", menus: catalog.menus, places: catalog.places })
+    return Response.json(catalog)
   } catch {
     return Response.json({}, { status: 503 })
   }

@@ -1,3 +1,6 @@
+import type { PublicCatalogSnapshot } from "../../lib/domain/catalog.ts"
+import { PublicCatalogSnapshotSchema } from "../../lib/domain/catalog.ts"
+
 const places = [
   [
     "6dd657be-fc3b-4bb8-8e67-fabbee0f2ea0",
@@ -65,7 +68,11 @@ const menus = [
   ["e240fdb1-ff22-42d6-8473-6f311846f943", 4, "단백 콩 도시락", ["protein", "plant_based"], 1],
 ] as const
 
-export const e2eCatalog = {
+const parseE2eCatalog = (snapshot: unknown): PublicCatalogSnapshot =>
+  PublicCatalogSnapshotSchema.parse(snapshot)
+
+export const e2eCatalog = parseE2eCatalog({
+  catalogVersion: "e2e-20260821",
   dataMode: "production",
   places: places.map(([id, slug, name, latitude, longitude, primaryTag, healthTags], index) => ({
     address: `서울 강남구 테스트로 ${index + 1}`,
@@ -89,6 +96,40 @@ export const e2eCatalog = {
     name,
     placeId: places[placeIndex][0],
     published: true,
+    verificationMethod: "official_menu",
     verifiedAt: "2026-08-14",
+    validUntil: "2026-11-12",
   })),
-}
+})
+
+export const longKoreanTypedStress = {
+  address:
+    "서울특별시 강남구 건강한 식생활 실천길 제철 채소 마을 1234 통곡물 건강 식문화 연구동 5층",
+  evidenceUrl: `https://sources.example.test/evidence/${"scientific-provenance-record-".repeat(12)}`,
+  menuName: "직접 재배한 제철 채소와 통곡물 단백질을 담은 오래 지속되는 균형 한상",
+  placeName: "제철 채소와 통곡물의 균형을 오래 연구해 온 건강한 식생활 식탁",
+  placeSlug: "test-sprout-square",
+} as const
+
+export const typedLongKoreanStressCatalog = parseE2eCatalog({
+  ...e2eCatalog,
+  catalogVersion: "e2e-20260821-long-korean-stress",
+  menus: e2eCatalog.menus.map((menu) =>
+    menu.placeId === "6dd657be-fc3b-4bb8-8e67-fabbee0f2ea0"
+      ? {
+          ...menu,
+          evidenceUrl: longKoreanTypedStress.evidenceUrl,
+          name: longKoreanTypedStress.menuName,
+        }
+      : menu,
+  ),
+  places: e2eCatalog.places.map((place) =>
+    place.slug === longKoreanTypedStress.placeSlug
+      ? {
+          ...place,
+          address: longKoreanTypedStress.address,
+          name: longKoreanTypedStress.placeName,
+        }
+      : place,
+  ),
+})

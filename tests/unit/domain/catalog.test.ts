@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest"
-import { parseMenuRows, parsePlaceRows } from "../../../lib/domain/catalog"
-import { VALID_MENU_ROW, VALID_PLACE_ROW } from "./fixtures"
+import {
+  PublicCatalogSnapshotSchema,
+  parseMenuRows,
+  parsePlaceRows,
+} from "../../../lib/domain/catalog"
+import { VALID_CATALOG_SNAPSHOT, VALID_MENU_ROW, VALID_PLACE_ROW } from "./fixtures"
 
 describe("catalog domain boundary", () => {
   it("Given strict Supabase rows, when parsed, then readonly camel-case domain records cross the boundary", () => {
@@ -35,7 +39,9 @@ describe("catalog domain boundary", () => {
           name: VALID_MENU_ROW.name,
           healthTags: VALID_MENU_ROW.health_tags,
           evidenceUrl: VALID_MENU_ROW.evidence_url,
+          verificationMethod: VALID_MENU_ROW.verification_method,
           verifiedAt: VALID_MENU_ROW.verified_at,
+          validUntil: VALID_MENU_ROW.valid_until,
           displayOrder: 0,
           published: true,
           dataMode: "production",
@@ -102,5 +108,90 @@ describe("catalog domain boundary", () => {
     // When / Then
     expect(() => parsePlaceRows([hostilePlace])).toThrow()
     expect(() => parseMenuRows([hostileMenu])).toThrow()
+  })
+
+  it("Given verification methods and validity windows, when parsed, then evidence rules are enforced", () => {
+    const validDirectConfirmation = {
+      ...VALID_MENU_ROW,
+      evidence_url: null,
+      verification_method: "direct_confirmation",
+    }
+    const invalidRows = [
+      { ...VALID_MENU_ROW, evidence_url: null, verification_method: "government_exact" },
+      { ...VALID_MENU_ROW, verification_method: "direct_confirmation" },
+      { ...VALID_MENU_ROW, valid_until: VALID_MENU_ROW.verified_at },
+      { ...VALID_MENU_ROW, valid_until: "2027-02-10" },
+    ]
+
+    expect(parseMenuRows([validDirectConfirmation])).toHaveLength(1)
+    for (const row of invalidRows) expect(() => parseMenuRows([row])).toThrow()
+  })
+
+  it("Given valid HTTPS and nullable direct-confirmation evidence, when safely parsed, then both succeed", () => {
+    // Given
+    const directConfirmationCatalog = {
+      ...VALID_CATALOG_SNAPSHOT,
+      menus: [
+        {
+          ...VALID_CATALOG_SNAPSHOT.menus[0],
+          evidenceUrl: null,
+          verificationMethod: "direct_confirmation",
+        },
+      ],
+    }
+
+    // When
+    const validHttps = PublicCatalogSnapshotSchema.safeParse(VALID_CATALOG_SNAPSHOT)
+    const nullableDirectConfirmation =
+      PublicCatalogSnapshotSchema.safeParse(directConfirmationCatalog)
+
+    // Then
+    expect(validHttps.success).toBe(true)
+    expect(nullableDirectConfirmation.success).toBe(true)
+  })
+
+  it("Given a malformed evidence URL, when safely parsed, then parsing fails without throwing", () => {
+    // Given
+    const malformedCatalog = {
+      ...VALID_CATALOG_SNAPSHOT,
+      menus: [{ ...VALID_CATALOG_SNAPSHOT.menus[0], evidenceUrl: "not a URL" }],
+    }
+
+    // When
+    const parse = () => PublicCatalogSnapshotSchema.safeParse(malformedCatalog)
+
+    // Then
+    expect(parse).not.toThrow()
+    expect(parse().success).toBe(false)
+  })
+
+  it("Given credential-bearing or unsafe evidence URLs, when safely parsed, then both are rejected", () => {
+    // Given
+    const inputs = [
+      "https://user:password@sources.example.test/evidence/1",
+      "http://sources.example.test/evidence/1",
+    ]
+
+    // When
+    const results = inputs.map((evidenceUrl) =>
+      PublicCatalogSnapshotSchema.safeParse({
+        ...VALID_CATALOG_SNAPSHOT,
+        menus: [{ ...VALID_CATALOG_SNAPSHOT.menus[0], evidenceUrl }],
+      }),
+    )
+
+    // Then
+    expect(results.every((result) => !result.success)).toBe(true)
+  })
+
+  it("Given an unknown public field, when safely parsed, then strict parsing rejects it", () => {
+    // Given
+    const catalogWithUnknownField = { ...VALID_CATALOG_SNAPSHOT, unexpected: "private" }
+
+    // When
+    const result = PublicCatalogSnapshotSchema.safeParse(catalogWithUnknownField)
+
+    // Then
+    expect(result.success).toBe(false)
   })
 })

@@ -5,6 +5,8 @@
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   min-block-size: 0;
+  min-inline-size: 0;
+  overflow: hidden;
 }
 .header {
   align-items: start;
@@ -26,8 +28,7 @@
   line-height: var(--hm-leading-heading);
   margin: var(--hm-space-1) 0 0;
   line-break: strict;
-  overflow-wrap: break-word;
-  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 .header h2:focus-visible {
   outline: var(--hm-focus-ring) solid var(--hm-blue);
@@ -41,6 +42,9 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: var(--hm-space-4);
+}
+.body > * {
+  min-inline-size: 0;
 }
 .address,
 .tags {
@@ -86,6 +90,11 @@
   flex: 0 0 auto;
   inline-size: var(--hm-icon-md);
 }
+.address span {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
 .header button svg {
   block-size: var(--hm-icon-md);
   inline-size: var(--hm-icon-md);
@@ -110,6 +119,32 @@
   margin: var(--hm-space-2) 0 0;
   padding-inline-start: var(--hm-space-6);
 }
+.menuList {
+  list-style: none;
+  padding-inline-start: 0;
+}
+.menuList li {
+  background: var(--hm-surface-subtle);
+  border-radius: var(--hm-radius-card);
+  display: grid;
+  gap: var(--hm-space-1);
+  padding: var(--hm-space-3);
+}
+.menuList strong {
+  overflow-wrap: anywhere;
+}
+.menuList span,
+.menuList a {
+  font-size: var(--hm-type-caption);
+  line-height: var(--hm-leading-tight);
+  overflow-wrap: anywhere;
+}
+.menuList a,
+.body > a {
+  color: var(--hm-info);
+  min-block-size: var(--hm-control-min);
+  overflow-wrap: anywhere;
+}
 .notice {
   background: var(--hm-info-wash);
   border: var(--hm-border-width) solid var(--hm-info);
@@ -129,10 +164,20 @@
   display: grid;
   gap: var(--hm-space-2);
 }
-.manual input {
+.manual textarea {
+  box-sizing: border-box;
+  field-sizing: content;
+  font: inherit;
+  inline-size: 100%;
+  line-height: var(--hm-leading-body);
   min-block-size: var(--hm-control-min);
   min-inline-size: 0;
+  overflow: clip;
   overflow-wrap: anywhere;
+  padding: var(--hm-space-2);
+  resize: none;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 .actions {
   border-block-start: var(--hm-border-width) solid var(--hm-border);
@@ -143,6 +188,27 @@
 }
 .actions button {
   padding-inline: var(--hm-space-2);
+}
+
+@media (max-width: 240px) {
+  .header {
+    flex-wrap: wrap;
+  }
+
+  .header > div {
+    flex: 1 0 100%;
+    order: 2;
+  }
+
+  .header > button {
+    margin-inline-start: auto;
+    order: 1;
+  }
+
+  .header h2 {
+    overflow-wrap: normal;
+    word-break: keep-all;
+  }
 }
 @media (max-width: 767px) {
   .actions {

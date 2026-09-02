@@ -35,6 +35,7 @@ describe("security headers", () => {
     const policy = CONTENT_SECURITY_POLICY()
 
     expect(policy).toContain("https://nrbe.map.naver.net")
+    expect(policy).toContain("https://nrbe.pstatic.net")
     expect(policy).toContain("https://static.naver.net")
     expect(policy).not.toContain("http://oapi.map.naver.com")
     expect(policy).not.toContain("http://nrbe.map.naver.net")

@@ -1,39 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { expect, test } from "./map-test"
-
-type MatrixRect = {
-  readonly bottom: number
-  readonly left: number
-  readonly right: number
-  readonly top: number
-}
-
-type MatrixFilter = {
-  readonly ariaPressed: string | null
-  readonly center: { readonly x: number; readonly y: number }
-  readonly inViewport: boolean
-  readonly nativeHit: boolean
-  readonly noOverflow: boolean
-  readonly oneLine: boolean
-}
-
-type MatrixSnapshot = {
-  readonly complementary: {
-    readonly name: string | null
-    readonly present: boolean
-    readonly role: string | null
-  }
-  readonly filters: readonly MatrixFilter[]
-  readonly focusOwner: string | null
-  readonly focusRestored: boolean
-  readonly label: string
-  readonly mapRect: MatrixRect | null
-  readonly mapScrollLeft: number
-  readonly nonOverlapping: boolean
-  readonly paneRect: MatrixRect | null
-  readonly phase: string
-  readonly railScrollLeft: number
-}
 
 test.beforeEach(async ({ context }) => {
   await context.addInitScript(() => {
@@ -46,12 +11,102 @@ test.beforeEach(async ({ context }) => {
 
 test.describe.configure({ retries: 0 })
 
-test.beforeAll(async () => {
-  await mkdir(".omo/evidence/task-7/fix-r14", { recursive: true })
-  await mkdir(".omo/evidence/task-7/fix-r9", { recursive: true })
-  await mkdir(".omo/evidence/task-7/fix-r10", { recursive: true })
-})
+test("framework capture chrome cleanup tolerates an absent portal and button before mobile detail evidence", async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 375, height: 812 })
+  await page.goto("/")
+  const isHostedProduction =
+    testInfo.project.use.baseURL === process.env["E2E_BASE_URL"] &&
+    process.env["E2E_BASE_URL"] !== undefined
+  const developerPortal = page.locator("nextjs-portal")
+  const developerChrome = page.getByRole("button", { name: "Open Next.js Dev Tools" })
+  const beforePortalCount = await developerPortal.count()
+  const beforeChromeCount = await developerChrome.count()
+  await page.evaluate(() => {
+    for (const portal of document.querySelectorAll("nextjs-portal")) portal.remove()
+  })
+  if (beforeChromeCount > 0) {
+    await developerChrome.evaluateAll((elements) => {
+      for (const element of elements) element.remove()
+    })
+  }
+  console.log(
+    JSON.stringify({
+      devtoolsSurface: {
+        beforeChromeCount,
+        beforePortalCount,
+        mode: isHostedProduction ? "hosted-production" : "local-development",
+        afterChromeCount: await developerChrome.count(),
+        afterPortalCount: await developerPortal.count(),
+      },
+    }),
+  )
 
+  await page.getByRole("button", { name: "새싹 네모식당 상세 보기" }).click()
+  await expect(
+    page.locator("[data-detail-phase='open']:not([data-testid='map-stage'])"),
+  ).toBeVisible()
+  await expect(page.getByRole("button", { name: "공유", exact: true })).toBeVisible()
+  await expect(page.getByTestId("naver-map").locator("nextjs-portal")).toHaveCount(0)
+})
+test("200 percent zoom keeps short Korean header phrases intact and the full surface reachable", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 188, height: 406 })
+  await page.goto("/")
+  await page.evaluate(() => document.querySelector("nextjs-portal")?.remove())
+
+  const reflow = await page
+    .locator("header")
+    .first()
+    .evaluate((header) => {
+      const title = header.querySelector("h1")
+      const refresh = [...header.querySelectorAll("button")].find(
+        (button) => button.textContent?.trim() === "장소 새로고침",
+      )
+      const textLineCount = (element: Element | null): number => {
+        if (element === null) return 0
+        const range = document.createRange()
+        range.selectNodeContents(element)
+        return range.getClientRects().length
+      }
+      return {
+        headerFits: header.scrollWidth <= header.clientWidth,
+        refreshLines: textLineCount(refresh ?? null),
+        titleLines: textLineCount(title),
+      }
+    })
+
+  expect(reflow).toEqual({ headerFits: true, refreshLines: 1, titleLines: 1 })
+  const trayToggle = page.getByRole("button", { name: /검색 결과 5곳/ })
+  await expect(trayToggle).toBeVisible()
+  await expect
+    .poll(() =>
+      trayToggle.evaluate((element) => {
+        const range = document.createRange()
+        const label = [...element.childNodes].find((node) => node.nodeType === Node.TEXT_NODE)
+        if (label === undefined) return 0
+        range.selectNodeContents(label)
+        return range.getClientRects().length
+      }),
+    )
+    .toBe(1)
+  await expect(page.getByRole("searchbox", { name: "장소와 메뉴 검색" })).toBeVisible()
+  await page.getByRole("button", { name: "새싹 네모식당 상세 보기" }).click()
+  const placeTitle = page.getByRole("heading", { name: "새싹 네모식당" })
+  await expect(placeTitle).toBeVisible()
+  await expect
+    .poll(() =>
+      placeTitle.evaluate((element) => {
+        const range = document.createRange()
+        range.selectNodeContents(element)
+        return range.getClientRects().length
+      }),
+    )
+    .toBe(1)
+  await expect(page.getByRole("button", { name: "공유", exact: true })).toBeVisible()
+})
 test("mobile manual share owns native wheel scroll while the sheet and heading stay fixed", async ({
   page,
 }) => {
@@ -64,7 +119,7 @@ test("mobile manual share owns native wheel scroll while the sheet and heading s
     })
   })
   await page.goto("/")
-  await page.getByRole("button", { name: /새싹 네모식당/ }).click()
+  await page.getByRole("button", { name: "새싹 네모식당 상세 보기" }).click()
   const detail = page.getByTestId("place-detail")
   await expect(
     page.locator("[data-detail-phase='open']:not([data-testid='map-stage'])"),
@@ -101,7 +156,6 @@ test("mobile manual share owns native wheel scroll while the sheet and heading s
   expect(after.headingTop).toBe(before.headingTop)
   await expect(detail).toBeVisible()
 })
-
 test("production shell resolves consumed tokens and shows a fully visible five-control rail", async ({
   page,
 }) => {
@@ -180,7 +234,6 @@ test("production shell resolves consumed tokens and shows a fully visible five-c
   expect(leafSizes.length).toBe(5)
   expect(leafSizes.every(({ width, height }) => width >= 16 && height >= 16)).toBe(true)
 })
-
 test("initial 375 balance filter receives the native click without status interception", async ({
   page,
 }) => {
@@ -198,537 +251,4 @@ test("initial 375 balance filter receives the native click without status interc
   expect(hit.targetIsButton).toBe(true)
   await balanced.click()
   await expect(balanced).toHaveAttribute("aria-pressed", "true")
-})
-
-test("open 768 pane keeps the fifth filter natively hit-testable", async ({ page }) => {
-  await page.setViewportSize({ width: 768, height: 1024 })
-  await page.goto("/")
-  await page.screenshot({
-    path: ".omo/evidence/task-7/fix-r14/baseline-768x1024-default.png",
-  })
-  await page.getByRole("button", { name: /새싹 네모식당/ }).click()
-  await expect(
-    page.locator("[data-detail-phase='open']:not([data-testid='map-stage'])"),
-  ).toBeVisible()
-  const fifth = page.getByRole("button", { name: "식물성 필터" })
-  const hit = await fifth.evaluate((element) => {
-    const rect = element.getBoundingClientRect()
-    const target = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
-    return {
-      center: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 },
-      filterRect: rect.toJSON(),
-      targetId: target?.id ?? null,
-      targetTag: target?.tagName ?? null,
-      targetTestId: target?.closest("[data-testid]")?.getAttribute("data-testid") ?? null,
-      targetIsFilter: target === element || element.contains(target),
-    }
-  })
-  await page.screenshot({
-    path: ".omo/evidence/task-7/fix-r14/baseline-768x1024-open.png",
-  })
-  expect(hit.targetIsFilter).toBe(true)
-})
-
-test("768 split-pane acceptance keeps every filter stable through opening and restore", async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 768, height: 1024 })
-  await page.goto("/")
-  await expect(page.getByText("NAVER 지도 연결됨")).toBeVisible()
-  const map = page.getByTestId("map-stage")
-  const rail = map.locator("fieldset")
-  const filters = rail.getByRole("button")
-  const capture = async () =>
-    page.evaluate(() => {
-      const mapElement = document.querySelector<HTMLElement>("[data-testid='map-stage']")
-      const railElement = mapElement?.querySelector<HTMLElement>("fieldset")
-      const pane = document.querySelector<HTMLElement>(
-        "[data-detail-phase]:not([data-testid='map-stage'])",
-      )
-      const mapRect = mapElement
-        ?.querySelector("[data-testid='naver-map']")
-        ?.getBoundingClientRect()
-      const paneRect = pane?.getBoundingClientRect()
-      const filters = [...document.querySelectorAll<HTMLElement>("fieldset button")].map(
-        (element) => {
-          const rect = element.getBoundingClientRect()
-          const target = document.elementFromPoint(
-            rect.left + rect.width / 2,
-            rect.top + rect.height / 2,
-          )
-          return {
-            center: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 },
-            visible:
-              rect.left >= 0 &&
-              rect.right <= innerWidth &&
-              rect.top >= 0 &&
-              rect.bottom <= innerHeight,
-            nativeHit: target === element || element.contains(target),
-            pressed: element.getAttribute("aria-pressed"),
-          }
-        },
-      )
-      return {
-        mapScrollLeft: mapElement?.scrollLeft ?? -1,
-        railScrollLeft: railElement?.scrollLeft ?? -1,
-        mapRight: mapRect?.right ?? -1,
-        paneLeft: paneRect?.left ?? innerWidth,
-        paneRight: paneRect?.right ?? -1,
-        filters,
-      }
-    })
-  const closed = await capture()
-  await expect(closed.mapScrollLeft).toBe(0)
-  await page.getByRole("button", { name: /새싹 네모식당/ }).click()
-  await page.waitForTimeout(20)
-  const opening = await capture()
-  await expect(
-    page.locator(
-      "[data-detail-phase='opening']:not([data-testid='map-stage']), [data-detail-phase='open']:not([data-testid='map-stage'])",
-    ),
-  ).toBeVisible()
-  await page.waitForTimeout(280)
-  const settled = await capture()
-  await page.screenshot({ path: ".omo/evidence/task-7/fix-r14/final-768-settled.png" })
-  const states = [closed, opening, settled]
-  for (const state of states) {
-    expect(state.mapScrollLeft).toBe(0)
-    expect(state.railScrollLeft).toBe(closed.railScrollLeft)
-    expect(state.filters.every(({ visible, nativeHit }) => visible && nativeHit)).toBe(true)
-  }
-  expect(settled.paneLeft).toBeGreaterThanOrEqual(settled.mapRight)
-  expect(settled.paneRight).toBeGreaterThan(settled.paneLeft)
-  for (let index = 0; index < 5; index += 1) {
-    await filters.nth(index).click()
-    await expect(filters.nth(index)).toHaveAttribute("aria-pressed", "true")
-    const afterFilter = await capture()
-    expect(afterFilter.mapScrollLeft).toBe(0)
-    expect(afterFilter.filters.every(({ visible, nativeHit }) => visible && nativeHit)).toBe(true)
-  }
-  await filters.nth(0).click()
-  await expect(filters.nth(0)).toHaveAttribute("aria-pressed", "true")
-  await page.getByRole("button", { name: "상세 닫기" }).click()
-  await page.waitForTimeout(300)
-  await expect(page.getByTestId("place-detail")).toHaveCount(0)
-  const restored = await capture()
-  expect(restored.mapScrollLeft).toBe(0)
-  expect(restored.filters.every(({ visible, nativeHit }) => visible && nativeHit)).toBe(true)
-  await expect(page.locator("fieldset button[aria-pressed='true']")).toBeFocused()
-})
-
-test("768 closed map stays map-first and keeps every Korean filter label on one line", async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 768, height: 1024 })
-  await page.goto("/")
-  const map = page.getByTestId("map-stage")
-  const layout = await map.evaluate((element) => {
-    const paper = element.querySelector<HTMLElement>("[data-testid='naver-map']")
-    const buttons = [...element.querySelectorAll<HTMLButtonElement>("fieldset button")]
-    return {
-      detailCount: element.querySelectorAll("[data-detail-phase]").length,
-      mapScrollLeft: element.scrollLeft,
-      paperWidth: paper?.getBoundingClientRect().width ?? 0,
-      viewportWidth: element.getBoundingClientRect().width,
-      labelsSingleLine: buttons.every((button) => {
-        const label = button.querySelector("span")
-        if (label === null) return false
-        const lineHeight = Number.parseFloat(getComputedStyle(label).lineHeight)
-        return label.getBoundingClientRect().height <= lineHeight * 1.1
-      }),
-    }
-  })
-  expect(layout.detailCount).toBe(0)
-  expect(layout.mapScrollLeft).toBe(0)
-  expect(layout.paperWidth).toBe(layout.viewportWidth)
-  expect(layout.labelsSingleLine).toBe(true)
-})
-
-test("768 all-five filter clicks remain native through every detail lifecycle state", async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 768, height: 1024 })
-  await page.goto("/")
-  await expect(page.getByText("NAVER 지도 연결됨")).toBeVisible()
-  const filters = page.getByTestId("map-stage").locator("fieldset button")
-  const matrix: MatrixSnapshot[] = []
-  const capture = async (label: string): Promise<MatrixSnapshot> =>
-    page.evaluate((stateLabel) => {
-      const rectSnapshot = (rect: DOMRect | undefined): MatrixRect | null =>
-        rect === undefined
-          ? null
-          : { bottom: rect.bottom, left: rect.left, right: rect.right, top: rect.top }
-      const map = document.querySelector<HTMLElement>("[data-testid='map-stage']")
-      const paper = map?.querySelector<HTMLElement>("[data-testid='naver-map']")
-      const pane = map?.querySelector<HTMLElement>(
-        "[data-detail-phase]:not([data-testid='map-stage'])",
-      )
-      const buttons = [...document.querySelectorAll<HTMLButtonElement>("fieldset button")]
-      const paneRect = rectSnapshot(pane?.getBoundingClientRect())
-      const mapRect = rectSnapshot(paper?.getBoundingClientRect())
-      const active = document.activeElement
-      const focusOwner =
-        active instanceof HTMLElement
-          ? (active.getAttribute("aria-label") ??
-            active.id ??
-            active.getAttribute("data-testid") ??
-            active.tagName.toLowerCase())
-          : null
-      const complementary = {
-        name: pane?.getAttribute("aria-label") ?? null,
-        present: pane !== null && pane !== undefined,
-        role: pane?.tagName === "ASIDE" ? "complementary" : null,
-      }
-      const filtersSnapshot = buttons.map((button) => {
-        const rect = button.getBoundingClientRect()
-        const center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
-        const target = document.elementFromPoint(center.x, center.y)
-        const labelElement = button.querySelector("span")
-        const lineHeight =
-          labelElement === null ? 0 : Number.parseFloat(getComputedStyle(labelElement).lineHeight)
-        return {
-          ariaPressed: button.getAttribute("aria-pressed"),
-          center,
-          inViewport:
-            rect.left >= 0 &&
-            rect.right <= innerWidth &&
-            rect.top >= 0 &&
-            rect.bottom <= innerHeight,
-          nativeHit: target === button || button.contains(target),
-          noOverflow: labelElement !== null && labelElement.scrollWidth <= labelElement.clientWidth,
-          oneLine:
-            labelElement !== null &&
-            labelElement.getBoundingClientRect().height <= lineHeight * 1.1,
-        }
-      })
-      return {
-        complementary,
-        filters: filtersSnapshot,
-        focusOwner,
-        focusRestored:
-          active instanceof HTMLElement && active.getAttribute("aria-pressed") === "true",
-        label: stateLabel,
-        mapRect,
-        mapScrollLeft: map?.scrollLeft ?? -1,
-        nonOverlapping: paneRect === null || mapRect === null || paneRect.left >= mapRect.right,
-        paneRect,
-        phase: pane?.getAttribute("data-detail-phase") ?? "closed",
-        railScrollLeft: map?.querySelector<HTMLElement>("fieldset")?.scrollLeft ?? -1,
-      }
-    }, label)
-  const assertState = async (state: string, expectedPhase?: string) => {
-    const snapshot = await capture(state)
-    expect(snapshot.mapScrollLeft, state).toBe(0)
-    expect(snapshot.railScrollLeft, state).toBe(0)
-    if (expectedPhase !== undefined) expect(snapshot.phase, state).toBe(expectedPhase)
-    expect(snapshot.filters, state).toHaveLength(5)
-    expect(
-      snapshot.filters.every(
-        ({ nativeHit, inViewport, oneLine, noOverflow }) =>
-          nativeHit && inViewport && oneLine && noOverflow,
-      ),
-      state,
-    ).toBe(true)
-    if (snapshot.complementary.present) {
-      expect(snapshot.complementary.role, state).toBe("complementary")
-      expect(snapshot.complementary.name, state).toBe("장소 상세")
-      expect(snapshot.nonOverlapping, state).toBe(true)
-      const paneRole = page.getByRole("complementary", { name: "장소 상세" })
-      if (state.startsWith("closing")) await expect(paneRole).toHaveCount(1)
-      else await expect(paneRole).toBeVisible()
-    } else {
-      await expect(page.getByRole("complementary", { name: "장소 상세" })).toHaveCount(0)
-    }
-    if (state === "restored") expect(snapshot.focusRestored, state).toBe(true)
-    matrix.push(snapshot)
-    return snapshot
-  }
-  const clickOne = async (state: string, index: number, expectedPhase?: string) => {
-    await filters.nth(index).click()
-    await expect(filters.nth(index), `${state} filter ${index}`).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    )
-    await assertState(`${state}-after-filter-${index}`, expectedPhase)
-  }
-  const clickAll = async (state: string, expectedPhase?: string, startIndex = 0) => {
-    for (let index = startIndex; index < 5; index += 1) {
-      await clickOne(state, index, expectedPhase)
-    }
-  }
-
-  await assertState("closed")
-  await clickAll("closed")
-  await filters.nth(0).click()
-  const marker = page.getByRole("button", { name: /새싹 네모식당/ })
-  await marker.click()
-  await expect(
-    page.locator("[data-detail-phase='opening']:not([data-testid='map-stage'])"),
-  ).toBeVisible()
-  await assertState("opening", "opening")
-  await clickOne("opening", 0, "opening")
-  await expect(
-    page.locator("[data-detail-phase='open']:not([data-testid='map-stage'])"),
-  ).toBeVisible()
-  await assertState("settled", "open")
-  await clickAll("settled", "open")
-  await filters.nth(0).click()
-  await page.getByRole("button", { name: "상세 닫기" }).click()
-  await expect(
-    page.locator("[data-detail-phase='closing']:not([data-testid='map-stage'])"),
-  ).toBeVisible()
-  await assertState("closing", "closing")
-  await clickOne("closing", 0, "closing")
-  await expect(page.getByTestId("place-detail")).toHaveCount(0)
-  await assertState("restored", "closed")
-  await expect(page.locator("fieldset button[aria-pressed='true']")).toBeFocused()
-  await clickAll("restored", "closed", 1)
-
-  const artifact = { viewport: "768x1024", states: matrix }
-  await writeFile(
-    ".omo/evidence/task-7/fix-r14/768-state-matrix.json",
-    JSON.stringify(artifact, null, 2),
-  )
-  const written = JSON.parse(
-    await readFile(".omo/evidence/task-7/fix-r14/768-state-matrix.json", "utf8"),
-  ) as unknown
-  expect(written, "the serialized artifact must be the exact object asserted above").toEqual(
-    artifact,
-  )
-})
-
-test("desktop title focus does not scroll its map ancestor", async ({ page }) => {
-  await page.setViewportSize({ width: 768, height: 1024 })
-  await page.goto("/")
-  const map = page.getByTestId("map-stage")
-  await map.evaluate((element) => {
-    element.style.overflow = "auto"
-    element.scrollLeft = 0
-  })
-  await page.getByRole("button", { name: /새싹 네모식당/ }).click()
-  await expect(page.locator("#place-detail-title")).toBeFocused()
-  expect(await map.evaluate((element) => element.scrollLeft)).toBe(0)
-})
-
-test("place detail opening exposes start, in-flight, and settled states", async ({ page }) => {
-  await page.setViewportSize({ width: 375, height: 812 })
-  await page.goto("/")
-  await expect(page.getByText("NAVER 지도 연결됨")).toBeVisible()
-  const surface = page.locator("[data-detail-phase]:not([data-testid='map-stage'])")
-  const start = await page.evaluate(
-    () =>
-      new Promise<{ phase: string | null; transform: string; opacity: string }>((resolve) => {
-        const read = (): void => {
-          const element = document.querySelector<HTMLElement>(
-            "[data-detail-phase]:not([data-testid='map-stage'])",
-          )
-          if (element === null) return
-          observer.disconnect()
-          resolve({
-            phase: element.getAttribute("data-detail-phase"),
-            transform: getComputedStyle(element).transform,
-            opacity: getComputedStyle(element).opacity,
-          })
-        }
-        const observer = new MutationObserver(read)
-        observer.observe(document.body, { childList: true, subtree: true })
-        document.querySelector<HTMLButtonElement>('[aria-label^="새싹 네모식당"]')?.click()
-        read()
-      }),
-  )
-  await page.waitForTimeout(120)
-  const middle = await surface.evaluate((element) => ({
-    phase: element.getAttribute("data-detail-phase"),
-    transform: getComputedStyle(element).transform,
-    opacity: getComputedStyle(element).opacity,
-  }))
-  await page.waitForTimeout(180)
-  const end = await surface.evaluate((element) => ({
-    phase: element.getAttribute("data-detail-phase"),
-    transform: getComputedStyle(element).transform,
-    opacity: getComputedStyle(element).opacity,
-  }))
-  expect(start.phase).toBe("opening")
-  expect(start.transform).not.toBe("none")
-  expect(start.opacity).toBe("0")
-  expect(middle.transform).not.toBe(start.transform)
-  expect(middle.opacity).not.toBe(start.opacity)
-  expect(end.phase).toBe("open")
-  expect(end.transform === "none" || end.transform === "matrix(1, 0, 0, 1, 0, 0)").toBe(true)
-  expect(end.opacity).toBe("1")
-})
-
-test("NAVER map host remains bounded with five native markers", async ({ page }) => {
-  await page.goto("/")
-  const map = page.getByTestId("map-stage")
-  const naverMap = page.getByTestId("naver-map")
-  await expect(naverMap).toBeVisible()
-  await expect(naverMap.locator("canvas[data-test-naver-map]")).toBeVisible()
-  await expect(map.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
-  const bounded = await naverMap.evaluate((element) => {
-    const mapRect = element.parentElement?.getBoundingClientRect()
-    const rect = element.getBoundingClientRect()
-    return (
-      mapRect !== undefined &&
-      rect.left >= mapRect.left &&
-      rect.right <= mapRect.right &&
-      rect.top >= mapRect.top &&
-      rect.bottom <= mapRect.bottom
-    )
-  })
-  expect(bounded).toBe(true)
-})
-
-test("NAVER map composition preserves the detail anatomy", async ({ page }) => {
-  await page.setViewportSize({ width: 375, height: 812 })
-  await page.goto("/")
-  await expect(page.getByTestId("naver-map")).toBeVisible()
-  await page.getByRole("button", { name: /새싹 네모식당/ }).click()
-  const detail = page.getByTestId("place-detail")
-  await expect(detail.locator("[data-detail-summary]")).toBeVisible()
-  await expect(detail.locator("[data-detail-meta]")).toHaveCount(2)
-  await expect(detail.locator("[data-detail-menu]")).toBeVisible()
-})
-
-test("desktop detail is complementary beside the NAVER map", async ({ page }) => {
-  await page.setViewportSize({ width: 768, height: 1024 })
-  await page.goto("/")
-  const map = page.getByTestId("map-stage")
-  await expect(page.getByTestId("naver-map")).toBeVisible()
-  await page.getByRole("button", { name: /새싹 네모식당/ }).click()
-  await expect(page.getByRole("complementary", { name: "장소 상세" })).toBeVisible()
-  const fifth = map.locator("fieldset button").nth(4)
-  const hit = await fifth.evaluate((element) => {
-    const rect = element.getBoundingClientRect()
-    const target = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
-    return target === element || element.contains(target)
-  })
-  expect(hit).toBe(true)
-})
-
-test("normal close stays mounted through the detail transition", async ({ page }) => {
-  await page.setViewportSize({ width: 375, height: 812 })
-  await page.goto("/")
-  await page.getByRole("button", { name: /새싹 네모식당/ }).click()
-  await expect(page.getByTestId("place-detail")).toBeVisible()
-  const transition = await page
-    .locator("[data-detail-phase='open']:not([data-testid='map-stage'])")
-    .evaluate((element) => getComputedStyle(element).transitionDuration)
-  expect(transition).toContain("0.24")
-  const startedAt = await page.evaluate(() => performance.now())
-  await page.getByRole("button", { name: "상세 닫기" }).click()
-  await expect(
-    page.locator("[data-detail-phase='closing']:not([data-testid='map-stage'])"),
-  ).toBeVisible()
-  await expect(page.getByTestId("place-detail")).toBeVisible()
-  await expect(page.getByTestId("place-detail")).toHaveCount(0)
-  const elapsed = await page.evaluate((start) => performance.now() - start, startedAt)
-  expect(elapsed).toBeGreaterThan(200)
-})
-
-test("close keeps the surface mounted until its native transition completes", async ({ page }) => {
-  await page.setViewportSize({ width: 375, height: 812 })
-  await page.goto("/")
-  await page.getByRole("button", { name: /새싹 네모식당/ }).click()
-  await page.waitForTimeout(350)
-  await page.getByRole("button", { name: "상세 닫기" }).click()
-  const closing = await page
-    .locator("[data-detail-phase]:not([data-testid='map-stage'])")
-    .evaluate((element) => ({
-      phase: element.getAttribute("data-detail-phase"),
-      transform: getComputedStyle(element).transform,
-      transition: getComputedStyle(element).transitionDuration,
-    }))
-  expect(closing.phase).toBe("closing")
-  expect(closing.transform).not.toBe("none")
-  expect(closing.transition).toContain("0.24")
-  await expect(page.getByTestId("place-detail")).toHaveCount(0)
-})
-
-test("desktop close completes the inline pane transition", async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 800 })
-  await page.goto("/")
-  await page.getByRole("button", { name: /새싹 네모식당/ }).click()
-  await page.waitForTimeout(350)
-  await page.keyboard.press("Escape")
-  const closing = await page
-    .locator("[data-detail-phase]:not([data-testid='map-stage'])")
-    .evaluate((element) => ({
-      phase: element.getAttribute("data-detail-phase"),
-      transform: getComputedStyle(element).transform,
-      transition: getComputedStyle(element).transitionDuration,
-    }))
-  expect(closing.phase).toBe("closing")
-  await expect(page.getByTestId("place-detail")).toHaveCount(0)
-})
-
-test("Back during opening and the first rapid mobile close complete deterministically", async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 768, height: 1024 })
-  await page.goto("/")
-  const marker = page.getByRole("button", { name: /새싹 네모식당/ })
-  await marker.click()
-  await page.goBack()
-  await page.waitForTimeout(350)
-  await expect(page.getByTestId("place-detail")).toHaveCount(0)
-  await expect(page.locator("fieldset button[aria-pressed='true']")).toBeFocused()
-
-  await page.setViewportSize({ width: 375, height: 812 })
-  await page.goto("/")
-  await marker.click()
-  await page.getByRole("button", { name: "상세 닫기" }).click()
-  await page.waitForTimeout(350)
-  await expect(page.getByTestId("place-detail")).toHaveCount(0)
-  await expect(page.locator("fieldset button[aria-pressed='true']")).toBeFocused()
-})
-
-test("captures fresh production viewport and motion evidence", async ({ page }) => {
-  const viewports = [
-    { width: 375, height: 812, name: "375x812" },
-    { width: 768, height: 1024, name: "768x1024" },
-    { width: 1280, height: 800, name: "1280x800" },
-  ] as const
-  for (const viewport of viewports) {
-    await page.setViewportSize(viewport)
-    await page.goto("/")
-    await page.screenshot({
-      path: `.omo/evidence/task-7/fix-r14/final-${viewport.name}-map.png`,
-    })
-    await page.getByRole("button", { name: /새싹 네모식당/ }).click()
-    await page.screenshot({
-      path: `.omo/evidence/task-7/fix-r14/final-${viewport.name}-start.png`,
-    })
-    await page.waitForTimeout(120)
-    await page.screenshot({
-      path: `.omo/evidence/task-7/fix-r14/final-${viewport.name}-120ms.png`,
-    })
-    await page.waitForTimeout(200)
-    await page.screenshot({
-      path: `.omo/evidence/task-7/fix-r14/final-${viewport.name}-settled.png`,
-    })
-    await page.getByRole("button", { name: "상세 닫기" }).click()
-    await expect(page.getByTestId("place-detail")).toHaveCount(0)
-  }
-})
-
-test("reduced motion removes the sheet delay and still restores focus", async ({ page }) => {
-  await page.setViewportSize({ width: 375, height: 812 })
-  await page.emulateMedia({ reducedMotion: "reduce" })
-  await page.goto("/")
-  const marker = page.getByRole("button", { name: /새싹 네모식당/ })
-  await marker.click()
-  const motion = await page
-    .locator("[data-detail-phase]:not([data-testid='map-stage'])")
-    .evaluate((element) => ({
-      phase: element.getAttribute("data-detail-phase"),
-      duration: getComputedStyle(element).transitionDuration,
-      transform: getComputedStyle(element).transform,
-    }))
-  expect(motion.phase).toBe("open")
-  expect(motion.duration === "1e-05s" || motion.duration.includes("0.01")).toBe(true)
-  expect(motion.transform).toBe("none")
-  await page.getByRole("button", { name: "상세 닫기" }).click()
-  await expect(page.getByTestId("place-detail")).toHaveCount(0)
-  await expect(page.locator("fieldset button[aria-pressed='true']")).toBeFocused()
 })

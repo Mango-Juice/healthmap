@@ -37,15 +37,16 @@ test("Given the privacy preference, when toggled with the keyboard and reloaded,
   await page.goto("/privacy")
   const toggle = page.getByRole("switch", { name: "분석 데이터 수집 설정" })
   await expect(toggle).toBeEnabled()
-  await expect(toggle).toHaveAttribute("aria-checked", "true")
+  await expect(toggle).toHaveAttribute("aria-checked", "false")
+  await expect(page.getByText("현재 수집하지 않음")).toBeVisible()
   await toggle.focus()
 
   // When
   await toggle.press("Space")
 
   // Then
-  await expect(toggle).toHaveAttribute("aria-checked", "false")
-  await expect(page.getByText("현재 수집하지 않음")).toBeVisible()
+  await expect(toggle).toHaveAttribute("aria-checked", "true")
+  await expect(page.getByText("현재 최소한의 분석 이벤트만 수집")).toBeVisible()
   const bounds = await toggle.boundingBox()
   expect(bounds?.width).toBeGreaterThanOrEqual(44)
   expect(bounds?.height).toBeGreaterThanOrEqual(44)
@@ -54,5 +55,5 @@ test("Given the privacy preference, when toggled with the keyboard and reloaded,
   await page.reload()
 
   // Then
-  await expect(toggle).toHaveAttribute("aria-checked", "false")
+  await expect(toggle).toHaveAttribute("aria-checked", "true")
 })

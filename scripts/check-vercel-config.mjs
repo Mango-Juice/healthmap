@@ -60,8 +60,11 @@ if (!existsSync(vercelConfigUrl)) {
     !contentSecurityPolicy.includes(
       "script-src 'self' 'unsafe-inline' https://oapi.map.naver.com https://nrbe.map.naver.net",
     ) ||
+    !contentSecurityPolicy.includes("https://nrbe.pstatic.net") ||
     !contentSecurityPolicy.includes("https://static.naver.net") ||
-    !contentSecurityPolicy.includes("https://kr-col-ext.nelo.navercorp.com")
+    !contentSecurityPolicy.includes("https://kr-col-ext.nelo.navercorp.com") ||
+    !contentSecurityPolicy.includes("https://us.i.posthog.com") ||
+    contentSecurityPolicy.includes("https://vercel.live")
   ) {
     failures.push("Vercel must set the reviewed Content-Security-Policy for all routes")
   }

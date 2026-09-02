@@ -40,7 +40,7 @@
   color: var(--hm-ink);
   font-size: var(--hm-type-caption);
   line-height: var(--hm-leading-tight);
-  overflow-wrap: normal;
+  overflow-wrap: anywhere;
 }
 
 .alert > button {

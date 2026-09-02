@@ -5,7 +5,7 @@ import {
   getPublicCatalogCacheIdentity,
   PublicCatalogConfigurationError,
 } from "../../../lib/catalog/runtime"
-import { VALID_MENU_ROW, VALID_PLACE_ROW } from "./fixtures"
+import { VALID_CATALOG_SNAPSHOT } from "./fixtures"
 
 afterEach(() => vi.restoreAllMocks())
 
@@ -62,25 +62,26 @@ describe("public catalog runtime provider", () => {
     expect(create).toThrow(PublicCatalogConfigurationError)
   })
 
-  it("Given configured Supabase credentials, when published rows are selected, then the REST contract carries only public queries and auth headers", async () => {
+  it("Given configured Supabase credentials, when the catalog is read, then one RPC snapshot is requested without wildcard selectors", async () => {
     // Given
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce(new Response(JSON.stringify([VALID_PLACE_ROW])))
-      .mockResolvedValueOnce(new Response(JSON.stringify([VALID_MENU_ROW])))
+      .mockResolvedValueOnce(new Response(JSON.stringify(VALID_CATALOG_SNAPSHOT)))
     const client = createSupabasePublicCatalogClient("https://catalog.example.test", "publishable")
 
     // When
-    await Promise.all([client.selectPublishedPlaces(), client.selectPublishedMenus()])
+    await client.getPublicCatalogSnapshot()
 
     // Then
-    expect(fetchSpy).toHaveBeenCalledTimes(2)
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
     for (const [url, options] of fetchSpy.mock.calls) {
-      expect(url.toString()).toContain("/rest/v1/")
-      expect(url.toString()).toContain("published=eq.true")
+      expect(url.toString()).toBe("https://catalog.example.test/rest/v1/rpc/get_public_catalog")
+      expect(url.toString()).not.toContain("select=*")
+      expect(options?.method).toBe("POST")
       expect(options?.headers).toEqual({
         apikey: "publishable",
         authorization: "Bearer publishable",
+        "content-type": "application/json",
       })
     }
   })

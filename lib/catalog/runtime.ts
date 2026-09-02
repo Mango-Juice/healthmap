@@ -1,11 +1,9 @@
 import { createHash } from "node:crypto"
-import { z } from "zod"
 import { parsePublicEnvironment } from "../../app/public-environment.ts"
+import { PublicCatalogSnapshotSchema } from "../domain/catalog.ts"
 import { requestJson } from "../http/request.ts"
 import { createNextPublicCatalogReader, type PublicCatalogReader } from "./next-cache.ts"
 import { createPublicCatalogRepository, type SupabaseCatalogClient } from "./repository.ts"
-
-const RawRowsSchema = z.array(z.unknown()).readonly()
 
 export class PublicCatalogConfigurationError extends Error {
   readonly name = "PublicCatalogConfigurationError"
@@ -32,17 +30,18 @@ export const createSupabasePublicCatalogClient = (
   url: string,
   key: string,
 ): SupabaseCatalogClient => {
-  const headers = { apikey: key, authorization: `Bearer ${key}` }
-  const select = (table: "places" | "menus"): Promise<readonly unknown[]> =>
-    requestJson(
-      new URL(`/rest/v1/${table}?select=*&published=eq.true&order=id.asc`, url).toString(),
-      RawRowsSchema,
-      { headers },
-    )
-  return {
-    selectPublishedPlaces: () => select("places"),
-    selectPublishedMenus: () => select("menus"),
+  const headers = {
+    apikey: key,
+    authorization: `Bearer ${key}`,
+    "content-type": "application/json",
   }
+  const getPublicCatalogSnapshot = () =>
+    requestJson(
+      new URL("/rest/v1/rpc/get_public_catalog", url).toString(),
+      PublicCatalogSnapshotSchema,
+      { body: "{}", headers, method: "POST" },
+    )
+  return { getPublicCatalogSnapshot }
 }
 
 export const createPublicCatalogRuntimeProvider = (

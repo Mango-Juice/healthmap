@@ -1,8 +1,12 @@
 import type { PlaceFilter } from "../../lib/domain/filter"
-import type { MapView } from "../../lib/domain/geo"
+import type { GeoPoint, MapView } from "../../lib/domain/geo"
+import type { ViewportBounds } from "../../lib/domain/viewport"
 
 export type HistorySnapshot = {
   readonly filter: PlaceFilter
+  readonly appliedBounds: ViewportBounds
+  readonly query: string
+  readonly trayExpanded: boolean
   readonly url: string
   readonly view: MapView
 }
@@ -11,6 +15,24 @@ export type DetailPhase = "closed" | "opening" | "open" | "closing"
 export type DetailMotion = "start" | "settled"
 
 const MAP_SNAPSHOT_KEY = "healthmap.selection-map.v1"
+
+const isPoint = (value: unknown): value is GeoPoint =>
+  typeof value === "object" &&
+  value !== null &&
+  "latitude" in value &&
+  typeof value.latitude === "number" &&
+  Number.isFinite(value.latitude) &&
+  "longitude" in value &&
+  typeof value.longitude === "number" &&
+  Number.isFinite(value.longitude)
+
+const isBounds = (value: unknown): value is ViewportBounds =>
+  typeof value === "object" &&
+  value !== null &&
+  "southWest" in value &&
+  isPoint(value.southWest) &&
+  "northEast" in value &&
+  isPoint(value.northEast)
 
 export const isHistorySnapshot = (value: unknown): value is HistorySnapshot =>
   typeof value === "object" &&
@@ -22,20 +44,28 @@ export const isHistorySnapshot = (value: unknown): value is HistorySnapshot =>
     value.filter === "balanced" ||
     value.filter === "plant_based") &&
   "view" in value &&
-  typeof value.view === "object" &&
-  value.view !== null &&
-  "latitude" in value.view &&
-  typeof value.view.latitude === "number" &&
-  "longitude" in value.view &&
-  typeof value.view.longitude === "number" &&
+  isPoint(value.view) &&
   "zoom" in value.view &&
   typeof value.view.zoom === "number" &&
+  Number.isFinite(value.view.zoom) &&
+  "appliedBounds" in value &&
+  isBounds(value.appliedBounds) &&
+  "query" in value &&
+  typeof value.query === "string" &&
+  "trayExpanded" in value &&
+  typeof value.trayExpanded === "boolean" &&
   "url" in value &&
   typeof value.url === "string"
 
 export const readMapSnapshot = (): HistorySnapshot | undefined => {
-  const raw = window.sessionStorage.getItem(MAP_SNAPSHOT_KEY)
-  window.sessionStorage.removeItem(MAP_SNAPSHOT_KEY)
+  let raw: string | null
+  try {
+    raw = window.sessionStorage.getItem(MAP_SNAPSHOT_KEY)
+    window.sessionStorage.removeItem(MAP_SNAPSHOT_KEY)
+  } catch (error) {
+    if (error instanceof DOMException) return undefined
+    throw error
+  }
   if (raw === null) return undefined
   try {
     const parsed: unknown = JSON.parse(raw)
@@ -47,5 +77,11 @@ export const readMapSnapshot = (): HistorySnapshot | undefined => {
 }
 
 export const storeMapSnapshot = (snapshot: HistorySnapshot): void => {
-  window.sessionStorage.setItem(MAP_SNAPSHOT_KEY, JSON.stringify(snapshot))
+  const serialized = JSON.stringify(snapshot)
+  try {
+    window.sessionStorage.setItem(MAP_SNAPSHOT_KEY, serialized)
+  } catch (error) {
+    if (error instanceof DOMException) return
+    throw error
+  }
 }

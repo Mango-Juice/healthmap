@@ -13,19 +13,19 @@ test("Given a marker selection, when it is opened and closed through browser his
   page,
 }) => {
   // Given
-  await page.goto("/?lat=37.501&lng=127.033&z=15&tag=balanced&src=map_share")
+  await page.goto("/?q=&tag=balanced&lat=37.501&lng=127.033&z=15")
   await expect(page.getByTestId("map-view")).toHaveText("37.5010, 127.0330 · 확대 15")
   const originalView = await page.getByTestId("map-view").textContent()
   await page.getByRole("button", { name: "단백질 필터" }).click()
 
   // When
-  await page.getByRole("button", { name: /무지개 한그릇 연구소/ }).click()
+  await page.getByTestId("naver-map").getByRole("button", { name: "무지개 한그릇 연구소" }).click()
 
   // Then
-  await expect(page).toHaveURL(/place=test-rainbow-bowl&src=place_share/)
+  await expect(page).toHaveURL("/places/test-rainbow-bowl")
   await expect(page.getByRole("heading", { name: /무지개 한그릇 연구소/ })).toBeFocused()
   await page.goBack()
-  await page.waitForURL(/lat=37.501&lng=127.033&z=15&tag=balanced&src=map_share/)
+  await page.waitForURL("/?q=&tag=balanced&lat=37.501&lng=127.033&z=15")
   await expect(page.getByTestId("map-stage")).toBeVisible()
   await expect(page.getByRole("heading", { name: /무지개 한그릇 연구소/ })).toHaveCount(0)
   await expect(page.getByRole("button", { name: "단백질 필터" })).toHaveAttribute(
@@ -39,20 +39,18 @@ test("Given a marker selection, when it is opened and closed through browser his
 test("Given valid and invalid deep links, when the map loads, then published place wins and invalid state recovers", async ({
   page,
 }) => {
-  await page.goto(
-    "/?place=test-sprout-square&lat=37.501&lng=127.033&z=15&tag=balanced&src=map_share",
-  )
+  await page.goto("/places/test-sprout-square")
 
   // Then
   await expect(page.getByRole("heading", { name: /새싹 네모식당/ })).toBeVisible()
-  await expect(page).toHaveURL(/\?place=test-sprout-square&src=place_share$/)
+  await expect(page).toHaveURL("/places/test-sprout-square")
 
   // When
-  await page.goto("/?place=not-published&src=place_share")
+  await page.goto("/places/not-published")
 
   // Then
-  await expect(page.getByText("유효하지 않은 장소 링크를 기본 지도로 복구했습니다.")).toBeVisible()
-  await expect(page).toHaveURL(/\/$/)
+  await expect(page).toHaveURL("/places/not-published")
+  await expect(page.getByRole("heading", { name: "404" })).toBeVisible()
 })
 
 test("Given a production place, when directions and sharing are requested, then directions use its coordinates and sharing remains available", async ({
@@ -73,7 +71,7 @@ test("Given a production place, when directions and sharing are requested, then 
       },
     })
   })
-  await page.goto("/?place=test-sprout-square&src=place_share")
+  await page.goto("/places/test-sprout-square")
 
   // When
   await page.getByRole("button", { name: "길찾기" }).click()
@@ -89,7 +87,7 @@ test("Given a production place, when directions and sharing are requested, then 
 test("Given a production place detail, when it is opened, then its production copy is explicit", async ({
   page,
 }) => {
-  await page.goto("/?place=test-sprout-square&src=place_share")
+  await page.goto("/places/test-sprout-square")
 
   const detail = page.getByTestId("place-detail")
   await expect(detail.getByText("장소 정보", { exact: true })).toBeVisible()
@@ -101,11 +99,14 @@ test("Given an open place sheet, when it is closed by the button or Escape, then
 }) => {
   await page.setViewportSize({ width: 375, height: 812 })
   await page.goto("/")
-  await page.getByRole("button", { name: /새싹 네모식당/ }).click()
+  await page.getByRole("button", { name: /검색 결과 \d+곳 접기/ }).click()
+  await page.getByTestId("naver-map").getByRole("button", { name: "새싹 네모식당" }).click()
   await expect(page.getByTestId("place-detail")).toBeVisible()
-  await page.getByRole("button", { name: "상세 닫기" }).click()
+  await page.getByRole("button", { name: "검색 결과로 돌아가기" }).click()
   await expect(page.getByTestId("place-detail")).toHaveCount(0)
-  await page.getByRole("button", { name: /새싹 네모식당/ }).click()
+  const collapseResults = page.getByRole("button", { name: /검색 결과 \d+곳 접기/ })
+  if (await collapseResults.isVisible()) await collapseResults.click()
+  await page.getByTestId("naver-map").getByRole("button", { name: "새싹 네모식당" }).click()
   await page.keyboard.press("Escape")
   await expect(page.getByTestId("place-detail")).toHaveCount(0)
   await expect(page.getByTestId("map-stage")).toBeVisible()
@@ -132,9 +133,9 @@ test("Given each production place, when directions is selected, then each coordi
     "잎사귀 가상 테이블",
     "구름 도시락 공방",
   ]) {
-    await page.getByRole("button", { name: new RegExp(name) }).click()
+    await page.getByRole("button", { name: `${name} 상세 보기` }).click()
     await page.getByRole("button", { name: "길찾기" }).click()
-    await page.getByRole("button", { name: "상세 닫기" }).click()
+    await page.getByRole("button", { name: "검색 결과로 돌아가기" }).click()
   }
   const urls = await page.evaluate(
     () => JSON.parse(sessionStorage.getItem("directions-urls") ?? "[]") as string[],
@@ -153,7 +154,7 @@ test("Given Web Share and Clipboard outcomes, when place sharing is requested, t
       value: () => Promise.resolve(),
     })
   })
-  await page.goto("/?place=test-sprout-square&src=place_share")
+  await page.goto("/places/test-sprout-square")
   await page.getByRole("button", { name: "공유", exact: true }).click()
   await expect(page.getByText("공유 창을 열었습니다.")).toBeVisible()
 })
@@ -171,7 +172,7 @@ test("Given rejected Web Share and available Clipboard, when map sharing is requ
       value: { writeText: () => Promise.resolve() },
     })
   })
-  await page.goto("/?place=test-sprout-square&src=place_share")
+  await page.goto("/places/test-sprout-square")
   await page.getByRole("button", { name: "지도 공유" }).click()
   await expect(page.getByText("공유 URL을 클립보드에 복사했습니다.")).toBeVisible()
 })

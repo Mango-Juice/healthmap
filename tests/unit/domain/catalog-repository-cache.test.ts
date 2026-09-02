@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest"
 import { createPublicCatalogCache } from "../../../lib/catalog/cache"
 import { NEXT_PUBLIC_CATALOG_CACHE_POLICY } from "../../../lib/catalog/next-cache"
-import { createPublicCatalogRepository } from "../../../lib/catalog/repository"
-import { VALID_MENU_ROW, VALID_PLACE_ROW } from "./fixtures"
+import {
+  createPublicCatalogRepository,
+  PublicCatalogIntegrityError,
+} from "../../../lib/catalog/repository"
+import { VALID_CATALOG_SNAPSHOT } from "./fixtures"
 
 class TransientTestError extends Error {
   readonly name = "TransientTestError"
@@ -12,8 +15,7 @@ describe("public catalog repository", () => {
   it("Given Supabase client rows, when loaded, then the strict public catalog is returned", async () => {
     // Given
     const repository = createPublicCatalogRepository({
-      selectPublishedPlaces: async () => [VALID_PLACE_ROW],
-      selectPublishedMenus: async () => [VALID_MENU_ROW],
+      getPublicCatalogSnapshot: async () => VALID_CATALOG_SNAPSHOT,
     })
 
     // When
@@ -21,6 +23,7 @@ describe("public catalog repository", () => {
 
     // Then
     expect(catalog).toMatchObject({
+      catalogVersion: "2026-08-21.1",
       places: [{ slug: "green-table-gangnam", published: true }],
       menus: [{ name: "두부 채소 한상", published: true }],
     })
@@ -29,19 +32,23 @@ describe("public catalog repository", () => {
   it("Given leaked drafts, orphan menus, or unknown fields, when loaded, then the repository rejects them", async () => {
     // Given
     const clients = [
+      { getPublicCatalogSnapshot: async () => ({ ...VALID_CATALOG_SNAPSHOT, secret: "no" }) },
       {
-        selectPublishedPlaces: async () => [{ ...VALID_PLACE_ROW, published: false }],
-        selectPublishedMenus: async () => [VALID_MENU_ROW],
+        getPublicCatalogSnapshot: async () => ({
+          ...VALID_CATALOG_SNAPSHOT,
+          menus: [{ ...VALID_CATALOG_SNAPSHOT.menus[0], published: false }],
+        }),
       },
       {
-        selectPublishedPlaces: async () => [VALID_PLACE_ROW],
-        selectPublishedMenus: async () => [
-          { ...VALID_MENU_ROW, place_id: "10000000-0000-4000-8000-000000000099" },
-        ],
-      },
-      {
-        selectPublishedPlaces: async () => [{ ...VALID_PLACE_ROW, secret: "must-not-cross" }],
-        selectPublishedMenus: async () => [VALID_MENU_ROW],
+        getPublicCatalogSnapshot: async () => ({
+          ...VALID_CATALOG_SNAPSHOT,
+          menus: [
+            {
+              ...VALID_CATALOG_SNAPSHOT.menus[0],
+              placeId: "10000000-0000-4000-8000-000000000099",
+            },
+          ],
+        }),
       },
     ] as const
 
@@ -57,14 +64,10 @@ describe("public catalog repository", () => {
   it("Given a menu with a mode distinct from its parent, when loaded, then the repository rejects it", async () => {
     // Given
     const repository = createPublicCatalogRepository({
-      selectPublishedPlaces: async () => [VALID_PLACE_ROW],
-      selectPublishedMenus: async () => [
-        {
-          ...VALID_MENU_ROW,
-          data_mode: "mock",
-          evidence_url: "https://example.invalid/mock-evidence/mock-mode-mismatch",
-        },
-      ],
+      getPublicCatalogSnapshot: async () => ({
+        ...VALID_CATALOG_SNAPSHOT,
+        menus: [{ ...VALID_CATALOG_SNAPSHOT.menus[0], dataMode: "mock" }],
+      }),
     })
 
     // When
@@ -72,6 +75,19 @@ describe("public catalog repository", () => {
 
     // Then
     await expect(attempt).rejects.toBeDefined()
+  })
+
+  it("Given a returned place with no current menu, when loaded, then the repository rejects it", async () => {
+    // Given
+    const repository = createPublicCatalogRepository({
+      getPublicCatalogSnapshot: async () => ({ ...VALID_CATALOG_SNAPSHOT, menus: [] }),
+    })
+
+    // When
+    const attempt = repository.getPublicCatalog()
+
+    // Then
+    await expect(attempt).rejects.toBeInstanceOf(PublicCatalogIntegrityError)
   })
 })
 
@@ -83,7 +99,12 @@ describe("five-minute public catalog cache", () => {
     const repository = {
       getPublicCatalog: async () => {
         reads += 1
-        return { places: [], menus: [] }
+        return {
+          catalogVersion: "cache-test",
+          dataMode: "production" as const,
+          places: [],
+          menus: [],
+        }
       },
     }
     const cache = createPublicCatalogCache(repository, { nowMilliseconds: () => now })
@@ -113,7 +134,12 @@ describe("five-minute public catalog cache", () => {
       getPublicCatalog: async () => {
         reads += 1
         if (shouldFail) throw new TransientTestError("transient test failure")
-        return { places: [], menus: [] }
+        return {
+          catalogVersion: "cache-test",
+          dataMode: "production" as const,
+          places: [],
+          menus: [],
+        }
       },
     }
     const cache = createPublicCatalogCache(repository, { nowMilliseconds: () => 0 })

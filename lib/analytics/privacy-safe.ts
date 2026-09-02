@@ -123,6 +123,14 @@ export const sanitizeAnalyticsTransportEvent = (
         event,
         properties: { source: properties["source"], action: properties["action"] },
       })
+    case "search_used":
+      return toOutboundEvent({
+        event,
+        properties: { result_count_bucket: properties["result_count_bucket"] },
+      })
+    case "search_area_applied":
+    case "result_list_opened":
+      return toOutboundEvent({ event, properties: {} })
     default:
       return null
   }

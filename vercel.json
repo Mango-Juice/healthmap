@@ -16,7 +16,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' https://oapi.map.naver.com https://nrbe.map.naver.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://static.naver.net https://nrbe.map.naver.net https://map.pstatic.net https://ssl.pstatic.net; connect-src 'self' https://oapi.map.naver.com https://nrbe.map.naver.net https://kr-col-ext.nelo.navercorp.com; font-src 'self'; form-action 'self'; frame-ancestors 'self'"
+          "value": "default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' https://oapi.map.naver.com https://nrbe.map.naver.net https://nrbe.pstatic.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://static.naver.net https://nrbe.map.naver.net https://map.pstatic.net https://ssl.pstatic.net; connect-src 'self' https://oapi.map.naver.com https://nrbe.map.naver.net https://kr-col-ext.nelo.navercorp.com https://us.i.posthog.com; font-src 'self'; form-action 'self'; frame-ancestors 'self'"
         }
       ]
     }

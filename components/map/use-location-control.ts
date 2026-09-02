@@ -12,14 +12,16 @@ import {
 } from "../../lib/domain/geo"
 
 type LocationControlInput = {
-  readonly onInside: (point: MapView, zoom: number) => void
+  readonly onInside: (point: MapView, zoom: number, shouldRecenter: boolean) => void
   readonly onSharedExploration: () => void
+  readonly preserveInitialView: boolean
   readonly setView: (view: MapView) => void
 }
 
 export function useLocationControl({
   onInside,
   onSharedExploration,
+  preserveInitialView,
   setView,
 }: LocationControlInput) {
   const [location, setLocation] = useState<LocationState>(beginLocationRequest)
@@ -47,8 +49,9 @@ export function useLocationControl({
           })
           if (next.kind === "inside") {
             const view = { ...next.point, zoom: DEFAULT_VIEW.zoom }
-            setView(view)
-            onInside(view, DEFAULT_VIEW.zoom)
+            const shouldRecenter = isUserRequested || !preserveInitialView
+            if (shouldRecenter) setView(view)
+            onInside(view, DEFAULT_VIEW.zoom, shouldRecenter)
           }
         },
         (error) => {
@@ -62,7 +65,7 @@ export function useLocationControl({
         LOCATION_OPTIONS,
       )
     },
-    [onInside, onSharedExploration, setView],
+    [onInside, onSharedExploration, preserveInitialView, setView],
   )
 
   useEffect(() => request(false), [request])

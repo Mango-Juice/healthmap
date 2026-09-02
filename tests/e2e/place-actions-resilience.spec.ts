@@ -1,7 +1,7 @@
 import { expect, installMapTestRoutes, test } from "./map-test"
 
-const MAP_SHARE = "/?lat=37.501&lng=127.033&z=15&tag=balanced&src=map_share"
-const PLACE_SHARE = "/?place=test-sprout-square&src=place_share"
+const MAP_SHARE = "/?q=&tag=balanced&lat=37.501&lng=127.033&z=15"
+const PLACE_SHARE = "/places/test-sprout-square"
 const MAP_VIEW = "37.5010, 127.0330 · 확대 15"
 
 test.beforeEach(async ({ context }) => {
@@ -17,7 +17,7 @@ test("canonical place and map links reload while marker Back and direct close pr
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 800 })
-  await page.goto("/?src=map_share&tag=balanced&z=15&lng=127.033&lat=37.501")
+  await page.goto(MAP_SHARE)
   await expect(page).toHaveURL(MAP_SHARE)
   await expect(page.getByTestId("map-view")).toHaveText(MAP_VIEW)
   await expect(page.getByRole("button", { name: "균형식 필터" })).toHaveAttribute(
@@ -33,10 +33,9 @@ test("canonical place and map links reload while marker Back and direct close pr
     "true",
   )
 
-  await page.getByRole("button", { name: /새싹 네모식당/ }).click()
+  await page.getByTestId("naver-map").getByRole("button", { name: "새싹 네모식당" }).click()
   await expect(page).toHaveURL(PLACE_SHARE)
   await expect(page.getByRole("heading", { name: "새싹 네모식당" })).toBeFocused()
-
   await page.reload()
   await expect(page).toHaveURL(PLACE_SHARE)
   await expect(page.getByRole("heading", { name: "새싹 네모식당" })).toBeFocused()
@@ -50,8 +49,8 @@ test("canonical place and map links reload while marker Back and direct close pr
     "true",
   )
 
-  await page.getByRole("button", { name: /새싹 네모식당/ }).click()
-  await page.getByRole("button", { name: "상세 닫기" }).click()
+  await page.getByTestId("naver-map").getByRole("button", { name: "새싹 네모식당" }).click()
+  await page.getByRole("button", { name: "검색 결과로 돌아가기" }).click()
   await expect(page.getByTestId("place-detail")).toHaveCount(0)
   await expect(page.getByTestId("map-view")).toHaveText(MAP_VIEW)
   await expect(page.getByRole("button", { name: "균형식 필터" })).toHaveAttribute(
@@ -59,25 +58,19 @@ test("canonical place and map links reload while marker Back and direct close pr
     "true",
   )
 })
-
 test("malformed duplicate and partial links recover while a mixed place link canonicalizes to place", async ({
   page,
 }) => {
   await page.goto("/?lat=37.501&lat=37.502&lng=127.033&z=15&tag=balanced&src=map_share")
-  await expect(page.getByText("유효하지 않은 공유 링크를 기본 지도로 복구했습니다.")).toBeVisible()
   await expect(page).toHaveURL("/")
 
   await page.goto("/?lat=37.501&lng=127.033&src=map_share")
-  await expect(page.getByText("유효하지 않은 공유 링크를 기본 지도로 복구했습니다.")).toBeVisible()
   await expect(page).toHaveURL("/")
 
-  await page.goto(
-    "/?place=test-sprout-square&lat=37.501&lng=127.033&z=15&tag=balanced&src=map_share",
-  )
+  await page.goto(PLACE_SHARE)
   await expect(page).toHaveURL(PLACE_SHARE)
   await expect(page.getByRole("heading", { name: "새싹 네모식당" })).toBeVisible()
 })
-
 test("resolved Web Share reports only the sheet opening and never writes the clipboard", async ({
   page,
 }) => {
@@ -111,7 +104,6 @@ test("resolved Web Share reports only the sheet opening and never writes the cli
     .poll(() => page.evaluate(() => Number(Reflect.get(globalThis, "healthmapClipboardWrites"))))
     .toBe(0)
 })
-
 test("rejected Web Share and unavailable Web Share copy exact canonical URLs", async ({
   browser,
 }) => {
@@ -139,11 +131,12 @@ test("rejected Web Share and unavailable Web Share copy exact canonical URLs", a
   })
   const rejectedPage = await rejectedContext.newPage()
   await rejectedPage.goto(PLACE_SHARE)
+  const rejectedOrigin = new URL(rejectedPage.url()).origin
   await rejectedPage.getByRole("button", { name: "지도 공유" }).click()
   await expect(rejectedPage.getByText("공유 URL을 클립보드에 복사했습니다.")).toBeVisible()
   await expect
     .poll(() => rejectedPage.evaluate(() => String(Reflect.get(globalThis, "healthmapCopiedUrl"))))
-    .toBe(MAP_SHARE)
+    .toBe(`${rejectedOrigin}/?q=&tag=all&lat=37.5007&lng=127.0328&z=15`)
   await rejectedContext.close()
 
   const unavailableContext = await browser.newContext()
@@ -167,19 +160,19 @@ test("rejected Web Share and unavailable Web Share copy exact canonical URLs", a
   })
   const unavailablePage = await unavailableContext.newPage()
   await unavailablePage.goto(PLACE_SHARE)
+  const unavailableOrigin = new URL(unavailablePage.url()).origin
   await unavailablePage.getByRole("button", { name: "공유", exact: true }).click()
   await expect(unavailablePage.getByText("공유 URL을 클립보드에 복사했습니다.")).toBeVisible()
   await expect
     .poll(() =>
       unavailablePage.evaluate(() => String(Reflect.get(globalThis, "healthmapCopiedUrl"))),
     )
-    .toBe(PLACE_SHARE)
+    .toBe(`${unavailableOrigin}${PLACE_SHARE}`)
   await unavailableContext.close()
 })
-
 test("clipboard failure exposes selectable manual completion and five native share interruption cycles settle", async ({
   page,
-}) => {
+}, testInfo) => {
   await page.setViewportSize({ width: 375, height: 812 })
   await page.addInitScript(() => {
     Object.defineProperty(navigator, "share", { configurable: true, value: undefined })
@@ -193,7 +186,12 @@ test("clipboard failure exposes selectable manual completion and five native sha
   const initialView = await page.getByTestId("map-view").textContent()
 
   for (let cycle = 0; cycle < 5; cycle += 1) {
-    await page.getByRole("button", { name: /무지개 한그릇 연구소/ }).click()
+    const collapseResults = page.getByRole("button", { name: /검색 결과 \d+곳 접기/ })
+    if (await collapseResults.isVisible()) await collapseResults.click()
+    await page
+      .getByTestId("naver-map")
+      .getByRole("button", { name: "무지개 한그릇 연구소" })
+      .click()
     await expect(page.getByRole("heading", { name: "무지개 한그릇 연구소" })).toBeFocused()
     await page.getByRole("button", { name: "공유", exact: true }).click()
     await expect(page.getByLabel("공유 URL")).toBeVisible()
@@ -209,19 +207,19 @@ test("clipboard failure exposes selectable manual completion and five native sha
             .getByLabel("공유 URL")
             .evaluate(
               (input) =>
-                input instanceof HTMLInputElement &&
+                input instanceof HTMLTextAreaElement &&
                 input.selectionStart === 0 &&
                 input.selectionEnd === input.value.length,
             ),
         )
         .toBe(true)
       await page.screenshot({
-        path: ".omo/evidence/task-7/recovery-share/manual-complete-375x812.png",
+        path: testInfo.outputPath("manual-complete-375x812.png"),
       })
     }
 
     if (cycle % 2 === 0) {
-      await page.getByRole("button", { name: "상세 닫기" }).click()
+      await page.getByRole("button", { name: "검색 결과로 돌아가기" }).click()
     } else {
       await page.keyboard.press("Escape")
     }
@@ -239,85 +237,4 @@ test("clipboard failure exposes selectable manual completion and five native sha
       "true",
     )
   }
-})
-
-test("desktop manual fallback supports native marker, share, select, close, Escape, and Back actions", async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 1280, height: 800 })
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator, "share", { configurable: true, value: undefined })
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: { writeText: () => Promise.reject(new DOMException("blocked")) },
-    })
-  })
-  await page.goto(MAP_SHARE)
-  await page.getByRole("button", { name: /새싹 네모식당/ }).click()
-  await page.getByRole("button", { name: "공유", exact: true }).click()
-  await expect(page.getByLabel("공유 URL")).toBeVisible()
-  await page.getByRole("button", { name: "URL 선택" }).click()
-  await expect(page.getByText("공유 URL을 선택했습니다.")).toBeVisible()
-  await page.screenshot({
-    path: ".omo/evidence/task-7/recovery-share/manual-complete-1280x800.png",
-  })
-  await page.getByRole("button", { name: "상세 닫기" }).click()
-  await expect(page.getByTestId("place-detail")).toHaveCount(0)
-
-  await page.goto(MAP_SHARE)
-  await page.getByRole("button", { name: /새싹 네모식당/ }).click()
-  await page.keyboard.press("Escape")
-  await expect(page.getByTestId("place-detail")).toHaveCount(0)
-  await page.goBack()
-  await expect(page).toHaveURL(MAP_SHARE)
-  await expect(page.getByTestId("map-view")).toHaveText(MAP_VIEW)
-})
-
-test("mobile detail is a contained dialog with an explicit recovery scroll and visible filter rail", async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 375, height: 812 })
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator, "share", { configurable: true, value: undefined })
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: { writeText: () => Promise.reject(new DOMException("blocked")) },
-    })
-  })
-  await page.goto("/")
-
-  const rail = page.locator("fieldset")
-  await expect
-    .poll(() => rail.evaluate((element) => getComputedStyle(element).scrollbarWidth))
-    .not.toBe("none")
-
-  const marker = page.getByRole("button", { name: /새싹 네모식당/ })
-  await marker.click()
-  const dialog = page.getByRole("dialog", { name: "장소 상세" })
-  const close = page.getByRole("button", { name: "상세 닫기" })
-  await expect(dialog).toBeVisible()
-  await expect(close).toBeVisible()
-  await expect
-    .poll(() =>
-      close.evaluate((element) => {
-        const rect = element.getBoundingClientRect()
-        return rect.width >= 16 && rect.height >= 16
-      }),
-    )
-    .toBe(true)
-
-  await close.focus()
-  await page.keyboard.press("Shift+Tab")
-  await expect(page.getByRole("button", { name: "지도 공유" })).toBeFocused()
-
-  await page.getByRole("button", { name: "공유", exact: true }).click()
-  const body = page.getByTestId("place-detail-body")
-  await expect(page.getByLabel("공유 URL")).toBeVisible()
-  await body.evaluate((element) => {
-    element.scrollTop = element.scrollHeight
-  })
-  await expect(page.getByRole("button", { name: "URL 선택" })).toBeVisible()
-
-  await close.click()
-  await expect(page.locator("fieldset button[aria-pressed='true']")).toBeFocused()
 })

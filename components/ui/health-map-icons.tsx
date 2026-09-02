@@ -96,6 +96,23 @@ export function RotateCcwIcon({ className }: NamedIconProperties) {
   )
 }
 
+export function SearchIcon({ className }: NamedIconProperties) {
+  return (
+    <Icon className={className}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-4-4" />
+    </Icon>
+  )
+}
+
+export function ChevronDownIcon({ className }: NamedIconProperties) {
+  return (
+    <Icon className={className}>
+      <path d="m6 9 6 6 6-6" />
+    </Icon>
+  )
+}
+
 export function XIcon({ className }: NamedIconProperties) {
   return (
     <Icon className={className}>

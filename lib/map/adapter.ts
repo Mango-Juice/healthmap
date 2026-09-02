@@ -1,9 +1,16 @@
 import type { GeoPoint, MapView } from "../domain/geo"
+import type { ViewportBounds } from "../domain/viewport"
 
 export type MapAdapterState = "loading" | "ready" | "error"
 
 export type NaverMap = {
   readonly destroy?: () => void
+  readonly getBounds?: () => {
+    readonly getNE: () => NaverLatLng
+    readonly getSW: () => NaverLatLng
+  }
+  readonly getCenter?: () => NaverLatLng
+  readonly getZoom?: () => number
   readonly setCenter: (point: NaverLatLng) => void
   readonly setZoom: (zoom: number) => void
 }
@@ -46,7 +53,25 @@ export interface MapAdapter {
   destroy(): void
   recenter(point: GeoPoint, zoom: number): void
   syncMarkers(markers: readonly MapMarkerSpec[]): void
+  teardownAfterProviderFailure(): void
   waitUntilReady(): Promise<void>
+}
+
+export type MapViewportSnapshot = {
+  readonly bounds: ViewportBounds
+  readonly view: MapView
+}
+
+const readLatitude = (point: NaverLatLng | undefined): number | undefined => {
+  if (point === undefined || !("lat" in point) || typeof point.lat !== "function") return undefined
+  const value: unknown = point.lat()
+  return typeof value === "number" ? value : undefined
+}
+
+const readLongitude = (point: NaverLatLng | undefined): number | undefined => {
+  if (point === undefined || !("lng" in point) || typeof point.lng !== "function") return undefined
+  const value: unknown = point.lng()
+  return typeof value === "number" ? value : undefined
 }
 
 export type MapMarkerSpec = {
@@ -111,6 +136,7 @@ export const createNaverMapAdapter = (
   container: MapContainer,
   view: MapView,
   injectedMaps?: NaverMapsApi,
+  onViewportChanged?: (snapshot: MapViewportSnapshot) => void,
 ): MapAdapter => {
   const maps = injectedMaps ?? window.naver?.maps
   if (!maps) throw new MapSdkLoadError("NAVER Maps constructor is unavailable")
@@ -122,14 +148,45 @@ export const createNaverMapAdapter = (
     readonly listener: NaverMapListener
     readonly marker: NaverMarker
   }> = []
-  const clearMarkers = (): void => {
+  const clearMarkers = (removeNativeListeners: boolean): void => {
     for (const entry of markers) {
-      maps.Event.removeListener(entry.listener)
+      if (removeNativeListeners) maps.Event.removeListener(entry.listener)
       entry.marker.setMap(null)
     }
     markers = []
   }
   let readinessListener: NaverMapListener | undefined
+  const viewportListener = maps.Event.addListener(map, "idle", () => {
+    if (onViewportChanged === undefined) return
+    const bounds = map.getBounds?.()
+    const center = map.getCenter?.()
+    const zoom = map.getZoom?.()
+    const southWest = bounds?.getSW()
+    const northEast = bounds?.getNE()
+    const south = readLatitude(southWest)
+    const west = readLongitude(southWest)
+    const north = readLatitude(northEast)
+    const east = readLongitude(northEast)
+    const latitude = readLatitude(center)
+    const longitude = readLongitude(center)
+    if (
+      south === undefined ||
+      west === undefined ||
+      north === undefined ||
+      east === undefined ||
+      latitude === undefined ||
+      longitude === undefined ||
+      zoom === undefined
+    )
+      return
+    onViewportChanged({
+      bounds: {
+        northEast: { latitude: north, longitude: east },
+        southWest: { latitude: south, longitude: west },
+      },
+      view: { latitude, longitude, zoom },
+    })
+  })
   const readiness = new Promise<void>((resolve) => {
     readinessListener = maps.Event.addListener(map, "tilesloaded", () => {
       if (readinessListener !== undefined) maps.Event.removeListener(readinessListener)
@@ -138,20 +195,26 @@ export const createNaverMapAdapter = (
     })
   })
   container.dataset["mapConstructed"] = "true"
+  let destroyed = false
+  const teardown = (nativeListenersAreValid: boolean): void => {
+    if (destroyed) return
+    clearMarkers(nativeListenersAreValid)
+    if (nativeListenersAreValid && readinessListener !== undefined)
+      maps.Event.removeListener(readinessListener)
+    if (nativeListenersAreValid) maps.Event.removeListener(viewportListener)
+    readinessListener = undefined
+    map.destroy?.()
+    delete container.dataset["mapConstructed"]
+    destroyed = true
+  }
   return {
-    destroy: () => {
-      clearMarkers()
-      if (readinessListener !== undefined) maps.Event.removeListener(readinessListener)
-      readinessListener = undefined
-      map.destroy?.()
-      delete container.dataset["mapConstructed"]
-    },
+    destroy: () => teardown(true),
     recenter: (point, zoom) => {
       map.setCenter(new maps.LatLng(point.latitude, point.longitude))
       map.setZoom(zoom)
     },
     syncMarkers: (specs) => {
-      clearMarkers()
+      clearMarkers(true)
       markers = specs.map((spec) => {
         const marker = new maps.Marker({
           clickable: true,
@@ -165,6 +228,7 @@ export const createNaverMapAdapter = (
         }
       })
     },
+    teardownAfterProviderFailure: () => teardown(false),
     waitUntilReady: () => readiness,
   }
 }

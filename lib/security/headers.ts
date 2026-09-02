@@ -39,6 +39,7 @@ const naverScriptOrigins = (): string =>
   [
     "https://oapi.map.naver.com",
     "https://nrbe.map.naver.net",
+    "https://nrbe.pstatic.net",
     ...(process.env["NODE_ENV"] === "development"
       ? ["http://oapi.map.naver.com", "http://nrbe.map.naver.net"]
       : []),

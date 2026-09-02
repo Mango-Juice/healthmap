@@ -1,11 +1,9 @@
-import type { Menu, Place } from "../domain/catalog.ts"
-import { parseMenuRows, parsePlaceRows } from "../domain/catalog.ts"
+import { type PublicCatalogSnapshot, PublicCatalogSnapshotSchema } from "../domain/catalog.ts"
 
-export type PublicCatalog = { readonly places: readonly Place[]; readonly menus: readonly Menu[] }
+export type PublicCatalog = PublicCatalogSnapshot
 
 export interface SupabaseCatalogClient {
-  selectPublishedPlaces(): Promise<unknown>
-  selectPublishedMenus(): Promise<unknown>
+  getPublicCatalogSnapshot(): Promise<unknown>
 }
 
 export interface PublicCatalogRepository {
@@ -16,28 +14,19 @@ export const createPublicCatalogRepository = (
   client: SupabaseCatalogClient,
 ): PublicCatalogRepository => ({
   getPublicCatalog: async () => {
-    const [placeRows, menuRows] = await Promise.all([
-      client.selectPublishedPlaces(),
-      client.selectPublishedMenus(),
-    ])
-    const places = parsePlaceRows(toRows(placeRows))
-    const menus = parseMenuRows(toRows(menuRows))
-    const placeById = new Map(places.map((place) => [place.id, place]))
+    const catalog = PublicCatalogSnapshotSchema.parse(await client.getPublicCatalogSnapshot())
+    const placeById = new Map(catalog.places.map((place) => [place.id, place]))
+    const placeIdsWithMenus = new Set(catalog.menus.map((menu) => menu.placeId))
     const isPublic =
-      places.every((place) => place.published) &&
-      menus.every((menu) => {
+      catalog.places.every((place) => place.published && placeIdsWithMenus.has(place.id)) &&
+      catalog.menus.every((menu) => {
         const parent = placeById.get(menu.placeId)
-        return menu.published && parent !== undefined
+        return menu.published && menu.dataMode === catalog.dataMode && parent !== undefined
       })
     if (!isPublic) throw new PublicCatalogIntegrityError()
-    return { places, menus }
+    return catalog
   },
 })
-
-const toRows = (input: unknown): readonly unknown[] => {
-  if (Array.isArray(input)) return input
-  throw new PublicCatalogIntegrityError()
-}
 
 export class PublicCatalogIntegrityError extends Error {
   readonly name = "PublicCatalogIntegrityError"

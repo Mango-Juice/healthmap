@@ -1,0 +1,107 @@
+import { createHash } from "node:crypto"
+import { readFile, writeFile } from "node:fs/promises"
+import { expect, test } from "./map-test"
+
+test.beforeEach(async ({ context }) => {
+  await context.addInitScript(() => {
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: {
+        getCurrentPosition: (success: PositionCallback) =>
+          success({
+            coords: {
+              accuracy: 5,
+              altitude: null,
+              altitudeAccuracy: null,
+              heading: null,
+              latitude: 37.5007,
+              longitude: 127.0328,
+              speed: null,
+              toJSON: () => ({}),
+            },
+            timestamp: Date.now(),
+            toJSON: () => ({}),
+          }),
+      },
+    })
+  })
+})
+
+type Row = { readonly id: string; readonly width: number; readonly height: number }
+const rows: readonly Row[] = [
+  { id: "R01", width: 375, height: 812 },
+  { id: "R02", width: 768, height: 1024 },
+  { id: "R03", width: 1280, height: 800 },
+]
+const sourcePath = new URL("./f3-matrix-r01-r09-default.spec.ts", import.meta.url)
+const sha256 = async (path: string | URL): Promise<string> =>
+  createHash("sha256")
+    .update(await readFile(path))
+    .digest("hex")
+
+for (const row of rows) {
+  test(`${row.id} row-owned default surface`, async ({ page }, testInfo) => {
+    const consoleErrors: string[] = []
+    page.on("pageerror", (error) => consoleErrors.push(error.message))
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text())
+    })
+    await page.setViewportSize({ width: row.width, height: row.height })
+    await page.goto("/")
+    await expect(page.locator("[data-test-naver-marker='true']")).toHaveCount(5)
+    await expect(page.getByRole("list", { name: "검색 결과" }).getByRole("listitem")).toHaveCount(5)
+    await expect(page.locator('[data-location-state="inside"]')).toBeVisible()
+    const observed = await page.evaluate(() => {
+      const tray = document.querySelector<HTMLElement>("[aria-label='검색 결과 패널']")
+      const map = document.querySelector<HTMLElement>("[data-testid='map-stage']")
+      const markers = document.querySelectorAll("[data-test-naver-marker='true']").length
+      const items = document.querySelectorAll("li").length
+      const controls = [...document.querySelectorAll<HTMLElement>("button")]
+        .filter((element) => element.getClientRects().length > 0)
+        .filter((element) => element.closest("[data-testid='naver-map']") === null)
+      if (tray === null || map === null) throw new TypeError("row surface missing")
+      const trayRect = tray.getBoundingClientRect()
+      const mapRect = map.getBoundingClientRect()
+      return {
+        controlsMeet44: controls.every((element) => {
+          const rect = element.getBoundingClientRect()
+          return rect.width >= 44 && rect.height >= 44
+        }),
+        documentOverflow: document.documentElement.scrollWidth > window.innerWidth,
+        items,
+        mapDominant: mapRect.width * mapRect.height > trayRect.width * trayRect.height,
+        markers,
+        trayGeometry: { height: trayRect.height, width: trayRect.width },
+        viewport: { height: window.innerHeight, width: window.innerWidth },
+      }
+    })
+    expect(observed.items).toBe(5)
+    expect(observed.markers).toBe(5)
+    expect(observed.controlsMeet44).toBe(true)
+    expect(observed.documentOverflow).toBe(false)
+    expect(observed.mapDominant).toBe(true)
+    const png = testInfo.outputPath(`${row.id}.png`)
+    await page.screenshot({ path: png, fullPage: false })
+    const metadata = {
+      artifact: `${row.id}.png`,
+      buildId: process.env["F3_BUILD_ID"] ?? "S2m8_RnjLdQT5-_DHb3I2",
+      consoleErrors,
+      captureTimestamp: new Date().toISOString(),
+      observed,
+      rowId: row.id,
+      screenshotSha256: await sha256(png),
+      screenshotSha: await sha256(png),
+      sourceSha256: await sha256(sourcePath),
+      sourceManifestReference:
+        ".omo/evidence/f3-final/surface-matrix.json#baseline.sourceManifestSha256",
+      sourceManifestSha256: "227f168eb3c1a35e66d9c4f85dbe29f9ff82270e46f07ac315df27d83492b107",
+      testId: testInfo.testId,
+      url: page.url(),
+    }
+    const json = testInfo.outputPath(`${row.id}.json`)
+    await writeFile(json, `${JSON.stringify(metadata, null, 2)}\n`)
+    await testInfo.attach(`${row.id}.png`, { contentType: "image/png", path: png })
+    await testInfo.attach(`${row.id}.json`, { contentType: "application/json", path: json })
+    expect(metadata.screenshotSha256).toMatch(/^[a-f0-9]{64}$/)
+  })
+}

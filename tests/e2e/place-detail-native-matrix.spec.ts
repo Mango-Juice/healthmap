@@ -1,13 +1,7 @@
-import { mkdir, writeFile } from "node:fs/promises"
 import { expect, test } from "./map-test"
 
 test.describe.configure({ retries: 0 })
 test.use({ hasTouch: true })
-
-test.beforeAll(async () => {
-  await mkdir(".omo/evidence/task-7/fix-r14", { recursive: true })
-  await mkdir(".omo/evidence/task-7/fix-r9", { recursive: true })
-})
 
 test.beforeEach(async ({ context }) => {
   await context.addInitScript(() => {
@@ -25,7 +19,7 @@ test.beforeEach(async ({ context }) => {
 
 test("native place-detail matrix covers filters, touch, scroll, history, share, motion, and rapid close", async ({
   page,
-}) => {
+}, testInfo) => {
   const nativeMatrix: Array<{
     readonly initialFilters: unknown
     readonly openPaneFilterHit: boolean | null
@@ -71,7 +65,8 @@ test("native place-detail matrix covers filters, touch, scroll, history, share, 
     }
     for (let index = 0; index < 5; index += 1) await filters.nth(index).click()
     await filters.nth(0).click()
-    await page.getByRole("button", { name: /새싹 네모식당/ }).tap()
+    const resultCard = page.getByRole("button", { name: "새싹 네모식당 상세 보기" })
+    await resultCard.tap()
     await expect(
       page.locator("[data-detail-phase='open']:not([data-testid='map-stage'])"),
     ).toBeVisible()
@@ -93,7 +88,7 @@ test("native place-detail matrix covers filters, touch, scroll, history, share, 
       viewport: viewport.name,
     })
     await page.screenshot({
-      path: `.omo/evidence/task-7/fix-r14/native-${viewport.name}-open.png`,
+      path: testInfo.outputPath(`native-${viewport.name}-open.png`),
       fullPage: false,
     })
 
@@ -132,28 +127,28 @@ test("native place-detail matrix covers filters, touch, scroll, history, share, 
     await expect(page.getByText("공유 URL을 선택했습니다.")).toBeVisible()
     await page.keyboard.press("Escape")
     await expect(page.getByTestId("place-detail")).toHaveCount(0)
-    await expect(page.locator("fieldset button[aria-pressed='true']")).toBeFocused()
+    await expect(resultCard).toBeFocused()
 
-    await page.getByRole("button", { name: /새싹 네모식당/ }).tap()
+    await resultCard.tap()
     await expect(
       page.locator("[data-detail-phase='open']:not([data-testid='map-stage'])"),
     ).toBeVisible()
     await page.goBack()
     await expect(page.getByTestId("place-detail")).toHaveCount(0)
-    await expect(page.locator("fieldset button[aria-pressed='true']")).toBeFocused()
+    await expect(resultCard).toBeFocused()
 
     if (viewport.width === 375) {
       for (let cycle = 0; cycle < 5; cycle += 1) {
-        await page.getByRole("button", { name: /새싹 네모식당/ }).tap()
+        await resultCard.tap()
         await expect(
           page.locator("[data-detail-phase='open']:not([data-testid='map-stage'])"),
         ).toBeVisible()
-        await page.getByRole("button", { name: "상세 닫기" }).tap()
+        await page.getByRole("button", { name: "검색 결과로 돌아가기" }).tap()
         await expect(page.getByTestId("place-detail")).toHaveCount(0)
-        await expect(page.locator("fieldset button[aria-pressed='true']")).toBeFocused()
+        await expect(resultCard).toBeFocused()
       }
       await page.emulateMedia({ reducedMotion: "reduce" })
-      await page.getByRole("button", { name: /새싹 네모식당/ }).tap()
+      await resultCard.tap()
       const reduced = await page
         .locator("[data-detail-phase]:not([data-testid='map-stage'])")
         .evaluate((element) => ({
@@ -162,12 +157,12 @@ test("native place-detail matrix covers filters, touch, scroll, history, share, 
         }))
       expect(["opening", "open"]).toContain(reduced.phase)
       expect(["0s", "1e-05s"]).toContain(reduced.duration)
-      await page.getByRole("button", { name: "상세 닫기" }).tap()
+      await page.getByRole("button", { name: "검색 결과로 돌아가기" }).tap()
       await expect(page.getByTestId("place-detail")).toHaveCount(0)
     }
   }
-  await writeFile(
-    ".omo/evidence/task-7/fix-r14/native-matrix.json",
-    JSON.stringify({ viewports: nativeMatrix }, null, 2),
-  )
+  await testInfo.attach("native-matrix", {
+    body: Buffer.from(JSON.stringify({ viewports: nativeMatrix }, null, 2)),
+    contentType: "application/json",
+  })
 })

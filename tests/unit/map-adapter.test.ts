@@ -29,6 +29,43 @@ const fakeScript = (): FakeScript => {
     remove() {},
   }
 }
+const createTeardownFixture = (onRemoveListener?: () => void) => {
+  const listenerNames: string[] = []
+  const removedListeners: string[] = []
+  const lifecycle = { detachedMarkers: 0, destroyedMaps: 0 }
+  class FakeMap {
+    setCenter() {}
+    setZoom() {}
+    destroy() {
+      lifecycle.destroyedMaps += 1
+    }
+  }
+  class FakeMarker {
+    setMap(map: object | null) {
+      if (map === null) lifecycle.detachedMarkers += 1
+    }
+  }
+  return {
+    lifecycle,
+    maps: {
+      Event: {
+        addListener: (_target: object, eventName: string) => {
+          listenerNames.push(eventName)
+          return {}
+        },
+        removeListener: () => {
+          const eventName = listenerNames.pop()
+          if (eventName !== undefined) removedListeners.push(eventName)
+          onRemoveListener?.()
+        },
+      },
+      LatLng: FakeLatLng,
+      Map: FakeMap,
+      Marker: FakeMarker,
+    },
+    removedListeners,
+  }
+}
 
 describe("NAVER map adapter", () => {
   it("deduplicates loading and rejects missing constructors before retry", async () => {
@@ -87,7 +124,7 @@ describe("NAVER map adapter", () => {
     await Promise.resolve()
     expect(settled).toBe(false)
   })
-  it("constructs, recenters, and destroys through the provider surface", () => {
+  it("constructs, describes, recenters, and destroys through the provider surface", () => {
     const events: string[] = []
     class FakeMap {
       constructor(
@@ -117,8 +154,40 @@ describe("NAVER map adapter", () => {
     const adapter = createNaverMapAdapter(container, DEFAULT_VIEW, maps)
     adapter.recenter({ latitude: 37.5, longitude: 127.03 }, 15)
     adapter.destroy()
+    expect(viewLabel(DEFAULT_VIEW)).toBe("37.5007, 127.0328 · 확대 15")
     expect(events).toEqual(["construct", "center", "zoom", "destroy"])
     expect(container.dataset["mapConstructed"]).toBeUndefined()
+  })
+
+  it("removes normal native listeners and detaches markers during teardown", () => {
+    const fixture = createTeardownFixture()
+    const adapter = createNaverMapAdapter({ dataset: {} }, DEFAULT_VIEW, fixture.maps)
+
+    adapter.syncMarkers([
+      { label: "실제 장소", latitude: 37.5042, longitude: 127.0411, onSelect: () => undefined },
+    ])
+    adapter.destroy()
+
+    expect(fixture.removedListeners).toEqual(["click", "tilesloaded", "idle"])
+    expect(fixture.lifecycle.detachedMarkers).toBe(1)
+    expect(fixture.lifecycle.destroyedMaps).toBe(1)
+  })
+
+  it("detaches markers without native listener removal after provider authorization invalidates them", () => {
+    const fixture = createTeardownFixture(() => {
+      throw new TypeError("Cannot read properties of null (reading 'isArray')")
+    })
+    const adapter = createNaverMapAdapter({ dataset: {} }, DEFAULT_VIEW, fixture.maps)
+
+    adapter.syncMarkers([
+      { label: "실제 장소", latitude: 37.5042, longitude: 127.0411, onSelect: () => undefined },
+    ])
+    adapter.teardownAfterProviderFailure()
+    adapter.teardownAfterProviderFailure()
+
+    expect(fixture.removedListeners).toEqual([])
+    expect(fixture.lifecycle.detachedMarkers).toBe(1)
+    expect(fixture.lifecycle.destroyedMaps).toBe(1)
   })
 
   it("places catalog entries at their real coordinates with NAVER markers", () => {
@@ -190,9 +259,5 @@ describe("NAVER map adapter", () => {
     } satisfies NaverMapsApi
     expect(() => createNaverMapAdapter(container, DEFAULT_VIEW, maps)).toThrow("provider failed")
     expect(container.dataset["mapConstructed"]).toBeUndefined()
-  })
-
-  it("describes the deterministic default view", () => {
-    expect(viewLabel(DEFAULT_VIEW)).toBe("37.5007, 127.0328 · 확대 15")
   })
 })

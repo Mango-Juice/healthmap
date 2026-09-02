@@ -7,6 +7,7 @@
   min-inline-size: 0;
   inline-size: 100%;
   overflow-x: auto;
+  overflow-y: hidden;
   overscroll-behavior-inline: contain;
   scroll-snap-type: inline mandatory;
   padding: var(--hm-space-1);
@@ -202,7 +203,8 @@
     display: grid;
     gap: var(--hm-space-1);
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
     scroll-snap-type: none;
   }
 
@@ -214,6 +216,20 @@
     min-inline-size: 0;
     padding: var(--hm-space-1);
     white-space: normal;
+  }
+}
+
+@media (max-width: 240px) {
+  .filterRail {
+    display: flex;
+    scroll-snap-type: inline mandatory;
+  }
+
+  .filterButton {
+    flex: 0 0 auto;
+    min-inline-size: var(--hm-control-min);
+    padding-inline: var(--hm-space-2);
+    white-space: nowrap;
   }
 }
 

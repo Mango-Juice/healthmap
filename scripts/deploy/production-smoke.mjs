@@ -1,6 +1,7 @@
-import { MenuSchema, PlaceSchema } from "../../lib/domain/catalog.ts"
+import { PublicCatalogSnapshotSchema } from "../../lib/domain/catalog.ts"
 
 const SMOKE_TIMEOUT_MS = 10_000
+const MAX_CATALOG_VERSION_LENGTH = 120
 const CREDENTIAL_PATTERN =
   /(?:authorization|bearer\s+|service_role|supabase_service_role|sk_(?:live|test)_)/i
 
@@ -29,6 +30,44 @@ export function parseBaseUrl(argumentsList) {
     return baseUrl
   } catch {
     throw new Error("Smoke configuration invalid: --base-url must be an http(s) origin")
+  }
+}
+
+function parseCatalogVersion(value, configurationName) {
+  const includesControlCharacter =
+    typeof value === "string" &&
+    [...value].some((character) => {
+      const code = character.codePointAt(0)
+      return code !== undefined && (code <= 31 || code === 127)
+    })
+  if (
+    typeof value !== "string" ||
+    value.length === 0 ||
+    value.length > MAX_CATALOG_VERSION_LENGTH ||
+    value.trim() !== value ||
+    includesControlCharacter
+  ) {
+    throw new Error(`Smoke configuration invalid: ${configurationName} must be a catalog version`)
+  }
+  return value
+}
+
+export function parseExpectedCatalogVersion(argumentsList) {
+  const versionIndex = argumentsList.indexOf("--expected-catalog-version")
+  if (
+    versionIndex === -1 ||
+    versionIndex !== argumentsList.lastIndexOf("--expected-catalog-version") ||
+    versionIndex + 1 >= argumentsList.length
+  ) {
+    throw new Error("Smoke configuration invalid: --expected-catalog-version is required")
+  }
+  return parseCatalogVersion(argumentsList[versionIndex + 1], "--expected-catalog-version")
+}
+
+export function parseSmokeConfiguration(argumentsList) {
+  return {
+    baseUrl: parseBaseUrl(argumentsList),
+    expectedCatalogVersion: parseExpectedCatalogVersion(argumentsList),
   }
 }
 
@@ -69,7 +108,12 @@ async function request(baseUrl, path, fetchImplementation) {
   return { body, response }
 }
 
-export async function runProductionSmoke(baseUrl, requestImplementation = fetch) {
+export async function runProductionSmoke(baseUrl, requestImplementation = fetch, options) {
+  const expectedCatalogVersion = parseCatalogVersion(
+    options?.expectedCatalogVersion,
+    "expected catalog version",
+  )
+  const currentDate = options?.currentDate ?? new Date().toISOString().slice(0, 10)
   const home = await request(baseUrl, "/", requestImplementation)
   if (!home.body.includes("건강식 지도")) {
     fail("/ returned HTTP 200 without the Korean application marker")
@@ -93,16 +137,7 @@ export async function runProductionSmoke(baseUrl, requestImplementation = fetch)
   }
   if (typeof payload !== "object" || payload === null || Array.isArray(payload))
     fail("/api/map-catalog did not return a catalog object")
-  const payloadKeys = Object.keys(payload).sort()
-  if (payloadKeys.join(",") !== "dataMode,menus,places")
-    fail("/api/map-catalog did not return the strict {dataMode, places, menus} contract")
-  if (payload.dataMode !== "production") {
-    fail("/api/map-catalog dataMode must be production")
-  }
-  if (!Array.isArray(payload.places) || !Array.isArray(payload.menus)) {
-    fail("/api/map-catalog did not return the production catalog contract")
-  }
-  assertProductionCatalog(payload)
+  assertProductionCatalog(payload, currentDate, expectedCatalogVersion)
 
   const unsupportedMethod = await requestImplementation(new URL("/api/map-catalog", baseUrl), {
     method: "POST",
@@ -118,38 +153,39 @@ export async function runProductionSmoke(baseUrl, requestImplementation = fetch)
   return "Production smoke passed"
 }
 
-function assertProductionCatalog(payload) {
-  if (payload.places.length === 0 || payload.menus.length === 0) {
-    fail("/api/map-catalog production mode must include published places and menus")
-  }
-
-  let places
-  let menus
+function assertProductionCatalog(payload, currentDate, expectedCatalogVersion) {
+  let catalog
   try {
-    places = PlaceSchema.array().parse(payload.places)
-    menus = MenuSchema.array().parse(payload.menus)
+    catalog = PublicCatalogSnapshotSchema.parse(payload)
   } catch {
-    fail("/api/map-catalog production records failed canonical public schema validation")
+    fail("/api/map-catalog failed the strict catalog contract")
   }
-  const placeById = new Map(places.map((place) => [place.id, place]))
-  if (
-    !places.every((place) => place.dataMode === "production" && place.published) ||
-    !menus.every(
-      (menu) =>
-        menu.dataMode === "production" &&
-        menu.published &&
-        placeById.get(menu.placeId)?.dataMode === menu.dataMode,
+  if (catalog.places.length < 100)
+    fail("/api/map-catalog must include at least 100 verified places")
+  if (catalog.catalogVersion !== expectedCatalogVersion)
+    fail("/api/map-catalog catalog version mismatch")
+  const placeIds = new Set(catalog.places.map((place) => place.id))
+  if (placeIds.size !== catalog.places.length)
+    fail("/api/map-catalog must include unique place IDs")
+  const currentMenuPlaceIds = new Set(
+    catalog.menus
+      .filter(
+        (menu) =>
+          menu.published && menu.verifiedAt <= currentDate && menu.validUntil >= currentDate,
+      )
+      .map((menu) => menu.placeId),
+  )
+  if (!catalog.places.every((place) => place.published && currentMenuPlaceIds.has(place.id)))
+    fail(
+      "/api/map-catalog requires one current valid published menu per place; menu verification date-validity must include the smoke date",
     )
-  ) {
-    fail("/api/map-catalog production rows are unpublished, orphaned, or mode-mismatched")
-  }
 }
 
 if (process.argv[1] === new URL(import.meta.url).pathname) {
   try {
     const argumentsList = process.argv.slice(2)
-    const baseUrl = parseBaseUrl(argumentsList)
-    console.log(await runProductionSmoke(baseUrl))
+    const { baseUrl, expectedCatalogVersion } = parseSmokeConfiguration(argumentsList)
+    console.log(await runProductionSmoke(baseUrl, fetch, { expectedCatalogVersion }))
   } catch (error) {
     console.error(error instanceof Error ? error.message : "Production smoke failed")
     process.exitCode = 1

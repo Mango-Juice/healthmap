@@ -1,12 +1,4 @@
 .privacy-page {
-  --hm-ink: #17231c;
-  --hm-ink-muted: #536159;
-  --hm-border: #d7d2c6;
-  --hm-surface-subtle: #f8f5ed;
-  --hm-info: #225f86;
-  --hm-info-wash: #eaf4fa;
-  --hm-border-strong: #aba497;
-  --hm-surface: #fffdf8;
   --privacy-ink: var(--hm-ink);
   --privacy-muted: var(--hm-ink-muted);
   --privacy-line: var(--hm-border);
@@ -17,14 +9,14 @@
   color: var(--privacy-ink);
   margin: 0 auto;
   max-inline-size: 720px;
-  min-block-size: 100dvb;
-  padding: 48px 24px 72px;
+  min-block-size: var(--hm-viewport-block);
+  padding: var(--hm-space-12) var(--hm-space-6) 72px;
 }
 
 .privacy-heading,
 .privacy-section {
-  border-block-end: 1px solid var(--privacy-line);
-  padding-block: 24px;
+  border-block-end: var(--hm-border-width) solid var(--privacy-line);
+  padding-block: var(--hm-space-6);
 }
 
 .privacy-heading {
@@ -32,13 +24,13 @@
 }
 .privacy-heading > p:first-child {
   color: var(--privacy-accent);
-  font-weight: 700;
-  margin: 0 0 12px;
+  font-weight: var(--hm-weight-emphasis);
+  margin: 0 0 var(--hm-space-3);
 }
 .privacy-heading h1 {
   font-size: 32px;
   line-height: 1.3;
-  margin: 0 0 16px;
+  margin: 0 0 var(--hm-space-4);
   word-break: keep-all;
 }
 .privacy-heading > p:last-child,
@@ -53,18 +45,18 @@
 }
 .privacy-section h2,
 .privacy-preference h2 {
-  font-size: 20px;
+  font-size: var(--hm-type-heading);
   line-height: 1.4;
-  margin: 0 0 8px;
+  margin: 0 0 var(--hm-space-2);
   word-break: keep-all;
 }
 
 .privacy-preference {
   align-items: center;
   background: var(--privacy-surface);
-  border-block-end: 1px solid var(--privacy-line);
+  border-block-end: var(--hm-border-width) solid var(--privacy-line);
   display: flex;
-  gap: 16px;
+  gap: var(--hm-space-4);
   justify-content: space-between;
   padding: 20px 0;
 }
@@ -72,19 +64,19 @@
   min-inline-size: 0;
 }
 .privacy-preference h2 {
-  margin: 0 0 4px;
+  margin: 0 0 var(--hm-space-1);
 }
 .privacy-toggle {
   align-items: center;
   background: var(--hm-border-strong);
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--hm-radius-control);
   display: inline-flex;
   flex: 0 0 auto;
-  block-size: 44px;
+  block-size: var(--hm-control-min);
   inline-size: 68px;
   justify-content: flex-start;
-  padding: 4px;
+  padding: var(--hm-space-1);
 }
 .privacy-toggle[aria-checked="true"] {
   background: var(--privacy-accent);
@@ -97,13 +89,13 @@
   inline-size: 36px;
 }
 .privacy-toggle:focus-visible {
-  outline: 3px solid var(--privacy-accent);
-  outline-offset: 3px;
+  outline: var(--hm-focus-ring) solid var(--privacy-accent);
+  outline-offset: var(--hm-focus-ring);
 }
 
 @media (max-width: 480px) {
   .privacy-page {
-    padding: 32px 16px 56px;
+    padding: var(--hm-space-8) var(--hm-space-4) 56px;
   }
   .privacy-heading h1 {
     font-size: 28px;

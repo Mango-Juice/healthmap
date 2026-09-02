@@ -1,12 +1,23 @@
 import type { Metadata } from "next"
 
+import { buildAbsoluteSiteUrl, getRuntimeSiteEnvironment } from "../../lib/share-links"
 import { PrivacyPreference } from "./privacy-preference"
 import "./privacy.css"
 
-export const metadata: Metadata = {
-  title: "개인정보 및 분석 안내 | 건강식 지도",
-  description: "건강식 지도의 최소 수집 분석과 로컬 선택 안내",
-}
+const canonical = buildAbsoluteSiteUrl("privacy", getRuntimeSiteEnvironment())
+
+export const metadata: Metadata =
+  canonical === null
+    ? {
+        title: "개인정보 및 분석 안내 | 건강식 지도",
+        description: "건강식 지도의 최소 수집 분석과 로컬 선택 안내",
+        robots: { follow: false, index: false },
+      }
+    : {
+        title: "개인정보 및 분석 안내 | 건강식 지도",
+        description: "건강식 지도의 최소 수집 분석과 로컬 선택 안내",
+        alternates: { canonical },
+      }
 
 export default function PrivacyPage() {
   return (

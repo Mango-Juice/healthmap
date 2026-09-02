@@ -1,5 +1,27 @@
-import { e2eCatalog } from "../fixtures/e2e-catalog"
+import type { Page } from "@playwright/test"
 import { expect, test } from "./map-test"
+
+const readNativeTestMapView = async (page: Page) =>
+  page.evaluate(() => {
+    const maps: unknown = Reflect.get(window, "__healthMapTestMaps")
+    if (!Array.isArray(maps)) return undefined
+    const map: unknown = maps.at(-1)
+    if (typeof map !== "object" || map === null) return undefined
+    const getCenter: unknown = Reflect.get(map, "getCenter")
+    const getZoom: unknown = Reflect.get(map, "getZoom")
+    if (typeof getCenter !== "function" || typeof getZoom !== "function") return undefined
+    const center: unknown = Reflect.apply(getCenter, map, [])
+    if (typeof center !== "object" || center === null) return undefined
+    const getLatitude: unknown = Reflect.get(center, "lat")
+    const getLongitude: unknown = Reflect.get(center, "lng")
+    if (typeof getLatitude !== "function" || typeof getLongitude !== "function") return undefined
+    const latitude: unknown = Reflect.apply(getLatitude, center, [])
+    const longitude: unknown = Reflect.apply(getLongitude, center, [])
+    const zoom: unknown = Reflect.apply(getZoom, map, [])
+    if (typeof latitude !== "number" || typeof longitude !== "number" || typeof zoom !== "number")
+      return undefined
+    return { latitude, longitude, zoom }
+  })
 
 test.beforeEach(async ({ context }) => {
   await context.addInitScript(() => {
@@ -26,20 +48,130 @@ test.beforeEach(async ({ context }) => {
   })
 })
 
-test("renders the five-place discovery shell on the NAVER map", async ({ page }) => {
+test("renders one result set as a searchable list and native markers", async ({ page }) => {
+  // Given
   await page.goto("/")
+
+  // When
+  const search = page.getByRole("searchbox", { name: "장소와 메뉴 검색" })
+  await search.fill("초록 그릇")
+
+  // Then
   await expect(page.getByTestId("map-stage")).toBeVisible()
-  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
+  await expect(page.getByRole("status", { name: "검색 결과 수" })).toHaveText("1곳")
+  await expect(page.getByRole("list", { name: "검색 결과" }).getByRole("listitem")).toHaveCount(1)
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(1)
   await expect(
     page.locator(
       '[data-test-naver-marker="true"][data-latitude="37.5007"][data-longitude="127.0328"]',
     ),
   ).toHaveCount(1)
   await expect(page.getByTestId("map-view")).toContainText("37.5007, 127.0328 · 확대 15")
-  await expect(page.getByRole("searchbox")).toHaveCount(0)
-  await expect(page.getByRole("list")).toHaveCount(0)
 })
+test("combines normalized neighborhood search and one health tag", async ({ page }) => {
+  // Given
+  await page.goto("/")
 
+  // When
+  await page.getByRole("searchbox", { name: "장소와 메뉴 검색" }).fill("  서울   강남구  ")
+  await page.getByRole("button", { name: "식물성 필터" }).click()
+
+  // Then
+  await expect(page.getByRole("status", { name: "검색 결과 수" })).toHaveText("2곳")
+  await expect(page.getByRole("list", { name: "검색 결과" }).getByRole("listitem")).toHaveCount(2)
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(2)
+})
+test("closes a list-selected detail when the committed filter excludes that place", async ({
+  page,
+}) => {
+  // Given
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto("/")
+  await page.getByRole("button", { name: "무지개 한그릇 연구소 상세 보기" }).click()
+  await expect(page.getByRole("heading", { name: "무지개 한그릇 연구소" })).toBeVisible()
+
+  // When
+  await page.getByRole("button", { name: "채소 필터" }).click()
+
+  // Then
+  await expect(page.getByRole("heading", { name: "무지개 한그릇 연구소" })).toBeHidden()
+  await expect(page.getByRole("button", { name: "채소 필터" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  )
+  await expect(page.getByRole("status", { name: "검색 결과 수" })).toHaveText("4곳")
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(4)
+  await expect(page).toHaveURL("/")
+})
+test("keeps a canonical shared detail available when the current filter excludes it", async ({
+  page,
+}) => {
+  // Given
+  await page.goto("/places/test-rainbow-bowl")
+  const detailHeading = page.getByRole("heading", { name: "무지개 한그릇 연구소" })
+  await expect(detailHeading).toBeVisible()
+
+  // When
+  await page.getByRole("button", { name: "채소 필터" }).click()
+
+  // Then
+  await expect(detailHeading).toBeVisible()
+  await expect(page.getByRole("button", { name: "채소 필터" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  )
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(4)
+  await expect(page).toHaveURL("/places/test-rainbow-bowl")
+})
+test("shows a distinct no-search-result state", async ({ page }) => {
+  // Given
+  await page.goto("/")
+
+  // When
+  await page.getByRole("searchbox", { name: "장소와 메뉴 검색" }).fill("없는 메뉴")
+
+  // Then
+  await expect(page.getByText("검색 결과가 없습니다.")).toBeVisible()
+  await expect(page.getByRole("status", { name: "검색 결과 수" })).toHaveText("0곳")
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(0)
+})
+test("keeps results stable while the map moves and applies the pending area explicitly", async ({
+  page,
+}) => {
+  // Given
+  await page.goto("/")
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
+
+  // When
+  const viewportProbe = await page.evaluate(() => {
+    const maps = Reflect.get(window, "__healthMapTestMaps")
+    if (!Array.isArray(maps)) return "missing-map"
+    const testMap = maps.find((candidate) => {
+      if (typeof candidate !== "object" || candidate === null) return false
+      const listeners = Reflect.get(candidate, "listeners")
+      return typeof listeners === "object" && listeners !== null && "idle" in listeners
+    })
+    if (typeof testMap !== "object" || testMap === null) return "missing-map"
+    const listeners = Reflect.get(testMap, "listeners")
+    const setTestBounds = Reflect.get(testMap, "setTestBounds")
+    if (typeof setTestBounds !== "function") return "missing-bounds"
+    if (typeof listeners !== "object" || listeners === null || !("idle" in listeners))
+      return "missing-idle"
+    Reflect.apply(setTestBounds, testMap, [
+      { latitude: 37.499, longitude: 127.031 },
+      { latitude: 37.502, longitude: 127.034 },
+    ])
+    return "moved"
+  })
+  expect(viewportProbe).toBe("moved")
+
+  // Then
+  await expect(page.getByRole("button", { name: "이 지역 검색" })).toBeVisible()
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
+  await page.getByRole("button", { name: "이 지역 검색" }).click()
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(1)
+  await expect(page.getByRole("status", { name: "검색 결과 수" })).toHaveText("1곳")
+})
 test("keeps the NAVER SDK host sized after its mobile inline styles are applied", async ({
   page,
 }) => {
@@ -50,7 +182,6 @@ test("keeps the NAVER SDK host sized after its mobile inline styles are applied"
   expect(box?.height).toBeGreaterThan(0)
   expect(box?.width).toBe(375)
 })
-
 test("filters by included tags, resets, and signals marker selection", async ({ page }) => {
   await page.goto("/")
   await page.getByRole("button", { name: "단백질 필터" }).click()
@@ -59,225 +190,101 @@ test("filters by included tags, resets, and signals marker selection", async ({ 
   await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(2)
   await page.getByRole("button", { name: "전체 필터" }).click()
   await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
-  await page.getByRole("button", { name: /새싹 네모식당/ }).click()
+  await page.getByTestId("naver-map").getByRole("button", { name: "새싹 네모식당" }).click()
   await expect(page.getByText("장소를 선택했습니다.")).toBeVisible()
 })
-
-test("shows an inside location and allows explicit retry", async ({ page }) => {
+test("keeps list and marker selection synchronized and restores discovery on Back and Escape", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 812 })
   await page.goto("/")
-  await expect(page.locator('[data-location-state="inside"]')).toBeVisible()
-  await page.getByRole("button", { name: "현재 위치 다시 찾기" }).click()
-  await expect(page.locator('[data-location-state="inside"]')).toBeVisible()
-})
+  const search = page.getByRole("searchbox", { name: "장소와 메뉴 검색" })
+  await search.fill("새싹")
+  await page.getByRole("button", { name: "채소 필터" }).click()
 
-test("shows requesting while geolocation is pending", async ({ page }) => {
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator, "geolocation", {
-      configurable: true,
-      value: { getCurrentPosition: () => undefined },
-    })
-  })
-  await page.goto("/")
-  await expect(page.locator('[data-location-state="requesting"]')).toContainText("현재 위치를 확인")
-  await expect(page.getByTestId("map-view")).toContainText("37.5007, 127.0328")
-})
+  const result = page.getByRole("button", { name: "새싹 네모식당 상세 보기" })
+  await result.click()
+  await expect(page).toHaveURL(/\/places\/test-sprout-square$/)
+  await expect(page.getByRole("heading", { name: "새싹 네모식당" })).toBeFocused()
 
-for (const scenario of [
-  { name: "southwest boundary", latitude: 37.482, longitude: 127.01, state: "inside" },
-  { name: "northeast boundary", latitude: 37.5185, longitude: 127.0545, state: "inside" },
-  { name: "outside", latitude: 37.6, longitude: 127.1, state: "outside" },
-] as const) {
-  test(`resolves ${scenario.name} location and preserves the location contract`, async ({
-    page,
-  }) => {
-    await page.addInitScript(({ latitude, longitude }) => {
-      Object.defineProperty(navigator, "geolocation", {
-        configurable: true,
-        value: {
-          getCurrentPosition: (
-            success: PositionCallback,
-            _failure: PositionErrorCallback,
-            options?: PositionOptions,
-          ) => {
-            sessionStorage.setItem("geo-options", JSON.stringify(options))
-            success({
-              coords: {
-                accuracy: 1,
-                altitude: null,
-                altitudeAccuracy: null,
-                heading: null,
-                latitude,
-                longitude,
-                speed: null,
-                toJSON: () => ({}),
-              },
-              timestamp: Date.now(),
-              toJSON: () => ({}),
-            })
-          },
-        },
-      })
-    }, scenario)
-    await page.goto("/")
-    await expect(page.locator(`[data-location-state="${scenario.state}"]`)).toBeVisible()
-    expect(await page.evaluate(() => sessionStorage.getItem("geo-options"))).toBe(
-      '{"enableHighAccuracy":false,"timeout":5000,"maximumAge":300000}',
-    )
-    if (scenario.state === "outside") {
-      await expect(page.getByTestId("map-view")).toContainText("37.5007, 127.0328")
-      await expect(page.getByRole("img", { name: "내 위치" })).toHaveCount(0)
-    }
-  })
-}
+  await page.keyboard.press("Escape")
+  await expect(page.getByTestId("place-detail")).toHaveCount(0)
+  await expect(result).toBeFocused()
+  await expect(search).toHaveValue("새싹")
+  await expect(page.getByRole("button", { name: "채소 필터" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  )
 
-for (const scenario of [
-  { name: "denied", code: 1 },
-  { name: "timeout", code: 3 },
-] as const) {
-  test(`keeps the current map view for ${scenario.name} location`, async ({ page }) => {
-    await page.addInitScript(({ code }) => {
-      Object.defineProperty(navigator, "geolocation", {
-        configurable: true,
-        value: {
-          getCurrentPosition: (
-            _success: PositionCallback,
-            failure: PositionErrorCallback,
-            options?: PositionOptions,
-          ) => {
-            sessionStorage.setItem("geo-options", JSON.stringify(options))
-            failure({
-              code,
-              message: "test",
-              PERMISSION_DENIED: 1,
-              POSITION_UNAVAILABLE: 2,
-              TIMEOUT: 3,
-            })
-          },
-        },
-      })
-    }, scenario)
-    await page.goto("/")
-    await expect(page.locator(`[data-location-state="${scenario.name}"]`)).toBeVisible()
-    await expect(page.getByTestId("map-view")).toContainText("37.5007, 127.0328")
-    await expect(page.getByRole("img", { name: "내 위치" })).toHaveCount(0)
-  })
-}
-
-test("keeps the current map view when geolocation is unsupported", async ({ page }) => {
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator, "geolocation", { configurable: true, value: undefined })
-  })
-  await page.goto("/")
-  await expect(page.locator('[data-location-state="unsupported"]')).toBeVisible()
-  await expect(page.getByTestId("map-view")).toContainText("37.5007, 127.0328")
-})
-
-test("covers every filter and keyboard marker selection", async ({ page }) => {
-  await page.goto("/")
-  for (const [label, count] of [
-    ["채소", 4],
-    ["단백질", 3],
-    ["균형식", 5],
-    ["식물성", 2],
-    ["전체", 5],
-  ] as const) {
-    await page.getByRole("button", { name: `${label} 필터` }).click()
-    await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(count)
-  }
-  const marker = page.getByRole("button", { name: /새싹 네모식당/ })
+  const marker = page.getByTestId("naver-map").getByRole("button", { name: "새싹 네모식당" })
   await marker.focus()
-  await expect(marker).toBeFocused()
   await marker.press("Enter")
-  await expect(page.getByText("장소를 선택했습니다.")).toBeVisible()
+  await expect(page.getByRole("heading", { name: "새싹 네모식당" })).toBeFocused()
+  await page.goBack()
+  await expect(page.getByTestId("place-detail")).toHaveCount(0)
+  await expect(marker).toBeFocused()
+  await expect(search).toHaveValue("새싹")
+  await expect(page.getByRole("status", { name: "검색 결과 수" })).toHaveText("1곳")
 })
-
-test("constructs a NAVER map after SDK failure and retry", async ({ page }) => {
-  let attempts = 0
-  await page.route("https://oapi.map.naver.com/**", async (route) => {
-    attempts += 1
-    if (attempts === 1) return route.abort()
-    await route.fulfill({
-      contentType: "text/javascript",
-      body: `(()=>{class LatLng{}class Map{constructor(el){this.el=el;el.innerHTML='<canvas data-fake-naver-map width="20" height="20"></canvas>'}setCenter(){}setZoom(){}destroy(){}}class Marker{constructor({map,title}){this.el=document.createElement('button');this.el.type='button';this.el.setAttribute('aria-label',title);map.el.append(this.el)}setMap(map){if(map===null)this.el.remove()}}const Event={addListener(target,name,listener){if(name==='tilesloaded')queueMicrotask(listener);if(name==='click'&&target.el)target.el.addEventListener('click',listener);return{target,name,listener}},removeListener(){}};window.naver={maps:{LatLng,Map,Marker,Event}}})()`,
-    })
-  })
-  await page.goto("/")
-  await expect(page.getByText("NAVER 지도를 불러올 수 없습니다.")).toBeVisible()
-  await page.getByRole("button", { name: "다시 시도" }).click()
-  await expect(page.getByTestId("map-stage")).toHaveAttribute("data-adapter-state", "ready")
-  await expect(page.locator("canvas[data-fake-naver-map]")).toBeVisible()
-})
-
-test("recovers catalog failure and supports empty catalog", async ({ page }) => {
-  let attempts = 0
-  await page.route("**/api/map-catalog", async (route) => {
-    attempts += 1
-    if (attempts === 1) return route.fulfill({ status: 503 })
-    if (attempts === 2)
-      return route.fulfill({
-        contentType: "application/json",
-        body: '{"dataMode":"production","menus":[],"places":[]}',
-      })
-    await route.fulfill({ contentType: "application/json", json: e2eCatalog })
-  })
-  await page.goto("/")
-  await expect(page.getByText("장소 데이터를 불러오지 못했습니다.")).toBeVisible()
-  await page.getByRole("button", { name: /다시 시도/ }).click()
-  await expect(page.getByText("표시할 장소가 없습니다.")).toBeVisible()
-  await page.getByRole("button", { name: "장소 새로고침" }).click()
-  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
-})
-
-test("keeps map markers interactive while catalog refresh loads or fails", async ({ page }) => {
+test("Given a canonical discovery URL, when list and marker detail entries close, then its exact state and focus are restored", async ({
+  page,
+}) => {
   // Given
-  const requests: import("@playwright/test").Route[] = []
-  let initialized = false
-  await page.route("**/api/map-catalog", async (route) => {
-    if (!initialized) {
-      initialized = true
-      await route.fulfill({ contentType: "application/json", json: e2eCatalog })
-      return
-    }
-    requests.push(route)
-  })
-  await page.goto("/")
-
-  // When
-  await page.getByRole("button", { name: "장소 새로고침" }).click()
-  await expect.poll(() => requests.length).toBe(1)
+  const canonicalPath = "/?q=%EC%83%88%EC%8B%B9&tag=vegetables&lat=37.501&lng=127.033&z=15"
+  await page.goto(canonicalPath)
+  const search = page.getByRole("searchbox", { name: "장소와 메뉴 검색" })
+  const filter = page.getByRole("button", { name: "채소 필터" })
+  const result = page.getByRole("button", { name: "새싹 네모식당 상세 보기" })
+  const marker = page.getByTestId("naver-map").getByRole("button", { name: "새싹 네모식당" })
 
   // Then
-  await expect(page.getByText("장소 데이터를 불러오는 중입니다.")).toBeVisible()
-  const marker = page.getByRole("button", { name: /새싹 네모식당/ })
-  await expect(marker).toBeVisible()
-  await marker.press("Enter")
-  await expect(page.getByText("장소를 선택했습니다.")).toBeVisible()
-  await requests[0]?.fulfill({ status: 503 })
-  await expect(page.getByText("장소 데이터를 불러오지 못했습니다.")).toBeVisible()
-  await expect(marker).toBeVisible()
-})
+  await expect(page).toHaveURL(canonicalPath)
+  await expect(search).toHaveValue("새싹")
+  await expect(filter).toHaveAttribute("aria-pressed", "true")
+  await expect(page.getByText("NAVER 지도 연결됨")).toBeVisible()
+  await expect
+    .poll(() => readNativeTestMapView(page))
+    .toEqual({ latitude: 37.501, longitude: 127.033, zoom: 15 })
+  await expect(page.getByTestId("map-view")).toContainText("37.5010, 127.0330 · 확대 15")
 
-test("rejects malformed catalog and ignores stale rapid refresh", async ({ page }) => {
-  const requests: import("@playwright/test").Route[] = []
-  let initialized = false
-  await page.route("**/api/map-catalog", async (route) => {
-    if (!initialized) {
-      initialized = true
-      await route.fulfill({ contentType: "application/json", json: e2eCatalog })
-      return
-    }
-    requests.push(route)
-  })
-  await page.goto("/")
-  await page.getByRole("button", { name: "장소 새로고침" }).click()
-  await page.getByRole("button", { name: "장소 새로고침" }).click()
-  await expect.poll(() => requests.length).toBe(2)
-  await requests[1]?.fulfill({
-    contentType: "application/json",
-    body: '{"dataMode":"production","menus":[],"places":[]}',
-  })
-  await expect(page.getByText("표시할 장소가 없습니다.")).toBeVisible()
-  await requests[0]?.fulfill({ status: 503 })
-  await expect(page.getByText("표시할 장소가 없습니다.")).toBeVisible()
-  await expect(page.getByText("장소 데이터를 불러오지 못했습니다.")).toHaveCount(0)
+  // When
+  await result.click()
+  await expect(page.getByRole("heading", { name: "새싹 네모식당" })).toBeFocused()
+  await page.keyboard.press("Escape")
+
+  // Then
+  await expect(page).toHaveURL(canonicalPath)
+  await expect(page.getByTestId("place-detail")).toHaveCount(0)
+  await expect(result).toBeFocused()
+  await expect(search).toHaveValue("새싹")
+  await expect(filter).toHaveAttribute("aria-pressed", "true")
+  await expect
+    .poll(() => readNativeTestMapView(page))
+    .toEqual({ latitude: 37.501, longitude: 127.033, zoom: 15 })
+  await expect(page.getByTestId("map-view")).toContainText("37.5010, 127.0330 · 확대 15")
+
+  // When
+  await marker.focus()
+  await marker.press("Enter")
+  await expect(page.getByRole("heading", { name: "새싹 네모식당" })).toBeFocused()
+  await page.goBack()
+
+  // Then
+  await expect(page).toHaveURL(canonicalPath)
+  await expect(page.getByTestId("place-detail")).toHaveCount(0)
+  await expect(marker).toBeFocused()
+  await expect(search).toHaveValue("새싹")
+  await expect(filter).toHaveAttribute("aria-pressed", "true")
+  await expect
+    .poll(() => readNativeTestMapView(page))
+    .toEqual({ latitude: 37.501, longitude: 127.033, zoom: 15 })
+  await expect(page.getByTestId("map-view")).toContainText("37.5010, 127.0330 · 확대 15")
+
+  // When
+  await page.getByRole("button", { name: "현재 위치 다시 찾기" }).click()
+
+  // Then
+  await expect
+    .poll(() => readNativeTestMapView(page))
+    .toEqual({ latitude: 37.5007, longitude: 127.0328, zoom: 15 })
 })

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   ANALYTICS_ANONYMOUS_ID_STORAGE_KEY,
   ANALYTICS_OPT_OUT_STORAGE_KEY,
@@ -19,6 +19,14 @@ class MemoryStorage implements AnalyticsStorage {
 
   setItem(key: string, value: string): void {
     this.values.set(key, value)
+  }
+
+  removeItem(key: string): void {
+    this.values.delete(key)
+  }
+
+  clear(): void {
+    this.values.clear()
   }
 }
 
@@ -45,6 +53,11 @@ class RecordingTransport implements AnalyticsTransport {
 }
 
 describe("privacy-safe product analytics", () => {
+  afterEach(() => {
+    globalThis.healthmapAnalyticsLifecycle = undefined
+    vi.unstubAllGlobals()
+  })
+
   it("Given the PostHog adapter, when its configuration is inspected, then every automatic capture surface is disabled", () => {
     // Given
     const forbiddenConfig = [
@@ -121,6 +134,9 @@ describe("privacy-safe product analytics", () => {
       { event: "share_invoked", properties: { target: "map" } },
       { event: "share_completed", properties: { target: "place", outcome: "clipboard" } },
       { event: "shared_visit_explored", properties: { source: "map_share", action: "location" } },
+      { event: "search_used", properties: { result_count_bucket: "6_20" } },
+      { event: "search_area_applied", properties: {} },
+      { event: "result_list_opened", properties: {} },
     ] as const
 
     // When
@@ -152,6 +168,8 @@ describe("privacy-safe product analytics", () => {
         event: "filter_selected",
         properties: { tag: "balanced", note: "Ignore prior instructions" },
       },
+      { event: "search_used", properties: { result_count_bucket: "1_5", q: "두부" } },
+      { event: "search_area_applied", properties: { coordinates: "37.5,127.0" } },
     ]
 
     // When
@@ -182,6 +200,21 @@ describe("privacy-safe product analytics", () => {
       event: "place_opened",
       properties: { place_id: "6dd657be-fc3b-4bb8-8e67-fabbee0f2ea0", source: "map" },
     })
+  })
+
+  it("Given an SDK-enriched search event, when serialized, then the query and URL are dropped", () => {
+    // Given
+    const properties = {
+      result_count_bucket: "1_5",
+      q: "두부",
+      $current_url: "https://healthmap.test/?q=두부",
+    }
+
+    // When
+    const event = sanitizeAnalyticsTransportEvent("search_used", properties)
+
+    // Then
+    expect(event).toEqual({ event: "search_used", properties: { result_count_bucket: "1_5" } })
   })
 
   it("Given local opt-out, when events are captured then opted back in, then capture stops immediately and resumes", () => {

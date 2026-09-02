@@ -5,17 +5,17 @@ import { captureProductAnalytics } from "../../lib/analytics/browser"
 import type { Place } from "../../lib/domain/catalog"
 import type { PlaceFilter } from "../../lib/domain/filter"
 import type { MapView } from "../../lib/domain/geo"
-import { canonicalizeShareUrl, parseShareUrl, serializePlaceShare } from "../../lib/domain/share"
+import type { ViewportBounds } from "../../lib/domain/viewport"
 import {
   type DetailMotion,
   type DetailPhase,
   type HistorySnapshot,
-  isHistorySnapshot,
-  readMapSnapshot,
   storeMapSnapshot,
 } from "./detail-history"
 import type { CatalogState } from "./use-catalog"
 import { useDetailSurface } from "./use-detail-surface"
+import { useSelectionFocus } from "./use-selection-focus"
+import { useSelectionUrlSync } from "./use-selection-url-sync"
 import { useSharedEntryAnalytics } from "./use-shared-entry-analytics"
 
 export type { DetailMotion, DetailPhase } from "./detail-history"
@@ -24,9 +24,22 @@ type DetailSelectionInput = {
   readonly catalogState: CatalogState
   readonly filter: PlaceFilter
   readonly initialPlaces: readonly Place[]
+  readonly initialSelectedSlug?: string | undefined
+  readonly initialSelectionSource?: "shared_link" | undefined
+  readonly discoverySnapshot: {
+    readonly appliedBounds: ViewportBounds
+    readonly query: string
+    readonly trayExpanded: boolean
+  }
+  readonly restoreDiscovery: (state: {
+    readonly appliedBounds: ViewportBounds
+    readonly query: string
+    readonly trayExpanded: boolean
+  }) => void
   readonly setFilter: (filter: PlaceFilter) => void
   readonly setView: (view: MapView) => void
   readonly view: MapView
+  readonly visiblePlaceSlugs: ReadonlySet<string>
 }
 
 const DETAIL_TRANSITION_BUFFER_MS = 48
@@ -35,11 +48,16 @@ export function useDetailSelection({
   catalogState,
   filter,
   initialPlaces,
+  initialSelectedSlug,
+  initialSelectionSource,
+  discoverySnapshot,
+  restoreDiscovery,
   setFilter,
   setView,
   view,
+  visiblePlaceSlugs,
 }: DetailSelectionInput) {
-  const [selectedSlug, setSelectedSlug] = useState<string>()
+  const [selectedSlug, setSelectedSlug] = useState<string | undefined>(initialSelectedSlug)
   const [linkNotice, setLinkNotice] = useState<string>()
   const [didResolveEntry, setDidResolveEntry] = useState(false)
   const [phase, setPhase] = useState<DetailPhase>("closed")
@@ -52,6 +70,9 @@ export function useDetailSelection({
   const closingFrame = useRef<number | undefined>(undefined)
   const closeSafetyTimer = useRef<number | undefined>(undefined)
   const surfaceRef = useRef<HTMLElement>(null)
+  const didRecordInitialSelection = useRef(false)
+  const selectedFromDiscovery = useRef(false)
+  const selectionFocus = useSelectionFocus(phase, selectedSlug)
 
   const setSurfaceRef = useCallback((element: HTMLElement | null): void => {
     surfaceRef.current = element
@@ -68,13 +89,10 @@ export function useDetailSelection({
     phaseRef.current = "closed"
     const triggerSlug = selectedSlugRef.current
     selectedSlugRef.current = undefined
+    selectionFocus.restore(triggerSlug)
     setPhase("closed")
     setSelectedSlug(undefined)
-    if (triggerSlug !== undefined)
-      document
-        .querySelector<HTMLElement>("fieldset button[aria-pressed='true']")
-        ?.focus({ preventScroll: true })
-  }, [])
+  }, [selectionFocus.restore])
 
   const beginClose = useCallback((): void => {
     const currentSlug = selectedSlugRef.current
@@ -110,7 +128,7 @@ export function useDetailSelection({
 
   const clear = useCallback((): void => {
     if (selectedSlugRef.current === undefined || phaseRef.current === "closing") return
-    window.history.replaceState({}, "", "/")
+    window.history.replaceState({}, "", mapSnapshot.current?.url ?? "/")
     beginClose()
   }, [beginClose])
 
@@ -128,110 +146,76 @@ export function useDetailSelection({
     phaseRef.current = phase
   }, [phase, selectedSlug])
 
-  useEffect(() => {
-    if (catalogState !== "ready") return
-    const recoverFromUrl = (): void => {
-      const wasSelected = selectedSlugRef.current !== undefined
-      const shareState = parseShareUrl(window.location.href)
-      switch (shareState.kind) {
-        case "place": {
-          const place = initialPlaces.find(
-            (candidate) => candidate.slug === shareState.slug && candidate.published,
-          )
-          if (place === undefined) {
-            sharedEntrySource.current = undefined
-            if (wasSelected) beginClose()
-            else {
-              setSelectedSlug(undefined)
-              setPhase("closed")
-            }
-            setLinkNotice("유효하지 않은 장소 링크를 기본 지도로 복구했습니다.")
-            window.history.replaceState({}, "", "/")
-            return
-          }
-          setSelectedSlug(place.slug)
-          setPhase("opening")
-          setMotion("start")
-          sharedEntrySource.current = shareState.source
-          window.history.replaceState({}, "", canonicalizeShareUrl(window.location.href))
-          return
-        }
-        case "map": {
-          if (wasSelected) beginClose()
-          else {
-            setSelectedSlug(undefined)
-            setPhase("closed")
-          }
-          sharedEntrySource.current = shareState.source
-          mapSnapshot.current ??= readMapSnapshot()
-          const browserSnapshot = window.history.state
-          if (mapSnapshot.current === undefined && isHistorySnapshot(browserSnapshot))
-            mapSnapshot.current = browserSnapshot
-          if (mapSnapshot.current?.url === `${window.location.pathname}${window.location.search}`) {
-            setFilter(mapSnapshot.current.filter)
-            setView(mapSnapshot.current.view)
-            return
-          }
-          if (didInitializeUrl.current) {
-            if (isHistorySnapshot(window.history.state)) {
-              setFilter(window.history.state.filter)
-              setView(window.history.state.view)
-            }
-            return
-          }
-          setFilter(shareState.tag)
-          setView({ ...shareState.center, zoom: shareState.zoom })
-          window.history.replaceState({}, "", canonicalizeShareUrl(window.location.href))
-          return
-        }
-        case "fallback":
-          sharedEntrySource.current = undefined
-          if (wasSelected) beginClose()
-          else {
-            setSelectedSlug(undefined)
-            setPhase("closed")
-          }
-          if (window.location.search.length > 0) {
-            setLinkNotice("유효하지 않은 공유 링크를 기본 지도로 복구했습니다.")
-            window.history.replaceState({}, "", "/")
-          }
-          return
-        default:
-          assertNever(shareState)
-      }
-    }
-    recoverFromUrl()
-    didInitializeUrl.current = true
-    setDidResolveEntry(true)
-    window.addEventListener("popstate", recoverFromUrl)
-    return () => window.removeEventListener("popstate", recoverFromUrl)
-  }, [beginClose, catalogState, initialPlaces, setFilter, setView, sharedEntrySource])
+  useSelectionUrlSync({
+    beginClose,
+    catalogState,
+    didInitializeUrl,
+    initialPlaces,
+    mapSnapshot,
+    restoreDiscovery,
+    selectedFromDiscovery,
+    selectedSlugRef,
+    setDidResolveEntry,
+    setFilter,
+    setLinkNotice,
+    setMotion,
+    setPhase,
+    setSelectedSlug,
+    setView,
+    sharedEntrySource,
+  })
 
   const open = useCallback(
-    (place: Place): void => {
+    (place: Place, source: "map" | "list", trigger?: HTMLElement): void => {
       if (closingFrame.current !== undefined) window.cancelAnimationFrame(closingFrame.current)
       if (closeSafetyTimer.current !== undefined) {
         window.clearTimeout(closeSafetyTimer.current)
         closeSafetyTimer.current = undefined
       }
       setLinkNotice(undefined)
-      const snapshot = { filter, url: `${window.location.pathname}${window.location.search}`, view }
+      selectionFocus.capture(trigger)
+      const snapshot = {
+        ...discoverySnapshot,
+        filter,
+        url: `${window.location.pathname}${window.location.search}`,
+        view,
+      }
+      mapSnapshot.current = snapshot
       storeMapSnapshot(snapshot)
       window.history.replaceState(snapshot, "", window.location.href)
       selectedSlugRef.current = place.slug
+      selectedFromDiscovery.current = true
       phaseRef.current = "opening"
       setSelectedSlug(place.slug)
       setPhase("opening")
       setMotion("start")
-      window.history.pushState({}, "", serializePlaceShare(place.slug))
+      window.history.pushState({}, "", `/places/${encodeURIComponent(place.slug)}`)
       captureProductAnalytics({
         event: "place_opened",
-        properties: { place_id: place.id, source: "map" },
+        properties: { place_id: place.id, source },
       })
       recordSharedExploration("place_opened")
     },
-    [filter, recordSharedExploration, view],
+    [discoverySnapshot, filter, recordSharedExploration, selectionFocus.capture, view],
   )
+
+  useEffect(() => {
+    if (!selectedFromDiscovery.current || selectedSlug === undefined) return
+    if (visiblePlaceSlugs.has(selectedSlug)) return
+    clear()
+  }, [clear, selectedSlug, visiblePlaceSlugs])
+
+  useEffect(() => {
+    if (initialSelectedSlug === undefined || initialSelectionSource !== "shared_link") return
+    if (didRecordInitialSelection.current) return
+    const place = initialPlaces.find((candidate) => candidate.slug === initialSelectedSlug)
+    if (place === undefined) return
+    didRecordInitialSelection.current = true
+    captureProductAnalytics({
+      event: "place_opened",
+      properties: { place_id: place.id, source: "shared_link" },
+    })
+  }, [initialPlaces, initialSelectedSlug, initialSelectionSource])
 
   return {
     clear,
@@ -247,5 +231,3 @@ export function useDetailSelection({
     setSurfaceRef,
   }
 }
-
-const assertNever = (value: never): never => value

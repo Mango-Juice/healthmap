@@ -1,107 +1,55 @@
-import { gunzipSync } from "node:zlib"
+import {
+  assertPrivateTransport,
+  disableGeolocation,
+  installAnalyticsInterceptor,
+  recordAnalyticsTransport,
+  waitForEvent,
+} from "./analytics-transport"
 import { expect, test } from "./map-test"
 
-type TransportEvent = {
-  readonly event: string
-  readonly properties: Readonly<Record<string, unknown>>
-}
-
-const analyticsHost = "http://127.0.0.1:3498"
-const forbiddenTransportText = [
-  "$current_url",
-  "$pathname",
-  "$referrer",
-  "$referring_domain",
-  "coordinates",
-  "address",
-  "place_name",
-  "menu",
-  "referrer",
-  "test-sprout-square",
-  "37.5007",
-  "127.0328",
-  "새싹 네모식당",
-  "Ignore prior instructions",
-] as const
-
-const propertyAllowlist = new Set(["source", "outcome", "tag", "place_id", "target", "action"])
-
-const decodeTransportRequest = (postData: Buffer | null): readonly TransportEvent[] => {
-  if (postData === null) return []
-  const decoded = postData[0] === 0x1f && postData[1] === 0x8b ? gunzipSync(postData) : postData
-  const parsed: unknown = JSON.parse(decoded.toString("utf8"))
-  if (typeof parsed !== "object" || parsed === null) return []
-  const batch = "batch" in parsed && Array.isArray(parsed.batch) ? parsed.batch : [parsed]
-  return batch.flatMap((entry): readonly TransportEvent[] => {
-    if (
-      typeof entry !== "object" ||
-      entry === null ||
-      !("event" in entry) ||
-      !("properties" in entry)
-    )
-      return []
-    const { event, properties } = entry
-    if (typeof event !== "string" || typeof properties !== "object" || properties === null)
-      return []
-    const { token: _token, ...safeProperties } = properties
-    return [{ event, properties: safeProperties }]
-  })
-}
-
-const assertPrivateTransport = (
-  events: readonly TransportEvent[],
-  rawRequests: readonly string[],
-): void => {
-  for (const rawRequest of rawRequests) {
-    for (const forbidden of forbiddenTransportText)
-      expect(rawRequest.toLowerCase()).not.toContain(forbidden.toLowerCase())
-  }
-  for (const { properties } of events)
-    expect(Object.keys(properties).every((key) => propertyAllowlist.has(key))).toBe(true)
-}
-
-const waitForEvent = async (
-  events: readonly TransportEvent[],
-  event: string,
-  properties: Readonly<Record<string, unknown>>,
-): Promise<void> => {
-  await expect
-    .poll(() =>
-      events.some(
-        (entry) =>
-          entry.event === event && JSON.stringify(entry.properties) === JSON.stringify(properties),
-      ),
-    )
-    .toBe(true)
-}
-
-const installAnalyticsInterceptor = async (page: import("@playwright/test").Page) => {
-  const events: TransportEvent[] = []
-  const rawRequests: string[] = []
-  await page.route(`${analyticsHost}/**`, async (route) => {
-    const postData = route.request().postDataBuffer()
-    if (postData !== null) {
-      const decoded = postData[0] === 0x1f && postData[1] === 0x8b ? gunzipSync(postData) : postData
-      rawRequests.push(decoded.toString("utf8"))
-    }
-    events.push(...decodeTransportRequest(postData))
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      headers: { "access-control-allow-origin": "*" },
-      body: '{"status":1}',
-    })
-  })
-  return { events, rawRequests }
-}
-
 test.beforeEach(async ({ context }) => {
-  await context.addInitScript(() => {
-    Object.defineProperty(navigator, "geolocation", {
-      configurable: true,
-      value: { getCurrentPosition: () => undefined },
-    })
-  })
+  await disableGeolocation(context)
+})
+
+test("Given no analytics preference, when discovery actions run, then no analytics request is transported", async ({
+  page,
+}) => {
+  // Given
+  const transport = await recordAnalyticsTransport(page)
+  await page.goto("/")
+
+  // When
+  await page.getByRole("button", { name: "단백질 필터" }).click()
+  await page.getByRole("searchbox", { name: "장소와 메뉴 검색" }).fill("새싹")
+  await page.getByRole("searchbox", { name: "장소와 메뉴 검색" }).press("Enter")
+
+  // Then
+  await expect(page.getByRole("searchbox", { name: "장소와 메뉴 검색" })).toHaveValue("새싹")
+  expect(
+    await page.evaluate(() => localStorage.getItem("healthmap.analytics.opt-out.v1")),
+  ).toBeNull()
+  expect(transport.events).toEqual([])
+  expect(transport.rawRequests).toEqual([])
+})
+
+test("Given a private search, when committed and the result list is reopened, then only buckets and empty properties are transported", async ({
+  page,
+}) => {
+  // Given
+  await page.setViewportSize({ width: 390, height: 844 })
+  const transport = await installAnalyticsInterceptor(page)
+  await page.goto("/")
+
+  // When
+  await page.getByRole("searchbox", { name: "장소와 메뉴 검색" }).fill("새싹 네모식당")
+  await page.getByRole("searchbox", { name: "장소와 메뉴 검색" }).press("Enter")
+  await page.getByRole("button", { name: /검색 결과 1곳 접기/ }).click()
+  await page.getByRole("button", { name: /검색 결과 1곳 보기/ }).click()
+
+  // Then
+  await waitForEvent(transport.events, "search_used", { result_count_bucket: "1_5" })
+  await waitForEvent(transport.events, "result_list_opened", {})
+  assertPrivateTransport(transport.events, transport.rawRequests)
 })
 
 test("Given direct map exploration, when location, filter, and marker actions occur, then the four existing map bodies remain exact", async ({
@@ -135,7 +83,7 @@ test("Given direct map exploration, when location, filter, and marker actions oc
 
   // When
   await page.getByRole("button", { name: "단백질 필터" }).click()
-  await page.getByRole("button", { name: /무지개 한그릇 연구소/ }).click()
+  await page.getByTestId("naver-map").getByRole("button", { name: "무지개 한그릇 연구소" }).click()
 
   // Then
   await waitForEvent(transport.events, "map_viewed", { source: "direct" })
@@ -146,204 +94,4 @@ test("Given direct map exploration, when location, filter, and marker actions oc
     source: "map",
   })
   assertPrivateTransport(transport.events, transport.rawRequests)
-})
-
-test("Given web share, when a place is shared, then the configured PostHog batch contains exact redacted share events", async ({
-  page,
-}) => {
-  // Given
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator, "share", {
-      configurable: true,
-      value: () => Promise.resolve(),
-    })
-  })
-  const transport = await installAnalyticsInterceptor(page)
-  await page.goto("/?place=test-sprout-square&src=place_share")
-  await expect(page.getByRole("heading", { name: "새싹 네모식당" })).toBeVisible()
-
-  // When
-  await page.getByRole("button", { name: "공유", exact: true }).click()
-
-  // Then
-  await waitForEvent(transport.events, "share_invoked", { target: "place" })
-  await waitForEvent(transport.events, "share_completed", { target: "place", outcome: "web_share" })
-  expect(transport.events.filter(({ event }) => event === "directions_opened")).toEqual([])
-  assertPrivateTransport(transport.events, transport.rawRequests)
-})
-
-test("Given rejected web share and clipboard, when map sharing is requested, then the exact clipboard outcome is transported", async ({
-  page,
-}) => {
-  // Given
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator, "share", {
-      configurable: true,
-      value: () => Promise.reject(new DOMException("cancelled")),
-    })
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: { writeText: () => Promise.resolve() },
-    })
-  })
-  const transport = await installAnalyticsInterceptor(page)
-  await page.goto("/?place=test-sprout-square&src=place_share")
-
-  // When
-  await page.getByRole("button", { name: "지도 공유" }).click()
-
-  // Then
-  await waitForEvent(transport.events, "share_invoked", { target: "map" })
-  await waitForEvent(transport.events, "share_completed", { target: "map", outcome: "clipboard" })
-  assertPrivateTransport(transport.events, transport.rawRequests)
-})
-
-test("Given unavailable share APIs, when a share URL is selected, then manual completion is the sole truthful outcome", async ({
-  page,
-}) => {
-  // Given
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator, "share", { configurable: true, value: undefined })
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: { writeText: () => Promise.reject(new DOMException("blocked")) },
-    })
-  })
-  const transport = await installAnalyticsInterceptor(page)
-  await page.goto("/?place=test-sprout-square&src=place_share")
-
-  // When
-  await page.getByRole("button", { name: "공유", exact: true }).click()
-  await page.getByRole("button", { name: "URL 선택" }).click()
-
-  // Then
-  await waitForEvent(transport.events, "share_invoked", { target: "place" })
-  await waitForEvent(transport.events, "share_completed", { target: "place", outcome: "manual" })
-  assertPrivateTransport(transport.events, transport.rawRequests)
-})
-
-test("Given a shared place entry, when it only loads, then it emits no exploration and preserves the shared map-view source", async ({
-  page,
-}) => {
-  // Given
-  const transport = await installAnalyticsInterceptor(page)
-
-  // When
-  await page.goto("/?place=test-sprout-square&src=place_share")
-
-  // Then
-  await expect(page.getByRole("heading", { name: "새싹 네모식당" })).toBeVisible()
-  await expect
-    .poll(() => transport.events.some(({ event }) => event === "shared_visit_explored"))
-    .toBe(false)
-  await waitForEvent(transport.events, "map_viewed", { source: "place_share" })
-})
-
-test("Given a shared map entry, when a filter is selected, then exactly one shared exploration action is transported", async ({
-  page,
-}) => {
-  // Given
-  const transport = await installAnalyticsInterceptor(page)
-  await page.goto("/?lat=37.501&lng=127.033&z=15&tag=balanced&src=map_share")
-  await expect(page.getByTestId("map-stage")).toBeVisible()
-  await expect
-    .poll(() => transport.events.some(({ event }) => event === "shared_visit_explored"))
-    .toBe(false)
-
-  // When
-  await page.getByRole("button", { name: "단백질 필터" }).click()
-
-  // Then
-  await waitForEvent(transport.events, "shared_visit_explored", {
-    source: "map_share",
-    action: "filter",
-  })
-  expect(
-    transport.events.filter(
-      ({ event, properties }) =>
-        event === "shared_visit_explored" &&
-        JSON.stringify(properties) === JSON.stringify({ source: "map_share", action: "filter" }),
-    ),
-  ).toHaveLength(1)
-  assertPrivateTransport(transport.events, transport.rawRequests)
-})
-
-test("Given a shared map entry, when current location is requested, then it reports location exploration exactly once", async ({
-  page,
-}) => {
-  // Given
-  const transport = await installAnalyticsInterceptor(page)
-  await page.goto("/?lat=37.501&lng=127.033&z=15&tag=balanced&src=map_share")
-
-  // When
-  await page.getByRole("button", { name: "현재 위치 다시 찾기" }).click()
-
-  // Then
-  await waitForEvent(transport.events, "shared_visit_explored", {
-    source: "map_share",
-    action: "location",
-  })
-  expect(
-    transport.events.filter(
-      ({ event, properties }) =>
-        event === "shared_visit_explored" &&
-        JSON.stringify(properties) === JSON.stringify({ source: "map_share", action: "location" }),
-    ),
-  ).toHaveLength(1)
-})
-
-test("Given every production place, when directions is requested, then each redacted directions event is produced", async ({
-  page,
-}) => {
-  // Given
-  const transport = await installAnalyticsInterceptor(page)
-  await page.addInitScript(() => {
-    Object.defineProperty(window, "open", {
-      configurable: true,
-      value: () => null,
-    })
-  })
-  await page.goto("/")
-
-  // When
-  for (const name of [
-    "새싹 네모식당",
-    "무지개 한그릇 연구소",
-    "균형 실험실 식탁",
-    "잎사귀 가상 테이블",
-    "구름 도시락 공방",
-  ]) {
-    await page.getByRole("button", { name: new RegExp(name) }).click()
-    await page.getByRole("button", { name: "길찾기" }).click()
-    await page.getByRole("button", { name: "상세 닫기" }).click()
-  }
-
-  // Then
-  await expect
-    .poll(() => transport.events.filter(({ event }) => event === "directions_opened").length)
-    .toBe(5)
-  assertPrivateTransport(transport.events, transport.rawRequests)
-})
-
-test("Given an analytics endpoint failure, when sharing and map actions run, then their UI remains usable", async ({
-  page,
-}) => {
-  // Given
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator, "share", {
-      configurable: true,
-      value: () => Promise.resolve(),
-    })
-  })
-  await page.route(`${analyticsHost}/**`, (route) => route.fulfill({ status: 503 }))
-  await page.goto("/?place=test-sprout-square&src=place_share")
-
-  // When
-  await page.getByRole("button", { name: "공유", exact: true }).click()
-  await page.getByRole("button", { name: "상세 닫기" }).click()
-  await page.getByRole("button", { name: "단백질 필터" }).click()
-
-  // Then
-  await expect(page.getByText("공유 창을 열었습니다.")).toHaveCount(0)
-  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(3)
 })

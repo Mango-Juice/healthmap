@@ -63,6 +63,12 @@ jobs:
       - name: Run deployment automation tests
         run: pnpm test:deployment
 
+      - name: Prove hosted Playwright configuration does not start a local server
+        env:
+          E2E_BASE_URL: https://hosted-contract.example.test
+          E2E_EXPECTED_CATALOG_VERSION: ci-hosted-contract-only
+        run: pnpm exec playwright test --list
+
   browser-smoke:
     needs: quality
     runs-on: ubuntu-latest

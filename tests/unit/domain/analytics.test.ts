@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 import { ANALYTICS_EVENT_NAMES, parseAnalyticsEvent } from "../../../lib/domain/analytics"
 
 describe("analytics privacy boundary", () => {
-  it("Given the product analytics contract, when enumerated, then only the eight allowed events exist", () => {
+  it("Given the product analytics contract, when enumerated, then only the allowed events exist", () => {
     // Given
     const expected = [
       "map_viewed",
@@ -13,6 +13,9 @@ describe("analytics privacy boundary", () => {
       "share_invoked",
       "share_completed",
       "shared_visit_explored",
+      "search_used",
+      "search_area_applied",
+      "result_list_opened",
     ]
 
     // When
@@ -20,6 +23,25 @@ describe("analytics privacy boundary", () => {
 
     // Then
     expect(names).toEqual(expected)
+  })
+
+  it("Given discovery analytics, when parsed, then only low-cardinality result buckets and sources cross", () => {
+    // Given
+    const inputs = [
+      { event: "search_used", properties: { result_count_bucket: "1_5" } },
+      { event: "search_area_applied", properties: {} },
+      { event: "result_list_opened", properties: {} },
+      {
+        event: "place_opened",
+        properties: { place_id: "6dd657be-fc3b-4bb8-8e67-fabbee0f2ea0", source: "shared_link" },
+      },
+    ] as const
+
+    // When
+    const parsed = inputs.map(parseAnalyticsEvent)
+
+    // Then
+    expect(parsed).toEqual(inputs)
   })
 
   it("Given an allowlisted low-cardinality event, when parsed, then the exact payload crosses", () => {
@@ -43,6 +65,13 @@ describe("analytics privacy boundary", () => {
       { event: "place_opened", properties: { place_id: "두부마을", source: "map" } },
       { event: "share_completed", properties: { target: "map", outcome: "copied 서울 강남구" } },
       { event: "unknown_event", properties: {} },
+      { event: "search_used", properties: { result_count_bucket: "1_5", q: "두부" } },
+      { event: "search_used", properties: { result_count_bucket: "7" } },
+      { event: "search_area_applied", properties: { latitude: 37.5 } },
+      {
+        event: "place_opened",
+        properties: { place_id: "6dd657be-fc3b-4bb8-8e67-fabbee0f2ea0", source: "place_share" },
+      },
     ]
 
     // When
