@@ -1,0 +1,19 @@
+# Local dependencies and build output
+node_modules
+.next
+.next-*
+
+# Test and coverage output
+coverage
+playwright-report
+test-results
+
+# Local-only project state and QA evidence
+.omo
+.codegraph
+.debug-journal.md
+
+# Environment files must come from Vercel project settings
+.env
+.env.*
+!.env.example

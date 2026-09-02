@@ -3,6 +3,7 @@
 
 # Next.js
 /.next/
+/.next-*/
 /out/
 
 # test output
@@ -25,3 +26,9 @@
 # local Supabase runtime
 /supabase/.branches/
 /supabase/.temp/
+
+.omo/
+*/**/AGENTS.md
+.codegraph
+.vercel
+.env*
