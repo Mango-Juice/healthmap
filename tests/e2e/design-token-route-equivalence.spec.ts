@@ -19,6 +19,15 @@ const ROUTES = ["privacy", "not-found", "showcase"] as const
 
 test.describe.configure({ retries: 0 })
 
+const ds01EnvironmentKeys = [
+  "DS01_CAPTURE_PHASE",
+  "DS01_EVIDENCE_DIR",
+  "DS01_BASELINE_DIR",
+] as const
+const ds01CaptureRequested = ds01EnvironmentKeys.some((key) => process.env[key]?.trim())
+
+test.skip(!ds01CaptureRequested, "DS-01 evidence capture requires explicit configuration")
+
 test("Given DS-01 route baselines, when the configured phase runs, then every capture is provenance-bound", async ({
   baseURL,
   browser,

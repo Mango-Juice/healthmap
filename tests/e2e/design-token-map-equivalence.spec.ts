@@ -18,6 +18,16 @@ import { TRIGGER_NAME, VIEWPORTS, ZOOM_VIEWPORT } from "./design-token-map-types
 import { expect, installMapTestRoutes, test } from "./map-test"
 
 test.describe.configure({ mode: "serial", retries: 0 })
+
+const ds01EnvironmentKeys = [
+  "DS01_CAPTURE_PHASE",
+  "DS01_EVIDENCE_DIR",
+  "DS01_BASELINE_DIR",
+] as const
+const ds01CaptureRequested = ds01EnvironmentKeys.some((key) => process.env[key]?.trim())
+
+test.skip(!ds01CaptureRequested, "DS-01 evidence capture requires explicit configuration")
+
 test("DS-01 captures deterministic map token equivalence evidence", async ({
   browser,
   context,

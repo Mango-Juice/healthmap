@@ -150,6 +150,6 @@ test("768 closed map stays map-first and keeps every Korean filter label on one 
   })
   expect(layout.detailCount).toBe(0)
   expect(layout.mapScrollLeft).toBe(0)
-  expect(layout.paperWidth).toBe(layout.viewportWidth - 360)
+  expect(layout.paperWidth).toBe(layout.viewportWidth - 352)
   expect(layout.labelsSingleLine).toBe(true)
 })

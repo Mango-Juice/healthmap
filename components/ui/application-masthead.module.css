@@ -94,10 +94,22 @@
 }
 
 @media (max-width: 240px) {
+  .masthead {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: var(--hm-space-1);
+    padding-inline: var(--hm-space-2);
+  }
+
+  .identity,
+  .utilities {
+    inline-size: 100%;
+  }
+
   .utilities {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    justify-items: stretch;
+    justify-items: start;
   }
 
   .utilities > button {

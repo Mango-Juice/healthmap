@@ -55,7 +55,7 @@ export const parseAnalyticsTransportEvents = (
     const { event, properties } = entry
     if (typeof event !== "string" || typeof properties !== "object" || properties === null)
       return []
-    const { token: _token, ...safeProperties } = properties
+    const { $geoip_disable: _geoipDisabled, token: _token, ...safeProperties } = properties
     return [{ event, properties: safeProperties }]
   })
 }

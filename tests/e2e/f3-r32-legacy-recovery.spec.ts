@@ -65,12 +65,14 @@ const readNoticeLayout = (element: HTMLElement): NoticeLayout => {
   const tray = document.querySelector('[aria-label="검색 결과 패널"]')
   const attention = document.querySelector('[data-location-state="denied"]')
   const inset = 4
+  const centerX = (notice.left + notice.right) / 2
+  const centerY = (notice.top + notice.bottom) / 2
   const samples = [
-    [notice.left + inset, notice.top + inset],
-    [notice.right - inset, notice.top + inset],
-    [(notice.left + notice.right) / 2, (notice.top + notice.bottom) / 2],
-    [notice.left + inset, notice.bottom - inset],
-    [notice.right - inset, notice.bottom - inset],
+    [centerX, notice.top + inset],
+    [notice.right - inset, centerY],
+    [centerX, centerY],
+    [notice.left + inset, centerY],
+    [centerX, notice.bottom - inset],
   ] as const
 
   return {

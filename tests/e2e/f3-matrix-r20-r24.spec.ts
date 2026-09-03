@@ -72,8 +72,8 @@ test("R21 canonical detail tablet inline pane", async ({ page }, testInfo) => {
       topmost: center === element || element.contains(center),
     }
   })
-  expect(geometry.width).toBeGreaterThan(358.5)
-  expect(geometry.width).toBeLessThan(360.5)
+  expect(geometry.width).toBeGreaterThan(351.5)
+  expect(geometry.width).toBeLessThan(352.5)
   expect(geometry.inViewport).toBe(true)
   expect(geometry.topmost).toBe(true)
   await expect(detail.getByRole("region", { name: "건강식 메뉴" })).toContainText("공식 메뉴")

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
 
+import "../../../../app/globals.css"
 import { AnalyticsProvider } from "../../../../components/analytics/analytics-provider"
 
 type LayoutProperties = {
