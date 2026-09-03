@@ -124,8 +124,9 @@ export const buildSitemapEntries = (
   environment: SiteEnvironment,
 ): MetadataRoute.Sitemap => {
   const root = buildAbsoluteSiteUrl("", environment)
+  const about = buildAbsoluteSiteUrl("about", environment)
   const privacy = buildAbsoluteSiteUrl("privacy", environment)
-  if (root === null || privacy === null) return []
+  if (root === null || about === null || privacy === null) return []
 
   const places = catalog.places.flatMap((place) => {
     if (!place.published) return []
@@ -134,6 +135,7 @@ export const buildSitemapEntries = (
   })
   return [
     { url: root, changeFrequency: "daily", priority: 1 },
+    { url: about, changeFrequency: "yearly", priority: 0.5 },
     { url: privacy, changeFrequency: "yearly", priority: 0.3 },
     ...places,
   ]

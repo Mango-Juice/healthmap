@@ -2,6 +2,7 @@
 
 import type { LocationState } from "../../lib/domain/geo"
 import { viewLabel } from "../../lib/map/adapter"
+import { ApplicationMasthead } from "../ui/application-masthead"
 import {
   AlertTriangleIcon,
   ChevronDownIcon,
@@ -9,7 +10,7 @@ import {
   LocateIcon,
   RotateCcwIcon,
 } from "../ui/health-map-icons"
-import { FilterRail } from "../ui/health-map-primitives"
+import { ActionButton, FilterRail } from "../ui/health-map-primitives"
 import { DetailSurface } from "./detail-surface"
 import styles from "./map-discovery.module.css"
 import type { MapDiscoverySurfaceModel } from "./map-discovery-model"
@@ -32,15 +33,16 @@ export function MapDiscoverySurface({ model }: { readonly model: MapDiscoverySur
   )
   return (
     <section aria-label="건강식 지도" className={styles["shell"]}>
-      <header className={styles["header"]}>
-        <div>
-          <h1>건강식 지도</h1>
-          <p>강남·역삼 주변의 건강식 선택지를 지도에서 살펴보세요.</p>
-        </div>
-        <button onClick={catalog.reload} type="button">
-          장소 새로고침
-        </button>
-      </header>
+      <ApplicationMasthead
+        action={
+          <ActionButton leadingIcon={<RotateCcwIcon />} onClick={catalog.reload} variant="quiet">
+            장소 새로고침
+          </ActionButton>
+        }
+        context="강남·역삼"
+        description="건강식 선택지를 지도에서 살펴보세요."
+        title="건강식 지도"
+      />
       <div
         className={styles["map"]}
         data-adapter-state={adapter.state}

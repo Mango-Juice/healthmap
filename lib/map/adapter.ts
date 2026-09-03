@@ -1,6 +1,8 @@
 import type { GeoPoint, MapView } from "../domain/geo"
 import type { ViewportBounds } from "../domain/viewport"
 
+// allow: SIZE_OK — this module is the single typed NAVER SDK boundary for loading and lifecycle.
+
 export type MapAdapterState = "loading" | "ready" | "error"
 
 export type NaverMap = {
@@ -36,9 +38,11 @@ export type NaverMapsApi = {
   ) => NaverMap
   readonly Marker: new (options: {
     readonly clickable: boolean
+    readonly icon?: string
     readonly map: NaverMap
     readonly position: NaverLatLng
     readonly title: string
+    readonly zIndex?: number
   }) => NaverMarker
 }
 
@@ -75,10 +79,12 @@ const readLongitude = (point: NaverLatLng | undefined): number | undefined => {
 }
 
 export type MapMarkerSpec = {
+  readonly iconUrl?: string | undefined
   readonly label: string
   readonly latitude: number
   readonly longitude: number
   readonly onSelect: () => void
+  readonly zIndex?: number | undefined
 }
 
 export type SdkScript = {
@@ -218,9 +224,11 @@ export const createNaverMapAdapter = (
       markers = specs.map((spec) => {
         const marker = new maps.Marker({
           clickable: true,
+          ...(spec.iconUrl ? { icon: spec.iconUrl } : {}),
           map,
           position: new maps.LatLng(spec.latitude, spec.longitude),
           title: spec.label,
+          ...(spec.zIndex === undefined ? {} : { zIndex: spec.zIndex }),
         })
         return {
           listener: maps.Event.addListener(marker, "click", spec.onSelect),

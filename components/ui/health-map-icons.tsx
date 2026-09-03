@@ -113,6 +113,35 @@ export function ChevronDownIcon({ className }: NamedIconProperties) {
   )
 }
 
+export function ChevronRightIcon({ className }: NamedIconProperties) {
+  return (
+    <Icon className={className}>
+      <path d="m9 18 6-6-6-6" />
+    </Icon>
+  )
+}
+
+export function ArrowLeftIcon({ className }: NamedIconProperties) {
+  return (
+    <Icon className={className}>
+      <path d="m15 18-6-6 6-6" />
+      <path d="M9 12h10" />
+    </Icon>
+  )
+}
+
+export function WheatIcon({ className }: NamedIconProperties) {
+  return (
+    <Icon className={className}>
+      <path d="M2 22 16 8" />
+      <path d="M16 8c-4 0-6-2-7-5 4 0 6 2 7 5Z" />
+      <path d="M13 11c0-4 2-6 5-7 0 4-2 6-5 7Z" />
+      <path d="M10 14c-4 0-6-2-7-5 4 0 6 2 7 5Z" />
+      <path d="M7 17c0-4 2-6 5-7 0 4-2 6-5 7Z" />
+    </Icon>
+  )
+}
+
 export function XIcon({ className }: NamedIconProperties) {
   return (
     <Icon className={className}>

@@ -13,6 +13,7 @@ import {
 import { LocateIcon, NavigationIcon, XIcon } from "../ui/health-map-icons"
 import { CATEGORY_LABELS } from "../ui/health-map-options"
 import { ActionButton } from "../ui/health-map-primitives"
+import { MENU_VERIFICATION_LABELS } from "./menu-verification"
 import styles from "./place-detail.module.css"
 
 type Properties = {
@@ -40,13 +41,6 @@ const copyUrl = async (url: string): Promise<boolean> => {
     throw error
   }
 }
-
-const VERIFICATION_LABELS = {
-  direct_confirmation: "직접 확인",
-  government_exact: "공공자료 일치",
-  merchant_submission: "매장 제출",
-  official_menu: "공식 메뉴",
-} as const satisfies Record<Menu["verificationMethod"], string>
 
 export function PlaceDetail({ directionsTarget, menus, onClose, place, shareMap }: Properties) {
   const title = useRef<HTMLHeadingElement>(null)
@@ -152,32 +146,30 @@ export function PlaceDetail({ directionsTarget, menus, onClose, place, shareMap 
       </header>
       <div className={styles["body"]} data-testid="place-detail-body">
         <div className={styles["summary"]} data-detail-summary>
-          <p className={styles["address"]}>
+          <p className={styles["address"]} data-detail-meta>
             <LocateIcon />
             <span>{place.address}</span>
           </p>
-          <div className={styles["metaGrid"]}>
-            <div data-detail-meta>
-              <span>유형</span>
-              <strong className={styles["tags"]}>
-                {place.healthTags.map((tag) => CATEGORY_LABELS[tag]).join(" · ")}
-              </strong>
-            </div>
-            <div data-detail-meta>
-              <span>메뉴</span>
-              <strong>{visibleMenus.length}가지</strong>
-            </div>
-          </div>
+          <p className={styles["categorySummary"]} data-detail-meta>
+            <span>건강식 유형</span>
+            <strong className={styles["tags"]}>
+              {place.healthTags.map((tag) => CATEGORY_LABELS[tag]).join(" · ")}
+            </strong>
+          </p>
         </div>
         <section aria-label="건강식 메뉴" data-detail-menu>
-          <h3>건강식 메뉴</h3>
-          <ul className={styles["menuList"]}>
+          <div className={styles["menuHeading"]}>
+            <h3 id="verified-menu-heading">확인한 메뉴</h3>
+            <span>{visibleMenus.length}가지</span>
+          </div>
+          <ul aria-label="확인한 메뉴" className={styles["menuList"]}>
             {visibleMenus.map((menu) => (
               <li key={menu.id}>
                 <strong>{menu.name}</strong>
                 <span>
-                  {VERIFICATION_LABELS[menu.verificationMethod]} · {menu.verifiedAt} 확인
+                  {MENU_VERIFICATION_LABELS[menu.verificationMethod]} · {menu.verifiedAt} 확인
                 </span>
+                <span>{menu.validUntil}까지 유효</span>
                 {menu.evidenceUrl ? (
                   <a href={menu.evidenceUrl} rel="noreferrer" target="_blank">
                     검증 근거 보기

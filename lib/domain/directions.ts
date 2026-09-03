@@ -12,6 +12,26 @@ export type ProductionDirections = {
 
 const isFiniteCoordinate = (value: number): boolean => Number.isFinite(value)
 
+type NaverRouteDestination = {
+  readonly latitude: number
+  readonly longitude: number
+  readonly name: string
+}
+
+export const buildNaverRouteDirections = ({
+  latitude,
+  longitude,
+  name,
+}: NaverRouteDestination): ProductionDirections | undefined => {
+  if (!isFiniteCoordinate(latitude) || !isFiniteCoordinate(longitude)) return undefined
+  const destination = `${longitude},${latitude},place,${encodeURIComponent(name)}`
+  return {
+    kind: "route",
+    source: "naver_route",
+    url: `https://map.naver.com/p/directions/${destination}/-/walk`,
+  }
+}
+
 export const buildProductionDirections = (
   place: Place,
   target: DirectionsTarget = {
@@ -20,17 +40,13 @@ export const buildProductionDirections = (
     longitude: place.longitude,
   },
 ): ProductionDirections | undefined => {
-  if (
-    target.kind === "route" &&
-    isFiniteCoordinate(target.latitude) &&
-    isFiniteCoordinate(target.longitude)
-  ) {
-    const destination = `${target.longitude},${target.latitude},place,${encodeURIComponent(place.name)}`
-    return {
-      kind: "route",
-      source: "naver_route",
-      url: `https://map.naver.com/p/directions/${destination}/-/walk`,
-    }
+  if (target.kind === "route") {
+    const route = buildNaverRouteDirections({
+      latitude: target.latitude,
+      longitude: target.longitude,
+      name: place.name,
+    })
+    if (route !== undefined) return route
   }
   return { kind: "place", source: "naver_place", url: place.naverPlaceUrl }
 }

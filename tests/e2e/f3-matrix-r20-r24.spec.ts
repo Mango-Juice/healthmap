@@ -42,7 +42,7 @@ test("R20 canonical official detail mobile", async ({ page }, testInfo) => {
   const detail = page.getByTestId("place-detail")
   await expect(page.locator("[data-detail-phase='open'][aria-label='장소 상세']")).toBeVisible()
   await expect(detail.getByRole("heading", { name: "새싹 네모식당" })).toBeFocused()
-  await detail.getByText("건강식 메뉴", { exact: true }).scrollIntoViewIfNeeded()
+  await detail.getByText("확인한 메뉴", { exact: true }).scrollIntoViewIfNeeded()
   await expect(detail.getByRole("region", { name: "건강식 메뉴" })).toContainText("공식 메뉴")
   const evidence = detail.locator("a").first()
   await evidence.scrollIntoViewIfNeeded()

@@ -56,17 +56,15 @@ test("R18 ordinary selection status stays announced below the settled detail tit
       throw new TypeError("R18 selection-layer targets missing")
     const noticeRect = notice.getBoundingClientRect()
     const titleRect = title.getBoundingClientRect()
-    const overlap = {
-      bottom: Math.min(noticeRect.bottom, titleRect.bottom),
-      left: Math.max(noticeRect.left, titleRect.left),
-      right: Math.min(noticeRect.right, titleRect.right),
-      top: Math.max(noticeRect.top, titleRect.top),
-    }
-    const intersectsTitle = overlap.right > overlap.left && overlap.bottom > overlap.top
-    if (!intersectsTitle) throw new TypeError("R18 notice no longer intersects the title geometry")
-    const hit = document.elementFromPoint(
-      (overlap.left + overlap.right) / 2,
-      (overlap.top + overlap.bottom) / 2,
+    const intersectsTitle = !(
+      noticeRect.right <= titleRect.left ||
+      noticeRect.left >= titleRect.right ||
+      noticeRect.bottom <= titleRect.top ||
+      noticeRect.top >= titleRect.bottom
+    )
+    const noticeCenterHit = document.elementFromPoint(
+      noticeRect.left + noticeRect.width / 2,
+      noticeRect.top + noticeRect.height / 2,
     )
     const titleCenterHit = document.elementFromPoint(
       titleRect.left + titleRect.width / 2,
@@ -95,10 +93,11 @@ test("R18 ordinary selection status stays announced below the settled detail tit
     })
     return {
       actionGeometry,
-      detailContainsOverlapHit: hit !== null && detail.contains(hit),
+      detailContainsNoticeHit: noticeCenterHit !== null && detail.contains(noticeCenterHit),
       documentHorizontalOverflow: document.documentElement.scrollWidth > innerWidth,
       intersectsTitle,
-      noticeContainsOverlapHit: hit !== null && notice.contains(hit),
+      noticeBelowTitle: noticeRect.top >= titleRect.bottom,
+      noticeContainsCenterHit: noticeCenterHit !== null && notice.contains(noticeCenterHit),
       noticeKind: notice.dataset["selectionKind"] ?? "missing",
       noticeText: notice.textContent?.trim() ?? "",
       titleContainsCenterHit: titleCenterHit !== null && title.contains(titleCenterHit),
@@ -129,10 +128,11 @@ test("R18 ordinary selection status stays announced below the settled detail tit
 
   const { actionGeometry, ...surfaceGeometry } = geometry
   expect(surfaceGeometry).toEqual({
-    detailContainsOverlapHit: true,
+    detailContainsNoticeHit: true,
     documentHorizontalOverflow: false,
-    intersectsTitle: true,
-    noticeContainsOverlapHit: false,
+    intersectsTitle: false,
+    noticeBelowTitle: true,
+    noticeContainsCenterHit: false,
     noticeKind: "ordinary",
     noticeText: "장소를 선택했습니다.",
     titleContainsCenterHit: true,

@@ -5,6 +5,7 @@ import type { PlaceDistance } from "../../lib/domain/distance"
 import { SearchIcon } from "../ui/health-map-icons"
 import { CATEGORY_LABELS } from "../ui/health-map-options"
 import styles from "./map-discovery.module.css"
+import { MENU_VERIFICATION_LABELS } from "./menu-verification"
 
 type Properties = {
   readonly menus: readonly Menu[]
@@ -72,7 +73,8 @@ export function PlaceResults({
         ) : (
           <ol aria-label="검색 결과" className={styles["resultList"]}>
             {results.map(({ distanceMeters, place }) => {
-              const representativeMenu = validMenusForPlace(menus, place)[0]
+              const placeMenus = validMenusForPlace(menus, place)
+              const representativeMenu = placeMenus[0]
               return (
                 <li key={place.id}>
                   <button
@@ -82,17 +84,33 @@ export function PlaceResults({
                     onClick={(event) => onSelect(place, event.currentTarget)}
                     type="button"
                   >
-                    <strong>{place.name}</strong>
-                    <span>
-                      {neighborhood(place.address)} · {distanceLabel(distanceMeters)}
+                    <span className={styles["resultIdentity"]}>
+                      <strong>{place.name}</strong>
+                      <span className={styles["resultDistance"]}>
+                        {distanceLabel(distanceMeters)}
+                      </span>
                     </span>
-                    {representativeMenu ? <b>{representativeMenu.name}</b> : null}
-                    <span className={styles["cardTags"]}>
-                      {place.healthTags.map((tag) => CATEGORY_LABELS[tag]).join(" · ")}
-                    </span>
+                    <span className={styles["resultLocation"]}>{neighborhood(place.address)}</span>
                     {representativeMenu ? (
-                      <small>검증 {representativeMenu.verifiedAt}</small>
+                      <span className={styles["resultMenu"]}>
+                        <small>대표 메뉴</small>
+                        <b>
+                          {representativeMenu.name}
+                          {placeMenus.length > 1 ? ` 외 ${placeMenus.length - 1}개` : ""}
+                        </b>
+                      </span>
                     ) : null}
+                    <span className={styles["resultEvidence"]}>
+                      <span className={styles["cardTags"]}>
+                        {place.healthTags.map((tag) => CATEGORY_LABELS[tag]).join(" · ")}
+                      </span>
+                      {representativeMenu ? (
+                        <small>
+                          {MENU_VERIFICATION_LABELS[representativeMenu.verificationMethod]} ·{" "}
+                          {representativeMenu.verifiedAt} 확인
+                        </small>
+                      ) : null}
+                    </span>
                   </button>
                 </li>
               )

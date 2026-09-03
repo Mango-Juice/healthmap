@@ -234,6 +234,11 @@
 }
 
 @media (forced-colors: active) {
+  .filterButton[aria-pressed="true"] {
+    outline: var(--hm-border-width) solid Highlight;
+    outline-offset: var(--hm-border-width);
+  }
+
   .filterButton:focus-visible,
   .actionButton:focus-visible {
     outline-color: Highlight;

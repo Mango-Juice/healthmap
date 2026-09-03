@@ -132,7 +132,9 @@ test("R26 typed long Korean and unbroken URL has one scroll owner", async ({
   await shot(page, info, "R26-url", { ...metrics, ...urlObservation, frame: "url" })
 })
 
-test("R27 keyboard focus is visibly assigned to refresh control", async ({ page }, info) => {
+test("R27 keyboard focus is visibly assigned to the first masthead action", async ({
+  page,
+}, info) => {
   await page.setViewportSize({ width: 375, height: 812 })
   await page.goto("/")
   await page.keyboard.press("Tab")

@@ -34,6 +34,7 @@ test("200 percent zoom keeps denied location attention above the tray and its to
       throw new Error("denied location geometry target missing")
     const locationRect = location.getBoundingClientRect()
     const locateRect = locate.getBoundingClientRect()
+    const trayRect = tray.getBoundingClientRect()
     const toggleRect = toggle.getBoundingClientRect()
     const toggleHit = document.elementFromPoint(
       toggleRect.left + toggleRect.width / 2,
@@ -45,11 +46,13 @@ test("200 percent zoom keeps denied location attention above the tray and its to
       locationFullyClearOfLocate: locationRect.right <= locateRect.left,
       locationLive: location.tagName === "OUTPUT",
       locationRect: locationRect.toJSON(),
+      locateRect: locateRect.toJSON(),
+      trayRect: trayRect.toJSON(),
       toggleTopmost: toggle === toggleHit || toggle.contains(toggleHit),
     }
   })
   expect(geometry.cssViewport).toEqual({ height: 406, width: 188 })
-  expect(geometry.locationFullyAboveTray).toBe(true)
+  expect(geometry.locationFullyAboveTray, JSON.stringify(geometry)).toBe(true)
   expect(geometry.locationFullyClearOfLocate).toBe(true)
   expect(geometry.locationLive).toBe(true)
   expect(geometry.toggleTopmost).toBe(true)

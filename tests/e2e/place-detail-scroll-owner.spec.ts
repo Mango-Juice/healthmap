@@ -196,9 +196,13 @@ test("detail screenshots wait for a settled surface with one vertical owner and 
     const lastLink = links[links.length - 1]
     if (lastLink === undefined) throw new Error("detail evidence link missing")
     const linkRect = lastLink.getBoundingClientRect()
+    const menuName = body?.querySelector<HTMLElement>("li strong")
+    if (menuName === undefined || menuName === null) throw new Error("detail menu name missing")
     return {
       detailHorizontalOverflow: body !== null && body.scrollWidth > body.clientWidth,
       linkVisible: linkRect.top >= 0 && linkRect.bottom <= window.innerHeight,
+      linkWidth: linkRect.width,
+      menuNameWidth: menuName.getBoundingClientRect().width,
       pageHorizontalOverflow: document.documentElement.scrollWidth > window.innerWidth,
     }
   })
@@ -231,5 +235,7 @@ test("detail screenshots wait for a settled surface with one vertical owner and 
   )
   expect(stress.detailHorizontalOverflow).toBe(false)
   expect(stress.linkVisible).toBe(true)
+  expect(stress.linkWidth).toBeGreaterThanOrEqual(120)
+  expect(stress.menuNameWidth).toBeGreaterThanOrEqual(120)
   expect(stress.pageHorizontalOverflow).toBe(false)
 })

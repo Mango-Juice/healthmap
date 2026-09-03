@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="56" viewBox="0 0 48 56">
+  <title>선택한 비건·채식 장소</title>
+  <ellipse cx="24" cy="51" rx="12" ry="3" fill="#0d3425" opacity=".22"/>
+  <path d="M24 4C13.5 4 7 11.8 7 21c0 12.7 17 26 17 26s17-13.3 17-26C41 11.8 34.5 4 24 4Z" fill="#2f7651" stroke="#fffdf8" stroke-width="3"/>
+  <path d="M16 29c0-9.2 5.3-13.7 15.8-13.5-1.1 8.5-6.2 13.5-14.3 13.5H16Zm1.7-1.7 10.1-9" fill="none" stroke="#fffdf8" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.3"/>
+</svg>

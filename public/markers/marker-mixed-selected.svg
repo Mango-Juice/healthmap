@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="56" viewBox="0 0 48 56">
+  <title>선택한 잡곡밥과 비건·채식 장소</title>
+  <ellipse cx="24" cy="51" rx="12" ry="3" fill="#0d3425" opacity=".22"/>
+  <path d="M24 4C13.5 4 7 11.8 7 21c0 12.7 17 26 17 26s17-13.3 17-26C41 11.8 34.5 4 24 4Z" fill="#2b6048" stroke="#fffdf8" stroke-width="3"/>
+  <path d="M14.5 29c0-7.7 4.4-11.4 12.9-11.1-.9 7-5 11.1-11.7 11.1h-1.2Zm1.4-1.4 8.3-7.4M28 17.5V30M28 21c2.8 0 4.6-1.4 5.4-3.4-2.8-.2-4.6 1-5.4 3.4Z" fill="none" stroke="#fffdf8" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+</svg>

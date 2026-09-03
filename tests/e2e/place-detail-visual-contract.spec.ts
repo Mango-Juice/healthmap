@@ -73,7 +73,7 @@ test("200 percent zoom keeps short Korean header phrases intact and the full sur
       }
       return {
         headerFits: header.scrollWidth <= header.clientWidth,
-        refreshLines: textLineCount(refresh ?? null),
+        refreshLines: textLineCount(refresh?.querySelector("span > span") ?? null),
         titleLines: textLineCount(title),
       }
     })

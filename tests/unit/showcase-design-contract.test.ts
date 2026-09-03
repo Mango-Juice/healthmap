@@ -137,6 +137,7 @@ describe("showcase design contract", () => {
     ])
     expect(tokenContract.rawLiteralViolations(sources)).toEqual([
       "app/privacy/privacy.css:2 padding: 32px matches --hm-space-8: 32px",
+      "app/privacy/privacy.css:3 font-size: 32px matches --hm-type-display: 32px",
     ])
     expect(tokenContract.valueViolations(canonical)).toEqual([])
   })

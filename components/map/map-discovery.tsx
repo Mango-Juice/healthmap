@@ -98,12 +98,16 @@ export function MapDiscovery({
   const markers = useMemo(
     () =>
       discovery.results.map(({ place }) => ({
+        iconUrl:
+          selectedPlace?.id === place.id
+            ? "/markers/marker-selected.svg"
+            : "/markers/marker-health.svg",
         label: place.name,
         latitude: place.latitude,
         longitude: place.longitude,
         onSelect: () => detail.open(place, "map"),
       })),
-    [detail.open, discovery.results],
+    [detail.open, discovery.results, selectedPlace?.id],
   )
   const handleViewportChanged = useCallback(
     (snapshot: { readonly bounds: ViewportBounds; readonly view: MapView }): void => {

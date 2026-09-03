@@ -19,16 +19,19 @@ export function useSelectionFocus(phase: DetailPhase, selectedSlug: string | und
     const markerLabel = element?.matches("[data-test-naver-marker='true']")
       ? element.getAttribute("aria-label")
       : null
-    const restored = element?.isConnected
-      ? element
-      : markerLabel === null
-        ? document.querySelector<HTMLElement>(`[data-place-slug="${CSS.escape(slug)}"]`)
-        : document.querySelector<HTMLElement>(
-            `[data-test-naver-marker="true"][aria-label="${CSS.escape(markerLabel)}"]`,
-          )
-    ;(restored ?? document.querySelector<HTMLElement>("[role='searchbox']"))?.focus({
-      preventScroll: true,
+    const frame = window.requestAnimationFrame(() => {
+      const restored = element?.isConnected
+        ? element
+        : markerLabel === null
+          ? document.querySelector<HTMLElement>(`[data-place-slug="${CSS.escape(slug)}"]`)
+          : document.querySelector<HTMLElement>(
+              `[data-test-naver-marker="true"][aria-label="${CSS.escape(markerLabel)}"]`,
+            )
+      ;(restored ?? document.querySelector<HTMLElement>("[role='searchbox']"))?.focus({
+        preventScroll: true,
+      })
     })
+    return () => window.cancelAnimationFrame(frame)
   }, [phase, selectedSlug])
 
   const capture = useCallback((element?: HTMLElement): void => {

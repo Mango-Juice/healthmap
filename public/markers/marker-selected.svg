@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="56" viewBox="0 0 48 56">
+  <title>선택한 건강식 장소</title>
+  <ellipse cx="24" cy="51" rx="12" ry="3" fill="#0d3425" opacity=".2"/>
+  <circle cx="24" cy="21" r="19" fill="#fffdf8" opacity=".96"/>
+  <path d="M24 4C13.5 4 7 11.8 7 21c0 12.7 17 26 17 26s17-13.3 17-26C41 11.8 34.5 4 24 4Z" fill="#0d3425" stroke="#fffdf8" stroke-width="3"/>
+  <circle cx="24" cy="20" r="8.5" fill="#fffdf8"/>
+  <path d="M19 23c0-5 2.8-7.3 8.5-7.2-.6 4.6-3.3 7.2-7.7 7.2H19Zm1-1 5.4-4.8" fill="none" stroke="#18563b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"/>
+</svg>

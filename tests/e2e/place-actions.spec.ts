@@ -50,7 +50,7 @@ test("Given valid and invalid deep links, when the map loads, then published pla
 
   // Then
   await expect(page).toHaveURL("/places/not-published")
-  await expect(page.getByRole("heading", { name: "404" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "장소를 찾을 수 없어요" })).toBeVisible()
 })
 
 test("Given a production place, when directions and sharing are requested, then directions use its coordinates and sharing remains available", async ({

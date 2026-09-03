@@ -203,6 +203,8 @@ describe("NAVER map adapter", () => {
         markerEvents.push(
           `create:${options.title}:${options.position.latitude}:${options.position.longitude}`,
         )
+        markerEvents.push(`icon:${options.icon}`)
+        markerEvents.push(`z-index:${options.zIndex}`)
       }
       setMap(map: object | null) {
         if (map === null) markerEvents.push("remove")
@@ -226,8 +228,10 @@ describe("NAVER map adapter", () => {
     adapter.syncMarkers([
       {
         label: "실제 장소",
+        iconUrl: "/markers/marker-plant.svg",
         latitude: 37.5042,
         longitude: 127.0411,
+        zIndex: 1000,
         onSelect: () => {
           selected = "place-1"
         },
@@ -237,6 +241,8 @@ describe("NAVER map adapter", () => {
     adapter.syncMarkers([])
 
     expect(markerEvents).toContain("create:실제 장소:37.5042:127.0411")
+    expect(markerEvents).toContain("icon:/markers/marker-plant.svg")
+    expect(markerEvents).toContain("z-index:1000")
     expect(selected).toBe("place-1")
     expect(markerEvents).toContain("remove")
   })
