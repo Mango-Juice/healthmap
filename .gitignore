@@ -1,34 +1,30 @@
-# dependencies
-/node_modules/
+# Dependencies and package-manager cache
+node_modules/
+.pnpm-store/
 
-# Next.js
+# Next.js and generated builds
 /.next/
 /.next-*/
 /out/
+*.tsbuildinfo
 
-# test output
+# Test and agent evidence
 /coverage/
 /playwright-report/
 /test-results/
+.omo/
+.codegraph
+*.log
 
-# local environment files
+# Environment values stay private; the empty template is source
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
 
-# platform and tooling
-.DS_Store
-*.tsbuildinfo
+# Hosting and local Supabase state
 .vercel/
-
-# local Supabase runtime
 /supabase/.branches/
 /supabase/.temp/
 
-.omo/
-*/**/AGENTS.md
-.codegraph
-.vercel
-.env*
+# OS metadata
+.DS_Store
