@@ -41,13 +41,10 @@ test("Vercel and CI pin frozen installs, quality gates, and deployment commands"
   )
   assert.match(
     operations,
-    /fixed 14-argument RPC[\s\S]+does not receive approval JSON or an approval hash/,
+    /v2 16-argument RPC[\s\S]+review_approval_json[\s\S]+review_approval_sha256/,
   )
-  assert.match(
-    operations,
-    /server compare approvals and deterministic rechecks exactly against[\s\S]+stored rows/,
-  )
-  assert.doesNotMatch(operations, /sends the exact canonical review-approval JSON/)
+  assert.match(operations, /stored private artifact hash[\s\S]+exact replays/)
+  assert.match(operations, /14-argument overload accepts only genuine legacy v1 bundles/)
   assert.match(
     packageJson,
     /"deploy:smoke": "node --experimental-strip-types scripts\/deploy\/production-smoke\.mjs"/,

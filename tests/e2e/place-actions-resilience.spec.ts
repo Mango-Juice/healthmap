@@ -20,18 +20,12 @@ test("canonical place and map links reload while marker Back and direct close pr
   await page.goto(MAP_SHARE)
   await expect(page).toHaveURL(MAP_SHARE)
   await expect(page.getByTestId("map-view")).toHaveText(MAP_VIEW)
-  await expect(page.getByRole("button", { name: "균형식 필터" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  )
+  await expect(page.getByRole("combobox", { name: "식사 형태·선택" })).toHaveValue("balanced")
 
   await page.reload()
   await expect(page).toHaveURL(MAP_SHARE)
   await expect(page.getByTestId("map-view")).toHaveText(MAP_VIEW)
-  await expect(page.getByRole("button", { name: "균형식 필터" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  )
+  await expect(page.getByRole("combobox", { name: "식사 형태·선택" })).toHaveValue("balanced")
 
   await page.getByTestId("naver-map").getByRole("button", { name: "새싹 네모식당" }).click()
   await expect(page).toHaveURL(PLACE_SHARE)
@@ -44,19 +38,13 @@ test("canonical place and map links reload while marker Back and direct close pr
   await expect(page).toHaveURL(MAP_SHARE)
   await expect(page.getByTestId("place-detail")).toHaveCount(0)
   await expect(page.getByTestId("map-view")).toHaveText(MAP_VIEW)
-  await expect(page.getByRole("button", { name: "균형식 필터" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  )
+  await expect(page.getByRole("combobox", { name: "식사 형태·선택" })).toHaveValue("balanced")
 
   await page.getByTestId("naver-map").getByRole("button", { name: "새싹 네모식당" }).click()
   await page.getByRole("button", { name: "검색 결과로 돌아가기" }).click()
   await expect(page.getByTestId("place-detail")).toHaveCount(0)
   await expect(page.getByTestId("map-view")).toHaveText(MAP_VIEW)
-  await expect(page.getByRole("button", { name: "균형식 필터" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  )
+  await expect(page.getByRole("combobox", { name: "식사 형태·선택" })).toHaveValue("balanced")
 })
 test("malformed duplicate and partial links recover while a mixed place link canonicalizes to place", async ({
   page,
@@ -182,7 +170,7 @@ test("clipboard failure exposes selectable manual completion and five native sha
     })
   })
   await page.goto(MAP_SHARE)
-  await page.getByRole("button", { name: "단백질 필터" }).click()
+  await page.getByRole("combobox", { name: "식사 형태·선택" }).selectOption("protein")
   const initialView = await page.getByTestId("map-view").textContent()
 
   for (let cycle = 0; cycle < 5; cycle += 1) {
@@ -225,16 +213,10 @@ test("clipboard failure exposes selectable manual completion and five native sha
     }
     await expect(page.getByTestId("place-detail")).toHaveCount(0)
     await expect(page.getByTestId("map-stage")).toBeVisible()
-    await expect(page.getByRole("button", { name: "단백질 필터" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    )
+    await expect(page.getByRole("combobox", { name: "식사 형태·선택" })).toHaveValue("protein")
     await expect(page.getByTestId("map-view")).toHaveText(initialView ?? "")
     await page.goBack()
     await expect(page.getByTestId("place-detail")).toHaveCount(0)
-    await expect(page.getByRole("button", { name: "단백질 필터" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    )
+    await expect(page.getByRole("combobox", { name: "식사 형태·선택" })).toHaveValue("protein")
   }
 })

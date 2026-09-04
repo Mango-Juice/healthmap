@@ -284,3 +284,20 @@
     padding: var(--hm-space-6);
   }
 }
+.media {
+  margin: 0;
+}
+.media img {
+  block-size: auto;
+  display: block;
+  inline-size: 100%;
+}
+.media figcaption {
+  color: var(--hm-ink-muted);
+  font-size: var(--hm-type-caption);
+}
+.visitAction {
+  align-items: center;
+  display: flex;
+  min-block-size: var(--hm-control-min);
+}

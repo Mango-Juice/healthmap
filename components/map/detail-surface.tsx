@@ -30,6 +30,8 @@ export function DetailSurface({
         query: discovery.query,
         tag: filter.selected,
         zoom: view.zoom,
+        ingredient: discovery.ingredient,
+        cooking: discovery.cooking,
       }}
     />
   )
@@ -65,7 +67,7 @@ export function DetailSurface({
         if (event.key !== "Tab") return
         const focusable = Array.from(
           event.currentTarget.querySelectorAll<HTMLElement>(
-            "button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex='-1'])",
+            "button:not([disabled]), a[href], textarea, select, input:not([disabled]), [tabindex]:not([tabindex='-1'])",
           ),
         ).filter((element) => element.getClientRects().length > 0)
         const first = focusable[0]

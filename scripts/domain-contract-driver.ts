@@ -118,7 +118,7 @@ const malformedShare = parseMapShareQuery(
   "q=&q=duplicate&tag=vegetables&lat=37.5&lng=127.0328&z=15",
 )
 const unknownShare = parseMapShareQuery("q=&tag=unknown&lat=37.5&lng=127.0328&z=15")
-const outOfBoundsShare = parseMapShareQuery("q=&tag=vegetables&lat=0&lng=0&z=15")
+const outOfBoundsShare = parseMapShareQuery("q=&tag=vegetables&lat=91&lng=0&z=15")
 const afterMovement = recordViewportMovement(createViewportState(appliedBounds), movedBounds)
 const afterCommit = applyCurrentViewport(afterMovement)
 const stableDistanceTieIds = sortPlacesByDistance({

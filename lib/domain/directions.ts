@@ -24,11 +24,16 @@ export const buildNaverRouteDirections = ({
   name,
 }: NaverRouteDestination): ProductionDirections | undefined => {
   if (!isFiniteCoordinate(latitude) || !isFiniteCoordinate(longitude)) return undefined
-  const destination = `${longitude},${latitude},place,${encodeURIComponent(name)}`
+  const query = new URLSearchParams({
+    elng: String(longitude),
+    elat: String(latitude),
+    etext: name,
+    menu: "route",
+  })
   return {
     kind: "route",
     source: "naver_route",
-    url: `https://map.naver.com/p/directions/${destination}/-/walk`,
+    url: `https://map.naver.com/index.nhn?${query.toString()}`,
   }
 }
 

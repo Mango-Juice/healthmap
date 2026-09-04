@@ -81,7 +81,9 @@ test("R15 timeout location retains map and retry control", async ({ page }, test
   )
 })
 
-test("R16 location states are truthful at inclusive boundaries", async ({ page }, testInfo) => {
+test("R16 accepts every valid WGS84 location and rejects only impossible coordinates", async ({
+  page,
+}, testInfo) => {
   const errors = monitor(page)
   await page.addInitScript(() =>
     Object.defineProperty(navigator, "geolocation", {
@@ -96,10 +98,9 @@ test("R16 location states are truthful at inclusive boundaries", async ({ page }
     await page.locator('[data-location-state="requesting"]').getAttribute("data-location-state"),
   ]
   const responses = [
-    { state: "inside", latitude: 37.5007, longitude: 127.0328 },
-    { state: "outside", latitude: 37.6, longitude: 127.1 },
-    { state: "inside", latitude: 37.492, longitude: 127.02 },
-    { state: "inside", latitude: 37.5085, longitude: 127.0445 },
+    { label: "legacy fixture area", state: "inside", latitude: 37.5007, longitude: 127.0328 },
+    { label: "Busan", state: "inside", latitude: 35.1796, longitude: 129.0756 },
+    { label: "impossible WGS84 coordinate", state: "outside", latitude: 91, longitude: 181 },
   ] as const
   for (const response of responses) {
     await page.addInitScript(
@@ -131,10 +132,11 @@ test("R16 location states are truthful at inclusive boundaries", async ({ page }
     states.push(await page.locator("[data-location-state]").getAttribute("data-location-state"))
   }
   const observations = {
-    sequence: ["requesting", "inside", "outside", "southwest-boundary", "northeast-boundary"],
+    sequence: ["requesting", ...responses.map(({ label, state }) => ({ label, state }))],
     observedStates: states,
     markerCount: await page.locator('[data-test-naver-marker="true"]').count(),
   }
+  expect(states).toEqual(["requesting", "inside", "inside", "outside"])
   expect(errors).toEqual([])
   await receipt(
     "R16",
@@ -142,6 +144,55 @@ test("R16 location states are truthful at inclusive boundaries", async ({ page }
     testInfo,
     observations,
     ["geolocation:pending-and-coordinates"],
+    errors,
+  )
+})
+
+test("R16 preserves an explicit shared map view after a valid location resolves", async ({
+  page,
+}, testInfo) => {
+  const errors = monitor(page)
+  await page.addInitScript(() =>
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: {
+        getCurrentPosition: (success: PositionCallback) =>
+          success({
+            coords: {
+              latitude: 35.1796,
+              longitude: 129.0756,
+              accuracy: 1,
+              altitude: null,
+              altitudeAccuracy: null,
+              heading: null,
+              speed: null,
+              toJSON: () => ({}),
+            },
+            timestamp: Date.now(),
+            toJSON: () => ({}),
+          }),
+      },
+    }),
+  )
+  await page.setViewportSize(viewport)
+  await page.goto("/?q=&tag=all&lat=37.501&lng=127.033&z=15")
+  await expect(page.locator('[data-location-state="inside"]')).toBeVisible()
+  await expect(page.getByTestId("map-view")).toContainText("37.5010, 127.0330 · 확대 15")
+  const observations = {
+    locationState: await page.locator("[data-location-state]").getAttribute("data-location-state"),
+    sharedView: await page.getByTestId("map-view").textContent(),
+  }
+  expect(observations).toEqual({
+    locationState: "inside",
+    sharedView: "37.5010, 127.0330 · 확대 15",
+  })
+  expect(errors).toEqual([])
+  await receipt(
+    "R16-shared-view",
+    page,
+    testInfo,
+    observations,
+    ["geolocation:valid-Busan-coordinate"],
     errors,
   )
 })

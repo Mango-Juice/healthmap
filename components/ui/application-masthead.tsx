@@ -5,22 +5,30 @@ import { LeafIcon } from "./health-map-icons"
 type Properties = {
   readonly action?: ReactNode
   readonly context: string
+  readonly compact?: boolean
   readonly description: string
   readonly meta?: string | undefined
   readonly title: string
 }
 
-export function ApplicationMasthead({ action, context, description, meta, title }: Properties) {
+export function ApplicationMasthead({
+  action,
+  compact = false,
+  context,
+  description,
+  meta,
+  title,
+}: Properties) {
   return (
-    <header className={styles["masthead"]}>
+    <header className={styles["masthead"]} data-compact={compact} data-has-action={Boolean(action)}>
       <div className={styles["identity"]}>
         <span aria-hidden="true" className={styles["mark"]}>
           <LeafIcon />
         </span>
         <div className={styles["copy"]}>
-          <span>{context}</span>
+          {compact ? null : <span>{context}</span>}
           <h1>{title}</h1>
-          <p>{description}</p>
+          {compact ? null : <p>{description}</p>}
         </div>
       </div>
       <div className={styles["utilities"]}>

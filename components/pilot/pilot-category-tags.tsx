@@ -1,21 +1,18 @@
-import type { PilotPlace } from "../../lib/pilot/catalog"
+import Image from "next/image"
 import {
-  discoveryTagsForPlace,
+  discoveryTagsForMenu,
   PILOT_DISCOVERY_LABELS,
-  type PilotDiscoveryTag,
+  pilotCategoryIcon,
 } from "../../lib/pilot/discovery"
-import { LeafIcon, WheatIcon } from "../ui/health-map-icons"
+import type { PilotMenuDto as PilotMenu } from "../../lib/pilot/dto"
 import styles from "./pilot-discovery.module.css"
 
-const TagIcon = ({ tag }: { readonly tag: PilotDiscoveryTag }) =>
-  tag === "whole_grain" ? <WheatIcon /> : <LeafIcon />
-
-export function PilotCategoryTags({ place }: { readonly place: PilotPlace }) {
+export function PilotCategoryTags({ menus }: { readonly menus: readonly PilotMenu[] }) {
   return (
     <span className={styles["tags"]}>
-      {discoveryTagsForPlace(place).map((tag) => (
+      {[...new Set(menus.flatMap(discoveryTagsForMenu))].map((tag) => (
         <span data-category={tag} key={tag}>
-          <TagIcon tag={tag} />
+          <Image alt="" src={pilotCategoryIcon(tag)} width={16} height={20} />
           {PILOT_DISCOVERY_LABELS[tag]}
         </span>
       ))}

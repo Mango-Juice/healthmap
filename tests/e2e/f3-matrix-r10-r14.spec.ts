@@ -1,14 +1,16 @@
 import { createHash } from "node:crypto"
 import { readFile, writeFile } from "node:fs/promises"
 import type { Page, TestInfo } from "@playwright/test"
-import { e2eCatalog } from "../fixtures/e2e-catalog"
+import {
+  catalogQueryPattern,
+  emptyQueryCatalog,
+  fulfillCatalogQuery,
+} from "./catalog-query-fixture"
 import { expect, test } from "./map-test"
 
 const viewport = { width: 375, height: 812 } as const
 const sourcePath = new URL("./f3-matrix-r10-r14.spec.ts", import.meta.url)
 const manifestRef = ".omo/evidence/f3-final/surface-matrix.json#baseline.sourceManifestSha256"
-const emptyCatalog =
-  '{"catalogVersion":"matrix-empty","dataMode":"production","menus":[],"places":[]}'
 const catalog503Console = [
   "console:Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
 ]
@@ -57,22 +59,22 @@ const receipt = async (
 }
 
 test.describe.configure({ retries: 0 })
-let r10ScreenshotSha256: string | undefined
 
 test.beforeEach(async ({ page }) => page.addInitScript(insideGeolocationScript))
 
 test("R10 catalog 503 then empty then fixture recovery", async ({ page }, testInfo) => {
   const errors = monitor(page)
+  await page.goto("/")
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
+  await expect(page.getByText("장소 데이터를 불러오는 중입니다.")).toHaveCount(0)
   let attempts = 0
-  await page.route("**/api/map-catalog", async (route) => {
+  await page.route(catalogQueryPattern, async (route) => {
     attempts += 1
     if (attempts === 1) return route.fulfill({ status: 503 })
-    if (attempts === 2)
-      return route.fulfill({ contentType: "application/json", body: emptyCatalog })
-    return route.fulfill({ contentType: "application/json", json: e2eCatalog })
+    if (attempts === 2) return fulfillCatalogQuery(route, emptyQueryCatalog)
+    return fulfillCatalogQuery(route)
   })
   await page.setViewportSize(viewport)
-  await page.goto("/")
   await page.getByRole("button", { name: "장소 새로고침" }).click()
   await expect(page.getByText("장소 데이터를 불러오지 못했습니다.")).toBeVisible()
   await page.getByRole("button", { name: /다시 시도/ }).click()
@@ -82,7 +84,7 @@ test("R10 catalog 503 then empty then fixture recovery", async ({ page }, testIn
   await expect(page.locator('[data-location-state="inside"]')).toBeVisible()
   await expect(page.getByText("장소 데이터를 불러오지 못했습니다.")).toHaveCount(0)
   expect(errors).toEqual(catalog503Console)
-  r10ScreenshotSha256 = await receipt(
+  await receipt(
     "R10",
     page,
     testInfo,
@@ -94,14 +96,18 @@ test("R10 catalog 503 then empty then fixture recovery", async ({ page }, testIn
 
 test("R11 newer empty response wins over stale older 503", async ({ page }, testInfo) => {
   const errors = monitor(page)
-  const requests: Array<import("@playwright/test").Route> = []
-  await page.route("**/api/map-catalog", async (route) => requests.push(route))
-  await page.setViewportSize(viewport)
   await page.goto("/")
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
+  await expect(page.getByText("장소 데이터를 불러오는 중입니다.")).toHaveCount(0)
+  const requests: Array<import("@playwright/test").Route> = []
+  await page.route(catalogQueryPattern, async (route) => requests.push(route))
+  await page.setViewportSize(viewport)
   await page.getByRole("button", { name: "장소 새로고침" }).click()
   await page.getByRole("button", { name: "장소 새로고침" }).click()
   await expect.poll(() => requests.length).toBe(2)
-  await requests[1]?.fulfill({ contentType: "application/json", body: emptyCatalog })
+  const emptyRequest = requests[1]
+  if (emptyRequest === undefined) throw new TypeError("Missing empty query request")
+  await fulfillCatalogQuery(emptyRequest, emptyQueryCatalog)
   await expect(page.getByText("표시할 장소가 없습니다.")).toBeVisible()
   await requests[0]?.fulfill({ status: 503 })
   await expect(page.getByText("장소 데이터를 불러오지 못했습니다.")).toHaveCount(0)
@@ -111,13 +117,13 @@ test("R11 newer empty response wins over stale older 503", async ({ page }, test
     staleErrorVisible: false,
     markerCount: 0,
   }
-  expect(errors).toEqual(catalog503Console)
+  expect(errors).toEqual([])
   await receipt(
     "R11",
     page,
     testInfo,
     { ...observations, injectedRouteStatuses: [503] },
-    catalog503Console,
+    ["superseded-query:aborted"],
     [],
   )
 })
@@ -151,7 +157,7 @@ test("R13 NAVER SDK retry restores native markers", async ({ page }, testInfo) =
     if (attempts === 1) return route.abort()
     await route.fulfill({
       contentType: "text/javascript",
-      body: "(()=>{class LatLng{constructor(latitude,longitude){this.latitude=latitude;this.longitude=longitude}lat(){return this.latitude}lng(){return this.longitude}}class Map{constructor(element,options){this.element=element;this.center=options.center;this.bounds={getSW:()=>new LatLng(37.492,127.02),getNE:()=>new LatLng(37.5085,127.0445)};element.innerHTML='<canvas data-test-naver-map></canvas>'}getBounds(){return this.bounds}getCenter(){return this.center}destroy(){}}class Marker{constructor(options){this.element=document.createElement('button');this.element.ariaLabel=options.title;this.element.dataset.testNaverMarker='true';options.map.element.append(this.element)}setMap(map){if(map===null)this.element.remove()}}const Event={addListener(target,name,listener){if(name==='tilesloaded')queueMicrotask(listener);return{target,name,listener}},removeListener(){}};window.naver={maps:{LatLng,Map,Marker,Event}}})()",
+      body: "(()=>{class LatLng{constructor(latitude,longitude){this.latitude=latitude;this.longitude=longitude}lat(){return this.latitude}lng(){return this.longitude}}class Map{constructor(element,options){this.element=element;this.center=options.center;this.bounds={getSW:()=>new LatLng(37.492,127.02),getNE:()=>new LatLng(37.5085,127.0445)};element.innerHTML='<canvas data-test-naver-map></canvas>'}getBounds(){return this.bounds}getCenter(){return this.center}destroy(){}}class Marker{constructor(options){this.element=document.createElement('button');this.element.ariaLabel=options.title;this.element.dataset.testNaverMarker='true';options.map.element.append(this.element)}setOptions(options){if(options.title!==undefined)this.element.setAttribute('aria-label',options.title);if(options.icon!==undefined)this.element.dataset.markerIcon=options.icon;if(options.zIndex!==undefined){this.element.dataset.markerZIndex=String(options.zIndex);this.element.style.zIndex=String(options.zIndex)}if(options.position){this.element.dataset.latitude=String(options.position.latitude);this.element.dataset.longitude=String(options.position.longitude);this.element.style.left=String(15+((options.position.longitude-127.02)/.03)*70)+'%';this.element.style.top=String(25+((37.51-options.position.latitude)/.02)*50)+'%'}}setMap(map){if(map===null)this.element.remove()}}const Event={addListener(target,name,listener){if(name==='tilesloaded')queueMicrotask(listener);return{target,name,listener}},removeListener(){}};window.naver={maps:{LatLng,Map,Marker,Event}}})()",
     })
   })
   await page.setViewportSize(viewport)
@@ -229,6 +235,7 @@ test("R14 denied location retains map and visible attention", async ({ page }, t
     ["geolocation:PERMISSION_DENIED"],
     errors,
   )
-  if (r10ScreenshotSha256 === undefined) throw new TypeError("R10 screenshot hash missing")
-  expect(r14ScreenshotSha256).not.toBe(r10ScreenshotSha256)
+  expect(r14ScreenshotSha256).toMatch(/^[a-f0-9]{64}$/u)
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(0)
+  await expect(page.getByTestId("map-view")).toContainText("36.2000, 127.8000")
 })

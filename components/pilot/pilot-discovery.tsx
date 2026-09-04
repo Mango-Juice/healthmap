@@ -1,68 +1,82 @@
 "use client"
 
+import Link from "next/link"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { DEFAULT_VIEW } from "../../lib/domain/geo"
-import type { ViewportBounds } from "../../lib/domain/viewport"
-import type { MapViewportSnapshot } from "../../lib/map/adapter"
-import type { PilotCatalog, PilotPlace } from "../../lib/pilot/catalog"
+
 import {
-  consumerPilotPlaces,
-  discoveryTagsForPlace,
-  filterPilotPlaces,
-  markerIconForPlace,
+  markerIconForMenus,
   markerZIndex,
   type PilotDiscoveryFilter,
+  type PilotIngredientFilter,
 } from "../../lib/pilot/discovery"
+import type { PilotPlaceDto as PilotPlace } from "../../lib/pilot/dto"
 import { useNaverMapAdapter } from "../map/use-naver-map-adapter"
 import { ApplicationMasthead } from "../ui/application-masthead"
-import { AlertTriangleIcon, LoaderIcon, RotateCcwIcon } from "../ui/health-map-icons"
-import { ActionButton } from "../ui/health-map-primitives"
+import { PlusIcon } from "../ui/health-map-icons"
 import { PilotDetail } from "./pilot-detail"
 import styles from "./pilot-discovery.module.css"
 import { PilotDrawerHandle } from "./pilot-drawer-handle"
+import { PilotFilters } from "./pilot-filters"
+import { PilotMapControls } from "./pilot-map-controls"
+import { PilotMapDock } from "./pilot-map-dock"
 import { PilotResults } from "./pilot-results"
+import { PilotSearchControls } from "./pilot-search-controls"
+import { usePilotLocation } from "./use-pilot-location"
+import { usePilotMapGesture } from "./use-pilot-map-gesture"
+import { usePilotQuery } from "./use-pilot-query"
+import { usePilotViewport } from "./use-pilot-viewport"
 
 type Properties = {
-  readonly catalog: PilotCatalog
   readonly clientId?: string | undefined
 }
 
-export function PilotDiscovery({ catalog, clientId }: Properties) {
+export function PilotDiscovery({ clientId }: Properties) {
   const [filter, setFilter] = useState<PilotDiscoveryFilter>("all")
+  const [ingredient, setIngredient] = useState<PilotIngredientFilter>("all")
   const [query, setQuery] = useState("")
   const [selectedId, setSelectedId] = useState<PilotPlace["id"]>()
-  const [appliedBounds, setAppliedBounds] = useState<ViewportBounds>()
-  const [areaSearchIsPending, setAreaSearchIsPending] = useState(false)
   const [trayExpanded, setTrayExpanded] = useState(false)
-  const currentBounds = useRef<ViewportBounds>(undefined)
+  const [locationRequested, setLocationRequested] = useState(false)
   const detailTitle = useRef<HTMLHeadingElement>(null)
-  const didCaptureInitialViewport = useRef(false)
   const selectedIdRef = useRef<PilotPlace["id"]>(undefined)
   const selectionTrigger = useRef<HTMLElement | null>(null)
   const pendingReturn = useRef<
     { readonly element: HTMLElement | null; readonly placeId: PilotPlace["id"] } | undefined
   >(undefined)
-  const consumerPlaces = useMemo(() => consumerPilotPlaces(catalog.places), [catalog.places])
-  const visiblePlaces = useMemo(
-    () =>
-      filterPilotPlaces({
-        appliedBounds,
-        catalog,
-        filter,
-        places: consumerPlaces,
-        query,
-      }),
-    [appliedBounds, catalog, consumerPlaces, filter, query],
+  const location = usePilotLocation()
+  const viewport = usePilotViewport(location.point)
+  const catalog = usePilotQuery({
+    ready: true,
+    bounds: viewport.bounds,
+    region: viewport.region,
+    query,
+    filter,
+    ingredient,
+  })
+  const visibleResults = catalog.results
+  const empty = !catalog.loading && !catalog.failed && catalog.total === 0
+  const emptyHint = query.trim()
+    ? "검색어를 바꿔보세요."
+    : filter !== "all" || ingredient !== "all"
+      ? "필터를 바꿔보세요."
+      : "지도를 옮겨보세요."
+  useEffect(() => {
+    if (empty) setTrayExpanded(false)
+  }, [empty])
+  const selectedResult = visibleResults.find((result) => result.place.id === selectedId)
+  const selectedPlace = selectedResult?.place
+  const openPlace = useCallback(
+    (placeId: PilotPlace["id"], trigger?: HTMLElement): void => {
+      viewport.interact()
+      const activeElement = document.activeElement
+      selectionTrigger.current =
+        trigger ?? (activeElement instanceof HTMLElement ? activeElement : null)
+      selectedIdRef.current = placeId
+      setTrayExpanded(false)
+      setSelectedId(placeId)
+    },
+    [viewport.interact],
   )
-  const selectedPlace = consumerPlaces.find((place) => place.id === selectedId)
-  const openPlace = useCallback((placeId: PilotPlace["id"], trigger?: HTMLElement): void => {
-    const activeElement = document.activeElement
-    selectionTrigger.current =
-      trigger ?? (activeElement instanceof HTMLElement ? activeElement : null)
-    selectedIdRef.current = placeId
-    setTrayExpanded(true)
-    setSelectedId(placeId)
-  }, [])
   const closePlace = useCallback((): void => {
     const currentSelectedId = selectedIdRef.current
     if (currentSelectedId !== undefined) {
@@ -71,40 +85,64 @@ export function PilotDiscovery({ catalog, clientId }: Properties) {
     selectedIdRef.current = undefined
     selectionTrigger.current = null
     setSelectedId(undefined)
+    setTrayExpanded(false)
   }, [])
   const markers = useMemo(
     () =>
-      visiblePlaces.map((place) => ({
-        iconUrl: markerIconForPlace(place, place.id === selectedId),
-        label: `${place.name} · ${discoveryTagsForPlace(place)
-          .map((tag) => (tag === "whole_grain" ? "잡곡밥" : "비건·채식"))
-          .join(", ")}`,
-        latitude: place.latitude,
-        longitude: place.longitude,
-        onSelect: () => openPlace(place.id),
-        zIndex: markerZIndex(place.id === selectedId),
+      visibleResults.map((result) => ({
+        id: result.place.id,
+        iconUrl: markerIconForMenus(
+          result.menus.filter((menu) => result.matchingMenuIds.includes(menu.id)),
+          result.place.id === selectedId,
+          filter,
+        ),
+        label: result.place.name,
+        latitude: result.place.latitude,
+        longitude: result.place.longitude,
+        onSelect: () => openPlace(result.place.id),
+        zIndex: markerZIndex(result.place.id === selectedId),
       })),
-    [openPlace, selectedId, visiblePlaces],
+    [filter, openPlace, selectedId, visibleResults],
   )
-  const handleViewportChanged = useCallback((snapshot: MapViewportSnapshot): void => {
-    currentBounds.current = snapshot.bounds
-    if (!didCaptureInitialViewport.current) {
-      didCaptureInitialViewport.current = true
-      return
-    }
-    setAreaSearchIsPending(true)
-  }, [])
-  const applyArea = useCallback((): void => {
-    if (currentBounds.current === undefined) return
-    setAppliedBounds(currentBounds.current)
-    setAreaSearchIsPending(false)
-  }, [])
   const map = useNaverMapAdapter({
     clientId,
     markers,
-    onViewportChanged: handleViewportChanged,
-    view: DEFAULT_VIEW,
+    onViewportChanged: viewport.onViewportChanged,
+    view: viewport.view,
   })
+  const mapGesture = usePilotMapGesture({
+    interact: viewport.interact,
+    move: () => {
+      viewport.markUserMovement()
+      setTrayExpanded(false)
+    },
+  })
+  useEffect(() => {
+    if (map.state === "ready") {
+      map.recenter(viewport.view, viewport.view.zoom)
+    }
+  }, [viewport.view, map.recenter, map.state])
+  const chooseRegion = (id: string): void => {
+    const regionBounds = catalog.regions?.regions.find((entry) => entry.id === id)?.bounds
+    viewport.chooseRegion(id, regionBounds)
+    setSelectedId(undefined)
+  }
+  const changeQuery = (value: string): void => {
+    viewport.interact()
+    setQuery(value)
+    setSelectedId(undefined)
+    setTrayExpanded(true)
+  }
+  const changeFilter = (value: PilotDiscoveryFilter): void => {
+    viewport.interact()
+    setFilter(value)
+    setSelectedId(undefined)
+  }
+  const changeIngredient = (value: PilotIngredientFilter): void => {
+    viewport.interact()
+    setIngredient(value)
+    setSelectedId(undefined)
+  }
   useEffect(() => {
     if (selectedPlace !== undefined) detailTitle.current?.focus({ preventScroll: true })
   }, [selectedPlace])
@@ -129,7 +167,10 @@ export function PilotDiscovery({ catalog, clientId }: Properties) {
     )
     const target = element?.isConnected ? element : fallback
     const frame = window.requestAnimationFrame(() => {
-      ;(target ?? document.querySelector<HTMLElement>("[role='searchbox']"))?.focus({
+      const visibleTarget = target?.getClientRects().length
+        ? target
+        : document.querySelector<HTMLElement>("[data-testid='pilot-drawer-handle'] button")
+      ;(visibleTarget ?? document.querySelector<HTMLElement>("input[type='search']"))?.focus({
         preventScroll: true,
       })
     })
@@ -139,44 +180,81 @@ export function PilotDiscovery({ catalog, clientId }: Properties) {
   return (
     <section aria-label="건강식 지도" className={styles["shell"]}>
       <ApplicationMasthead
-        context="강남·역삼"
-        description="잡곡밥과 비건·채식 메뉴를 가까운 곳에서 찾아보세요."
+        compact
+        action={
+          <Link className={styles["suggestAction"]} href="/suggest?scope=pilot" prefetch={false}>
+            <PlusIcon />
+            <span>제안하기</span>
+          </Link>
+        }
+        context="나를 위한 한 끼"
+        description="잘 먹고 싶은 날, 가까운 곳부터 둘러봐요."
         title="건강식 지도"
       />
+      <div className={styles["exploreHeader"]}>
+        <PilotSearchControls query={query} onQueryChange={changeQuery} />
+        <PilotFilters onSelect={changeFilter} selected={filter} />
+      </div>
       <div className={styles["workspace"]}>
-        <aside
-          aria-label="건강식 검색 결과"
-          className={styles["panel"]}
-          data-expanded={trayExpanded}
-        >
-          <PilotDrawerHandle
-            count={visiblePlaces.length}
-            expanded={trayExpanded}
-            onExpandedChange={setTrayExpanded}
-            selectedName={selectedPlace?.name}
+        <div className={styles["panelStack"]}>
+          <PilotMapDock
+            emptyHint={empty ? emptyHint : undefined}
+            pending={map.state === "ready" && viewport.pending}
+            onArea={viewport.applyArea}
           />
-          <div className={styles["panelContent"]} id="pilot-panel-content">
-            {selectedPlace ? (
-              <PilotDetail
-                catalog={catalog}
-                onClose={closePlace}
-                place={selectedPlace}
-                titleRef={detailTitle}
-              />
-            ) : (
-              <PilotResults
-                catalog={catalog}
-                filter={filter}
-                onFilterChange={setFilter}
-                onQueryChange={setQuery}
-                onSelect={openPlace}
-                places={visiblePlaces}
-                query={query}
-              />
-            )}
-          </div>
-        </aside>
-        <div className={styles["map"]} data-adapter-state={map.state} data-testid="pilot-map-stage">
+          <aside
+            aria-label="건강식 검색 결과"
+            className={styles["panel"]}
+            data-expanded={trayExpanded}
+            data-selected={selectedPlace !== undefined}
+          >
+            <PilotDrawerHandle
+              count={catalog.total}
+              loading={catalog.loading}
+              expanded={trayExpanded}
+              onExpandedChange={setTrayExpanded}
+              onClose={closePlace}
+              selectedName={selectedPlace?.name}
+            />
+            <div className={styles["panelContent"]} id="pilot-panel-content">
+              {selectedResult ? (
+                <PilotDetail
+                  key={selectedResult.place.id}
+                  expanded={trayExpanded}
+                  onClose={closePlace}
+                  result={selectedResult}
+                  titleRef={detailTitle}
+                />
+              ) : (
+                <PilotResults
+                  origin={location.point}
+                  filter={filter}
+                  ingredient={ingredient}
+                  onIngredientChange={changeIngredient}
+                  onFilterChange={changeFilter}
+                  onClearArea={
+                    viewport.bounds || viewport.region ? () => chooseRegion("") : undefined
+                  }
+                  onQueryChange={changeQuery}
+                  onSelect={openPlace}
+                  total={catalog.total}
+                  loading={catalog.loading}
+                  failed={catalog.failed}
+                  onRetry={catalog.retry}
+                  onLoadMore={catalog.loadMore}
+                  results={visibleResults}
+                  query={query}
+                />
+              )}
+            </div>
+          </aside>
+        </div>
+        <div
+          className={styles["map"]}
+          data-adapter-state={map.state}
+          data-testid="pilot-map-stage"
+          {...mapGesture}
+        >
           <div
             aria-label="NAVER 건강식 지도"
             className={styles["sdkMap"]}
@@ -184,25 +262,19 @@ export function PilotDiscovery({ catalog, clientId }: Properties) {
             ref={map.containerRef}
             role="application"
           />
-          {map.state === "ready" && areaSearchIsPending ? (
-            <button className={styles["areaSearch"]} onClick={applyArea} type="button">
-              이 지역 검색
-            </button>
-          ) : null}
-          {map.state === "loading" ? (
-            <div className={styles["mapState"]} role="status">
-              <LoaderIcon />
-              <strong>지도를 불러오고 있어요.</strong>
-            </div>
-          ) : map.state === "error" ? (
-            <div className={styles["mapState"]} data-tone="error" role="alert">
-              <AlertTriangleIcon />
-              <strong>지도를 불러오지 못했어요.</strong>
-              <ActionButton leadingIcon={<RotateCcwIcon />} onClick={map.load} variant="secondary">
-                다시 시도
-              </ActionButton>
-            </div>
-          ) : null}
+          <PilotMapControls
+            state={map.state}
+            onRetry={map.load}
+            locating={location.status === "requesting"}
+            locationFailed={locationRequested && location.status === "unavailable"}
+            onLocate={() => {
+              setLocationRequested(true)
+              viewport.requestLocation()
+              location.request()
+              setSelectedId(undefined)
+              setTrayExpanded(false)
+            }}
+          />
         </div>
       </div>
     </section>

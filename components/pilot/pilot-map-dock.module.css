@@ -1,0 +1,79 @@
+.dock {
+  position: absolute;
+  inset-inline-start: calc(var(--hm-pane-wide) + var(--hm-space-3));
+  inset-inline-end: var(--hm-space-3);
+  inset-block-end: var(--hm-space-6);
+  display: grid;
+  grid-template-rows: auto var(--hm-control-min);
+  gap: var(--hm-space-1);
+  justify-items: center;
+  pointer-events: none;
+  z-index: calc(var(--hm-layer-detail) + 1);
+}
+
+.toastSlot {
+  grid-row: 1;
+  display: flex;
+  justify-content: center;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+.areaSearch {
+  grid-row: 2;
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  gap: var(--hm-space-1);
+  min-block-size: var(--hm-control-min);
+  padding: 0 var(--hm-space-2);
+  border: 0;
+  background: transparent;
+  color: var(--hm-green-800);
+  font: inherit;
+  font-size: var(--hm-type-caption);
+  font-weight: var(--hm-weight-label);
+  white-space: nowrap;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.areaSearch::before {
+  content: "";
+  position: absolute;
+  inset: calc(var(--hm-space-1) + 2 * var(--hm-border-width)) 0;
+  z-index: -1;
+  border: var(--hm-border-width) solid var(--hm-border-strong);
+  border-radius: var(--hm-radius-card);
+  background: var(--hm-surface);
+  box-shadow: var(--hm-shadow-control);
+}
+
+.areaSearch:hover::before {
+  background: var(--hm-green-100);
+}
+
+.areaSearch svg {
+  inline-size: var(--hm-icon-sm);
+  block-size: var(--hm-icon-sm);
+}
+
+.areaSearch:focus-visible {
+  outline: var(--hm-focus-ring) solid var(--hm-blue);
+  outline-offset: var(--hm-space-1);
+  border-radius: var(--hm-radius-card);
+}
+
+@media (max-width: 899px) {
+  .toastSlot {
+    inline-size: 100%;
+  }
+
+  .dock {
+    position: relative;
+    inset: auto;
+    flex: 0 0 auto;
+    margin: 0 var(--hm-space-3) var(--hm-space-2);
+  }
+}

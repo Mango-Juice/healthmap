@@ -217,7 +217,7 @@ begin
     raise exception using message = 'manifest mismatch was not rejected atomically';
   end if;
 
-  update catalog_admin.staged_places set latitude = 0
+  update catalog_admin.staged_places set latitude = 91
   where batch_id = target_batch and id = '30000000-0000-4000-8000-000000000001';
   computed_hash := catalog_admin.compute_batch_manifest_hash(target_batch);
   update catalog_admin.import_batches set manifest_hash = computed_hash where id = target_batch;

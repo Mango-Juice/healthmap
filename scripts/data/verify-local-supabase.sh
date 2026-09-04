@@ -224,6 +224,9 @@ docker exec -i "$db_container" psql -v ON_ERROR_STOP=1 -U postgres -d "$sql_data
   < tests/integration/catalog-review-approval-binding-contract.sql \
   > "$evidence_dir/approval-replay-contract.log" 2>&1
 
+docker exec -i "$db_container" psql -v ON_ERROR_STOP=1 -U postgres -d "$sql_database" \
+  < tests/integration/catalog-v2-rpc-contract.sql > "$evidence_dir/v2-rpc-contract.log" 2>&1
+
 docker exec -i "$db_container" psql -v ON_ERROR_STOP=1 -U postgres -d "$sql_database" <<'SQL'
 do $$
 begin

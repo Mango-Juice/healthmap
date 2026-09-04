@@ -1,9 +1,18 @@
-import type { PlaceFilter } from "../../lib/domain/filter"
+import {
+  type CookingFilter,
+  CookingFilterSchema,
+  type IngredientFilter,
+  IngredientFilterSchema,
+  type PlaceFilter,
+  PlaceFilterSchema,
+} from "../../lib/domain/filter"
 import type { GeoPoint, MapView } from "../../lib/domain/geo"
 import type { ViewportBounds } from "../../lib/domain/viewport"
 
 export type HistorySnapshot = {
   readonly filter: PlaceFilter
+  readonly ingredient?: IngredientFilter | undefined
+  readonly cooking?: CookingFilter | undefined
   readonly appliedBounds: ViewportBounds
   readonly query: string
   readonly trayExpanded: boolean
@@ -38,11 +47,9 @@ export const isHistorySnapshot = (value: unknown): value is HistorySnapshot =>
   typeof value === "object" &&
   value !== null &&
   "filter" in value &&
-  (value.filter === "all" ||
-    value.filter === "vegetables" ||
-    value.filter === "protein" ||
-    value.filter === "balanced" ||
-    value.filter === "plant_based") &&
+  PlaceFilterSchema.safeParse(value.filter).success &&
+  (!("ingredient" in value) || IngredientFilterSchema.safeParse(value.ingredient).success) &&
+  (!("cooking" in value) || CookingFilterSchema.safeParse(value.cooking).success) &&
   "view" in value &&
   isPoint(value.view) &&
   "zoom" in value.view &&

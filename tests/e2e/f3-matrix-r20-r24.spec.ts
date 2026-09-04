@@ -42,13 +42,18 @@ test("R20 canonical official detail mobile", async ({ page }, testInfo) => {
   const detail = page.getByTestId("place-detail")
   await expect(page.locator("[data-detail-phase='open'][aria-label='장소 상세']")).toBeVisible()
   await expect(detail.getByRole("heading", { name: "새싹 네모식당" })).toBeFocused()
-  await detail.getByText("확인한 메뉴", { exact: true }).scrollIntoViewIfNeeded()
-  await expect(detail.getByRole("region", { name: "건강식 메뉴" })).toContainText("공식 메뉴")
+  await detail.getByRole("heading", { name: "메뉴", exact: true }).scrollIntoViewIfNeeded()
+  await expect(detail.getByRole("region", { name: "건강식 메뉴" })).toContainText("초록 그릇")
+  await expect(detail).not.toContainText(/공식 메뉴|검증 근거|2026-08-14/)
+  await expect(detail.getByRole("link", { name: "네이버에서 보기" })).toHaveAttribute(
+    "href",
+    "https://map.naver.com/p/entry/place/1",
+  )
   const evidence = detail.locator("a").first()
   await evidence.scrollIntoViewIfNeeded()
   await expect(evidence).toBeVisible()
   await capture(page, testInfo, "R20", {
-    official: true,
+    consumerMenuVisible: true,
     links: await detail.locator("a").count(),
     headingFocused: true,
   })
@@ -76,7 +81,12 @@ test("R21 canonical detail tablet inline pane", async ({ page }, testInfo) => {
   expect(geometry.width).toBeLessThan(352.5)
   expect(geometry.inViewport).toBe(true)
   expect(geometry.topmost).toBe(true)
-  await expect(detail.getByRole("region", { name: "건강식 메뉴" })).toContainText("공식 메뉴")
+  await expect(detail.getByRole("region", { name: "건강식 메뉴" })).toContainText("초록 그릇")
+  await expect(detail).not.toContainText(/공식 메뉴|검증 근거|2026-08-14/)
+  await expect(detail.getByRole("link", { name: "네이버에서 보기" })).toHaveAttribute(
+    "href",
+    "https://map.naver.com/p/entry/place/1",
+  )
   await capture(page, testInfo, "R21", geometry)
 })
 
@@ -148,22 +158,42 @@ test("R22 desktop direct open and canonical share", async ({ page }, testInfo) =
   expect(geometry.selectionEnd).toBe(geometry.valueLength)
 })
 
-test("R24 canonical shared detail remains while vegetables filters markers", async ({
+test("R24 canonical shared detail remains while the applied area excludes its marker", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.goto("/places/test-rainbow-bowl")
   const heading = page.getByRole("heading", { name: "무지개 한그릇 연구소" })
   await expect(heading).toBeVisible()
-  await page.getByRole("button", { name: "채소 필터" }).click()
+  await expect(page.getByText("NAVER 지도 연결됨")).toBeVisible()
+  const applyArea = async (west: number): Promise<void> => {
+    await page.evaluate((west) => {
+      const maps: unknown = Reflect.get(window, "__healthMapTestMaps")
+      if (!Array.isArray(maps)) throw new TypeError("Test map unavailable")
+      const map: unknown = maps.at(-1)
+      if (typeof map !== "object" || map === null) throw new TypeError("Test map unavailable")
+      const setBounds: unknown = Reflect.get(map, "setTestBounds")
+      if (typeof setBounds !== "function") throw new TypeError("Test bounds unavailable")
+      Reflect.apply(setBounds, map, [
+        { latitude: 37.49, longitude: west },
+        { latitude: 37.51, longitude: 127.05 },
+      ])
+    }, west)
+    await page.getByRole("button", { name: "이 지역 검색" }).click()
+  }
+  await applyArea(127.02)
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
+  await applyArea(127.029)
   await expect(page.locator("[data-detail-phase='open'][aria-label='장소 상세']")).toBeVisible()
   await expect(heading).toBeVisible()
-  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(4)
-  await expect(page.getByRole("button", { name: "채소 필터" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  )
-  await expect(page.getByRole("button", { name: "채소 필터" })).toContainText("채소")
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(3)
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(3)
+  expect(
+    await page
+      .locator('[data-test-naver-marker="true"]')
+      .evaluateAll((markers) => markers.map((marker) => marker.getAttribute("aria-label")).sort()),
+  ).toEqual(["새싹 네모식당", "균형 실험실 식탁", "잎사귀 가상 테이블"].sort())
+  await expect(page).toHaveURL("/places/test-rainbow-bowl")
   await capture(page, testInfo, "R24", {
     detailVisible: true,
     markers: await page.locator('[data-test-naver-marker="true"]').count(),

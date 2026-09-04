@@ -15,6 +15,7 @@ class FakeLatLng {
   ) {}
 }
 class FakeNativeMarker {
+  setOptions() {}
   setMap() {}
 }
 type FakeScript = SdkScript & { dispatch(type: "load" | "error"): void }
@@ -41,6 +42,7 @@ const createTeardownFixture = (onRemoveListener?: () => void) => {
     }
   }
   class FakeMarker {
+    setOptions() {}
     setMap(map: object | null) {
       if (map === null) lifecycle.detachedMarkers += 1
     }
@@ -164,7 +166,13 @@ describe("NAVER map adapter", () => {
     const adapter = createNaverMapAdapter({ dataset: {} }, DEFAULT_VIEW, fixture.maps)
 
     adapter.syncMarkers([
-      { label: "실제 장소", latitude: 37.5042, longitude: 127.0411, onSelect: () => undefined },
+      {
+        id: "place-1",
+        label: "실제 장소",
+        latitude: 37.5042,
+        longitude: 127.0411,
+        onSelect: () => undefined,
+      },
     ])
     adapter.destroy()
 
@@ -180,7 +188,13 @@ describe("NAVER map adapter", () => {
     const adapter = createNaverMapAdapter({ dataset: {} }, DEFAULT_VIEW, fixture.maps)
 
     adapter.syncMarkers([
-      { label: "실제 장소", latitude: 37.5042, longitude: 127.0411, onSelect: () => undefined },
+      {
+        id: "place-1",
+        label: "실제 장소",
+        latitude: 37.5042,
+        longitude: 127.0411,
+        onSelect: () => undefined,
+      },
     ])
     adapter.teardownAfterProviderFailure()
     adapter.teardownAfterProviderFailure()
@@ -198,6 +212,7 @@ describe("NAVER map adapter", () => {
       setZoom() {}
     }
     class FakeMarker {
+      setOptions() {}
       constructor(options: ConstructorParameters<NaverMapsApi["Marker"]>[0]) {
         if (!(options.position instanceof FakeLatLng)) throw new TypeError("unexpected position")
         markerEvents.push(
@@ -227,6 +242,7 @@ describe("NAVER map adapter", () => {
 
     adapter.syncMarkers([
       {
+        id: "place-1",
         label: "실제 장소",
         iconUrl: "/markers/marker-plant.svg",
         latitude: 37.5042,

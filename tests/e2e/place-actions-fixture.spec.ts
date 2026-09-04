@@ -32,9 +32,16 @@ test.beforeEach(async ({ context }) => {
   await disableGeolocation(context)
 })
 
-test("Given the typed published production fixture, when directions is selected, then the UI opens the exact NAVER walking target", async ({
+test("Given the typed published production fixture, when directions is selected, then the UI opens the exact NAVER destination target", async ({
   page,
 }) => {
+  const context = page.context()
+  await context.route("https://map.naver.com/index.nhn?**", (route) =>
+    route.fulfill({
+      contentType: "text/html",
+      body: "<!doctype html><title>Directions target</title>",
+    }),
+  )
   // Given
   const server = getFixtureServer()
   await page.goto(server.baseUrl)
@@ -50,7 +57,7 @@ test("Given the typed published production fixture, when directions is selected,
   // Then
   const directionsPage = await popup
   await expect(directionsPage).toHaveURL(
-    "https://map.naver.com/p/directions/127.0311,37.5032,place,%ED%85%8C%EC%8A%A4%ED%8A%B8%20%EC%83%9D%EC%82%B0%20%EA%B2%BD%EB%A1%9C%20%EC%8B%9D%EB%8B%B9/-/walk",
+    "https://map.naver.com/index.nhn?elng=127.0311&elat=37.5032&etext=%ED%85%8C%EC%8A%A4%ED%8A%B8+%EC%83%9D%EC%82%B0+%EA%B2%BD%EB%A1%9C+%EC%8B%9D%EB%8B%B9&menu=route",
   )
   await directionsPage.close()
 })
@@ -128,7 +135,7 @@ test("Given the typed production fixture, when directions opens, then its redact
     "url",
     "query",
     "referrer",
-    "https://map.naver.com/p/directions/",
+    "https://map.naver.com/index.nhn?",
     "서울 강남구 테스트로 7길 1",
     "테스트 생산 경로 식당",
     "테스트 생산 메뉴 하나",

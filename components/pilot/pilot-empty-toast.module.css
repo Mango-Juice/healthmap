@@ -1,0 +1,25 @@
+.toast {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  min-inline-size: 0;
+  border: var(--hm-border-width) solid var(--hm-border);
+  border-radius: var(--hm-radius-card);
+  background: var(--hm-surface);
+  color: var(--hm-ink);
+  box-shadow: var(--hm-shadow-control);
+  padding-inline: var(--hm-space-3);
+  text-align: center;
+  pointer-events: none;
+}
+.toast p {
+  min-inline-size: 0;
+  margin: 0;
+  padding-block: var(--hm-space-2);
+  font-size: var(--hm-type-caption);
+  line-height: var(--hm-leading-tight);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}

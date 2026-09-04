@@ -74,14 +74,14 @@ test("combines normalized neighborhood search and one health tag", async ({ page
 
   // When
   await page.getByRole("searchbox", { name: "장소와 메뉴 검색" }).fill("  서울   강남구  ")
-  await page.getByRole("button", { name: "식물성 필터" }).click()
+  await page.getByRole("combobox", { name: "식사 형태·선택" }).selectOption("plant_based")
 
   // Then
   await expect(page.getByRole("status", { name: "검색 결과 수" })).toHaveText("2곳")
   await expect(page.getByRole("list", { name: "검색 결과" }).getByRole("listitem")).toHaveCount(2)
   await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(2)
 })
-test("closes a list-selected detail when the committed filter excludes that place", async ({
+test("excludes the previous selection after returning to results and changing the filter", async ({
   page,
 }) => {
   // Given
@@ -91,36 +91,57 @@ test("closes a list-selected detail when the committed filter excludes that plac
   await expect(page.getByRole("heading", { name: "무지개 한그릇 연구소" })).toBeVisible()
 
   // When
-  await page.getByRole("button", { name: "채소 필터" }).click()
+  await page.getByRole("button", { name: "검색 결과로 돌아가기" }).click()
+  await expect(page.getByRole("button", { name: "무지개 한그릇 연구소 상세 보기" })).toBeFocused()
+  await page.getByRole("combobox", { name: "식사 형태·선택" }).selectOption("vegetables")
 
   // Then
   await expect(page.getByRole("heading", { name: "무지개 한그릇 연구소" })).toBeHidden()
-  await expect(page.getByRole("button", { name: "채소 필터" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  )
+  await expect(page.getByRole("button", { name: "무지개 한그릇 연구소 상세 보기" })).toHaveCount(0)
+  await expect(page.getByRole("combobox", { name: "식사 형태·선택" })).toHaveValue("vegetables")
   await expect(page.getByRole("status", { name: "검색 결과 수" })).toHaveText("4곳")
   await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(4)
   await expect(page).toHaveURL("/")
 })
-test("keeps a canonical shared detail available when the current filter excludes it", async ({
+test("keeps a canonical shared detail available when the applied area excludes it", async ({
   page,
 }) => {
   // Given
+  await page.setViewportSize({ width: 1280, height: 800 })
   await page.goto("/places/test-rainbow-bowl")
   const detailHeading = page.getByRole("heading", { name: "무지개 한그릇 연구소" })
+  await expect(page.getByText("NAVER 지도 연결됨")).toBeVisible()
+  const applyArea = async (west: number): Promise<void> => {
+    await page.evaluate((west) => {
+      const maps: unknown = Reflect.get(window, "__healthMapTestMaps")
+      if (!Array.isArray(maps)) throw new TypeError("Test map unavailable")
+      const map: unknown = maps.at(-1)
+      if (typeof map !== "object" || map === null) throw new TypeError("Test map unavailable")
+      const setBounds: unknown = Reflect.get(map, "setTestBounds")
+      if (typeof setBounds !== "function") throw new TypeError("Test bounds unavailable")
+      Reflect.apply(setBounds, map, [
+        { latitude: 37.49, longitude: west },
+        { latitude: 37.51, longitude: 127.05 },
+      ])
+    }, west)
+    await page.getByRole("button", { name: "이 지역 검색" }).click()
+  }
+  await applyArea(127.02)
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
   await expect(detailHeading).toBeVisible()
 
   // When
-  await page.getByRole("button", { name: "채소 필터" }).click()
+  await applyArea(127.029)
 
   // Then
   await expect(detailHeading).toBeVisible()
-  await expect(page.getByRole("button", { name: "채소 필터" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  )
-  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(4)
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(3)
+  expect(
+    await page
+      .locator('[data-test-naver-marker="true"]')
+      .evaluateAll((markers) => markers.map((marker) => marker.getAttribute("aria-label")).sort()),
+  ).toEqual(["새싹 네모식당", "균형 실험실 식탁", "잎사귀 가상 테이블"].sort())
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(3)
   await expect(page).toHaveURL("/places/test-rainbow-bowl")
 })
 test("shows a distinct no-search-result state", async ({ page }) => {
@@ -184,11 +205,11 @@ test("keeps the NAVER SDK host sized after its mobile inline styles are applied"
 })
 test("filters by included tags, resets, and signals marker selection", async ({ page }) => {
   await page.goto("/")
-  await page.getByRole("button", { name: "단백질 필터" }).click()
+  await page.getByRole("combobox", { name: "식사 형태·선택" }).selectOption("protein")
   await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(3)
-  await page.getByRole("button", { name: "식물성 필터" }).click()
+  await page.getByRole("combobox", { name: "식사 형태·선택" }).selectOption("plant_based")
   await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(2)
-  await page.getByRole("button", { name: "전체 필터" }).click()
+  await page.getByRole("combobox", { name: "식사 형태·선택" }).selectOption("all")
   await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
   await page.getByTestId("naver-map").getByRole("button", { name: "새싹 네모식당" }).click()
   await expect(page.getByText("장소를 선택했습니다.")).toBeVisible()
@@ -200,7 +221,7 @@ test("keeps list and marker selection synchronized and restores discovery on Bac
   await page.goto("/")
   const search = page.getByRole("searchbox", { name: "장소와 메뉴 검색" })
   await search.fill("새싹")
-  await page.getByRole("button", { name: "채소 필터" }).click()
+  await page.getByRole("combobox", { name: "식사 형태·선택" }).selectOption("vegetables")
 
   const result = page.getByRole("button", { name: "새싹 네모식당 상세 보기" })
   await result.click()
@@ -211,10 +232,7 @@ test("keeps list and marker selection synchronized and restores discovery on Bac
   await expect(page.getByTestId("place-detail")).toHaveCount(0)
   await expect(result).toBeFocused()
   await expect(search).toHaveValue("새싹")
-  await expect(page.getByRole("button", { name: "채소 필터" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  )
+  await expect(page.getByRole("combobox", { name: "식사 형태·선택" })).toHaveValue("vegetables")
 
   const marker = page.getByTestId("naver-map").getByRole("button", { name: "새싹 네모식당" })
   await marker.focus()
@@ -233,14 +251,16 @@ test("Given a canonical discovery URL, when list and marker detail entries close
   const canonicalPath = "/?q=%EC%83%88%EC%8B%B9&tag=vegetables&lat=37.501&lng=127.033&z=15"
   await page.goto(canonicalPath)
   const search = page.getByRole("searchbox", { name: "장소와 메뉴 검색" })
-  const filter = page.getByRole("button", { name: "채소 필터" })
+  const filter = page.getByRole("combobox", { name: "식사 형태·선택" })
   const result = page.getByRole("button", { name: "새싹 네모식당 상세 보기" })
   const marker = page.getByTestId("naver-map").getByRole("button", { name: "새싹 네모식당" })
 
   // Then
   await expect(page).toHaveURL(canonicalPath)
   await expect(search).toHaveValue("새싹")
-  await expect(filter).toHaveAttribute("aria-pressed", "true")
+  await expect(filter).toHaveValue("vegetables")
+  await expect(filter.locator("option:checked")).toHaveText("채소")
+  await expect(page.getByRole("status", { name: "검색 결과 수" })).toHaveText("1곳")
   await expect(page.getByText("NAVER 지도 연결됨")).toBeVisible()
   await expect
     .poll(() => readNativeTestMapView(page))
@@ -257,7 +277,7 @@ test("Given a canonical discovery URL, when list and marker detail entries close
   await expect(page.getByTestId("place-detail")).toHaveCount(0)
   await expect(result).toBeFocused()
   await expect(search).toHaveValue("새싹")
-  await expect(filter).toHaveAttribute("aria-pressed", "true")
+  await expect(filter).toHaveValue("vegetables")
   await expect
     .poll(() => readNativeTestMapView(page))
     .toEqual({ latitude: 37.501, longitude: 127.033, zoom: 15 })
@@ -274,7 +294,7 @@ test("Given a canonical discovery URL, when list and marker detail entries close
   await expect(page.getByTestId("place-detail")).toHaveCount(0)
   await expect(marker).toBeFocused()
   await expect(search).toHaveValue("새싹")
-  await expect(filter).toHaveAttribute("aria-pressed", "true")
+  await expect(filter).toHaveValue("vegetables")
   await expect
     .poll(() => readNativeTestMapView(page))
     .toEqual({ latitude: 37.501, longitude: 127.033, zoom: 15 })

@@ -208,12 +208,12 @@ describe("map share query", () => {
     expect(result).toEqual([null, null, null, null])
   })
 
-  it("Given out-of-bounds centers or exact locked bounds, when parsing map shares, then only inclusive Gangnam bounds are accepted", () => {
+  it("Given out-of-bounds centers or exact locked bounds, when parsing map shares, then only valid global coordinates are accepted", () => {
     // Given
     const outOfBounds = [
-      "q=&tag=all&lat=0&lng=0&z=15",
-      "q=&tag=all&lat=37.4919&lng=127.02&z=15",
-      "q=&tag=all&lat=37.492&lng=127.0446&z=15",
+      "q=&tag=all&lat=91&lng=0&z=15",
+      "q=&tag=all&lat=-90.1&lng=127.02&z=15",
+      "q=&tag=all&lat=37.492&lng=180.1&z=15",
     ] as const
     const inclusiveBounds = [
       "q=&tag=all&lat=37.492&lng=127.02&z=15",

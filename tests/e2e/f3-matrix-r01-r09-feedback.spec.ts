@@ -1,6 +1,11 @@
 import { createHash } from "node:crypto"
 import { readFile, writeFile } from "node:fs/promises"
 import type { Page, Route, TestInfo } from "@playwright/test"
+import {
+  catalogQueryPattern,
+  emptyQueryCatalog,
+  fulfillCatalogQuery,
+} from "./catalog-query-fixture"
 import { expect, test } from "./map-test"
 
 test.beforeEach(async ({ context }) => {
@@ -64,12 +69,14 @@ const run = async (
   await testInfo.attach(`${rowId}.json`, { contentType: "application/json", path: json })
 }
 const setup = async (page: Page): Promise<readonly Route[]> => {
+  await page.goto("/")
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
+  await expect(page.getByText("장소 데이터를 불러오는 중입니다.")).toHaveCount(0)
   const requests: Route[] = []
-  await page.route("**/api/map-catalog", async (route) => {
+  await page.route(catalogQueryPattern, async (route) => {
     requests.push(route)
   })
   await page.setViewportSize({ width: 375, height: 812 })
-  await page.goto("/")
   await page.getByRole("button", { name: "장소 새로고침" }).click()
   await expect.poll(() => requests.length).toBe(1)
   return requests
@@ -105,10 +112,9 @@ test("R08 production empty catalog shows empty state", async ({ page }, testInfo
     if (message.type() === "error") consoleErrors.push(message.text())
   })
   const requests = await setup(page)
-  await requests[0]?.fulfill({
-    contentType: "application/json",
-    body: '{"catalogVersion":"matrix-empty","dataMode":"production","menus":[],"places":[]}',
-  })
+  const emptyRequest = requests[0]
+  if (emptyRequest === undefined) throw new TypeError("Missing empty query request")
+  await fulfillCatalogQuery(emptyRequest, emptyQueryCatalog)
   await expect(page.getByText("표시할 장소가 없습니다.")).toBeVisible()
   const observed = {
     empty: await page.getByText("표시할 장소가 없습니다.").innerText(),
@@ -130,16 +136,16 @@ test("R09 refresh 503 preserves prior markers with error", async ({ page }, test
     error: await page.getByText("장소 데이터를 불러오지 못했습니다.").innerText(),
     markers: await page.locator("[data-test-naver-marker='true']").count(),
     retryVisible: await page.getByRole("button", { name: "장소 새로고침" }).isVisible(),
-    injectedFailure: { route: "/api/map-catalog", status: 503 },
+    injectedFailure: { route: "/api/map-catalog/query", status: 503 },
     unexpectedConsoleErrors: consoleErrors.filter(
-      (error) => !error.includes("/api/map-catalog") && !error.includes("503"),
+      (error) => !error.includes("/api/map-catalog/query") && !error.includes("503"),
     ),
   }
   expect(observed).toEqual({
     error: "장소 데이터를 불러오지 못했습니다.",
     markers: 5,
     retryVisible: true,
-    injectedFailure: { route: "/api/map-catalog", status: 503 },
+    injectedFailure: { route: "/api/map-catalog/query", status: 503 },
     unexpectedConsoleErrors: [],
   })
   await run("R09", page, testInfo, observed, consoleErrors)

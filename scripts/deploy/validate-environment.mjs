@@ -1,10 +1,17 @@
 import { PUBLIC_ENVIRONMENT_NAMES, parsePublicEnvironment } from "../../app/public-environment.ts"
+import { isPublicPilotEnabled } from "../../lib/pilot/environment.ts"
 
 export { PUBLIC_ENVIRONMENT_NAMES }
 
 export function validatePublicEnvironment(environment) {
   const parsed = parsePublicEnvironment(environment)
-  return { malformed: parsed.invalid, missing: parsed.missing }
+  const required = isPublicPilotEnabled(environment)
+    ? ["NEXT_PUBLIC_NAVER_MAP_CLIENT_ID", "NEXT_PUBLIC_SITE_URL"]
+    : PUBLIC_ENVIRONMENT_NAMES
+  return {
+    malformed: parsed.invalid,
+    missing: parsed.missing.filter((name) => required.includes(name)),
+  }
 }
 
 export function formatValidationFailure(result) {

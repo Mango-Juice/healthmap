@@ -57,15 +57,19 @@ export function LoaderIcon({ className }: NamedIconProperties) {
 export function LocateIcon({ className }: NamedIconProperties) {
   return (
     <Icon className={className}>
-      <circle cx="12" cy="12" r="3" />
-      <path d="M12 2v2" />
-      <path d="M12 20v2" />
-      <path d="m4.93 4.93 1.41 1.41" />
-      <path d="m17.66 17.66 1.41 1.41" />
-      <path d="M2 12h2" />
-      <path d="M20 12h2" />
-      <path d="m6.34 17.66-1.41 1.41" />
-      <path d="m19.07 4.93-1.41 1.41" />
+      <circle cx="12" cy="12" r="7" />
+      <circle cx="12" cy="12" r="2" fill="currentColor" stroke="none" />
+      <path d="M12 2v3m0 14v3M2 12h3m14 0h3" />
+    </Icon>
+  )
+}
+
+export function FilterIcon({ className }: NamedIconProperties) {
+  return (
+    <Icon className={className}>
+      <path d="M4 7h7m4 0h5M4 17h3m4 0h9" />
+      <circle cx="13" cy="7" r="2" />
+      <circle cx="9" cy="17" r="2" />
     </Icon>
   )
 }
@@ -83,6 +87,22 @@ export function NavigationIcon({ className }: NamedIconProperties) {
   return (
     <Icon className={className}>
       <path d="m3 11 19-9-9 19-2-8-8-2Z" />
+    </Icon>
+  )
+}
+
+export function ArrowUpRightIcon({ className }: NamedIconProperties) {
+  return (
+    <Icon className={className}>
+      <path d="M7 7h10v10M7 17 17 7" />
+    </Icon>
+  )
+}
+
+export function PlusIcon({ className }: NamedIconProperties) {
+  return (
+    <Icon className={className}>
+      <path d="M12 5v14M5 12h14" />
     </Icon>
   )
 }

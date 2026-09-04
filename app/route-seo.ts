@@ -16,6 +16,12 @@ export type RootRouteDecision =
         readonly center: { readonly latitude: number; readonly longitude: number }
         readonly query: string
         readonly tag: NonNullable<ReturnType<typeof parseMapShareQuery>>["tag"]
+        readonly ingredient?: NonNullable<ReturnType<typeof parseMapShareQuery>>["ingredient"]
+        readonly cooking?: NonNullable<ReturnType<typeof parseMapShareQuery>>["cooking"]
+        readonly appliedBounds: {
+          readonly southWest: { readonly latitude: number; readonly longitude: number }
+          readonly northEast: { readonly latitude: number; readonly longitude: number }
+        }
         readonly zoom: number
       }
     }
@@ -72,6 +78,18 @@ export const resolveRootRoute = (
           query: parsed.q,
           tag: parsed.tag,
           zoom: parsed.z,
+          ingredient: parsed.ingredient,
+          cooking: parsed.cooking,
+          appliedBounds: {
+            southWest: {
+              latitude: Math.max(-90, parsed.lat - 0.04),
+              longitude: Math.max(-180, parsed.lng - 0.04),
+            },
+            northEast: {
+              latitude: Math.min(90, parsed.lat + 0.04),
+              longitude: Math.min(180, parsed.lng + 0.04),
+            },
+          },
         },
       }
     : { kind: "redirect", destination }

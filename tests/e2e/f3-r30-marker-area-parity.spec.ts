@@ -96,6 +96,10 @@ test("Given typed catalog and native SDK markers, when the pending area is appli
 }, testInfo) => {
   // Given
   await page.goto("/")
+  await page
+    .getByRole("combobox", { name: "지역 선택" })
+    .selectOption({ label: "서울 강남구 · 5곳" })
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
   const markers = page.locator("[data-test-naver-marker='true']")
   const list = page.getByRole("list", { name: "검색 결과" })
   const pendingControl = page.getByRole("button", { name: "이 지역 검색" })
@@ -128,9 +132,32 @@ test("Given typed catalog and native SDK markers, when the pending area is appli
   const after = await captureParity(page)
   expectVisiblePlaces(after, APPLIED_IDS)
 
+  await page.getByRole("button", { name: "새싹 네모식당 상세 보기" }).click()
+  await expect(page.getByTestId("place-detail")).toBeVisible()
+  expect(
+    await moveStubMap(page, {
+      southWest: { latitude: 37.497, longitude: 127.027 },
+      northEast: { latitude: 37.498, longitude: 127.028 },
+    }),
+  ).toBe("moved")
+  await expect(page.getByTestId("place-detail")).toBeVisible()
+  await pendingControl.click()
+  await expect(page.getByTestId("place-detail")).toHaveCount(0)
+  await expect(page.getByRole("status", { name: "검색 결과 수" })).toHaveText("1곳")
+  await expect(markers).toHaveCount(1)
+  const afterSelectionExcluded = await captureParity(page)
+  expectVisiblePlaces(
+    afterSelectionExcluded,
+    e2eCatalog.places.filter(({ slug }) => slug === "test-rainbow-bowl").map(({ id }) => id),
+  )
+  await expect(page).toHaveURL("/")
+  await page.screenshot({ path: testInfo.outputPath("attach/R30-selection-excluded.png") })
+
   const metadataPath = testInfo.outputPath("attach/R30-state-bound.json")
   const metadata = {
     after,
+    afterSelectionExcluded,
+    excludedDetailCount: await page.getByTestId("place-detail").count(),
     before,
     buildId: BUILD_ID,
     pending,

@@ -2,8 +2,10 @@ import { createHash } from "node:crypto"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { dirname } from "node:path"
 import type { Page } from "@playwright/test"
+import { PublicCatalogQueryResponseSchema } from "../../lib/catalog/query-contract"
 import { PublicCatalogSnapshotSchema } from "../../lib/domain/catalog"
 import { e2eCatalog } from "../fixtures/e2e-catalog"
+import { installCatalogQueryRoutes } from "./catalog-query-fixture"
 import { expect, test } from "./map-test"
 
 const TEST_ID = "F3-R23-direct-confirmation-detail"
@@ -110,27 +112,33 @@ const readDetailGeometry = async (page: Page): Promise<DetailGeometry> =>
 test.describe.configure({ retries: 0 })
 test.use({ viewport: VIEWPORT })
 
-test("Given a typed direct-confirmation catalog, when its place detail opens, then it shows its local record without evidence links", async ({
+test("Given a typed direct-confirmation catalog, when its place detail opens, then it shows its menu and visit action without internal records", async ({
   context,
   page,
 }, testInfo) => {
   // Given
-  await context.route("**/api/map-catalog", async (route) => {
-    await route.fulfill({ contentType: "application/json", json: directConfirmationCatalog })
-  })
 
   // Given
   await page.goto("/")
+  await page
+    .getByRole("combobox", { name: "지역 선택" })
+    .selectOption({ label: "서울 강남구 · 5곳" })
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
   await expect(page.getByRole("button", { name: `${NORMAL_RESULT_NAME} 상세 보기` })).toBeVisible()
 
   // When
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
+  await expect(page.getByRole("button", { name: "장소 새로고침" })).toBeEnabled()
+  await installCatalogQueryRoutes(context, directConfirmationCatalog)
   const responsePromise = page.waitForResponse(
     (response) =>
-      new URL(response.url()).pathname === "/api/map-catalog" &&
+      new URL(response.url()).pathname === "/api/map-catalog/query" &&
       response.request().method() === "GET",
   )
   await page.getByRole("button", { name: "장소 새로고침" }).click()
-  const responseCatalog = PublicCatalogSnapshotSchema.parse(await (await responsePromise).json())
+  const responseCatalog = PublicCatalogQueryResponseSchema.parse(
+    await (await responsePromise).json(),
+  )
 
   // Then
   expect(responseCatalog.catalogVersion).toBe(directConfirmationCatalog.catalogVersion)
@@ -149,9 +157,14 @@ test("Given a typed direct-confirmation catalog, when its place detail opens, th
     page.locator("[data-detail-phase='open']:not([data-testid='map-stage'])"),
   ).toBeVisible()
   await expect(detail.getByRole("heading", { name: DIRECT_RESULT_NAME })).toBeVisible()
-  await expect(directMenu).toContainText("직접 확인")
-  await expect(directMenu.getByText("직접 확인 기록", { exact: true })).toBeVisible()
-  await expect(detail.locator("a")).toHaveCount(0)
+  await expect(directMenu).toContainText(DIRECT_CONFIRMATION_MENU.name)
+  await expect(directMenu).toContainText("선택한 조건에 맞는 메뉴")
+  await expect(detail).not.toContainText(/직접 확인 기록|2026-08-21|2026-11-19/)
+  await expect(detail.getByRole("link", { name: "검증 근거 보기" })).toHaveCount(0)
+  await expect(detail.getByRole("link", { name: "네이버에서 보기" })).toHaveAttribute(
+    "href",
+    "https://map.naver.com/p/entry/place/1",
+  )
   await directMenu.scrollIntoViewIfNeeded()
 
   const geometryBeforeScreenshot = await readDetailGeometry(page)
@@ -175,7 +188,7 @@ test("Given a typed direct-confirmation catalog, when its place detail opens, th
   const metadata = {
     buildId: process.env["F3_BUILD_ID"] ?? "local-dev",
     catalogVersion: responseCatalog.catalogVersion,
-    evidenceLinkCount: await detail.locator("a").count(),
+    evidenceLinkCount: await detail.getByRole("link", { name: "검증 근거 보기" }).count(),
     geometryAfterScreenshot,
     geometryBeforeScreenshot,
     observedDetailTitle: await detail

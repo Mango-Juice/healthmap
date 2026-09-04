@@ -24,8 +24,8 @@ export const DISPLAY_BOUNDS = {
   northEast: { latitude: 37.5085, longitude: 127.0445 },
 } as const
 export const LOCATION_BOUNDS = {
-  southWest: { latitude: 37.482, longitude: 127.01 },
-  northEast: { latitude: 37.5185, longitude: 127.0545 },
+  southWest: { latitude: -90, longitude: -180 },
+  northEast: { latitude: 90, longitude: 180 },
 } as const
 export const LOCATION_OPTIONS = {
   enableHighAccuracy: false,

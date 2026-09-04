@@ -1,5 +1,6 @@
 import { access, readFile } from "node:fs/promises"
 import { isAbsolute, relative, resolve } from "node:path"
+import { CURRENT_RELEASE_EVIDENCE_CONTRACT } from "../deploy/validate-release-evidence.mjs"
 
 const documentPath = process.argv[2]
 if (!documentPath) {
@@ -46,7 +47,10 @@ const requiredTerms = [
     "atomic production import",
     /complete dataset.{0,100}(transaction|commit)|transaction.{0,100}(complete|partial)/i,
   ],
-  ["native coordinate markers", /native default marker.{0,120}supabase coordinate/i],
+  [
+    "native coordinate markers",
+    /naver(?: maps)? sdk(?=[\s\S]{0,180}static)(?=[\s\S]{0,180}svg)(?=[\s\S]{0,240}(?:supabase\s+coordinate|latitude[\s\S]{0,80}longitude))/i,
+  ],
   ["NAVER allowlist", /allowed.domain|allowlist|allowed origin/i],
   ["PostHog privacy", /posthog.{0,120}(privacy|autocapture|person_profiles|session recording)/i],
 ]
@@ -60,6 +64,7 @@ const requiredCommands = [
   "pnpm test:integration:local",
   "curl -i",
 ]
+const currentReleaseEvidencePhrase = `migration\n\`${CURRENT_RELEASE_EVIDENCE_CONTRACT.migrationVersion}\`, schema \`${CURRENT_RELEASE_EVIDENCE_CONTRACT.schemaVersion}\``
 const packageJson = JSON.parse(await readFile(resolve(root, "package.json"), "utf8"))
 const packageScripts = new Set(Object.keys(packageJson.scripts))
 const failures = []
@@ -69,6 +74,8 @@ for (const section of requiredSections) {
 for (const [name, pattern] of requiredTerms) {
   if (!pattern.test(markdown)) failures.push(`content:${name}`)
 }
+if (!markdown.includes(currentReleaseEvidencePhrase))
+  failures.push("content:current release evidence contract")
 if (tables.length < 2) failures.push("structure:environment tables")
 if (codeBlocks.length < 3) failures.push("structure:code blocks")
 for (const command of requiredCommands) {

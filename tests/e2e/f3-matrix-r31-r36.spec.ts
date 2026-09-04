@@ -166,6 +166,10 @@ test("R34 showcase exposes reusable states and keyboard action", async ({ page }
 test("R36 mobile tray and detail touch lifecycle has one surface", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 375, height: 812 })
   await page.goto("/")
+  await page
+    .getByRole("combobox", { name: "지역 선택" })
+    .selectOption({ label: "서울 강남구 · 5곳" })
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
   const trayToggle = page.getByRole("button", { name: /검색 결과 \d+곳 (접기|보기)/ })
   const initial = await trayToggle.getAttribute("aria-label")
   await trayToggle.tap()

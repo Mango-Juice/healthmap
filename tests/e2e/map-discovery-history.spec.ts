@@ -1,5 +1,7 @@
 import type { Page } from "@playwright/test"
+import { PublicCatalogSnapshotSchema } from "../../lib/domain/catalog"
 import { e2eCatalog } from "../fixtures/e2e-catalog"
+import { installCatalogQueryRoutes } from "./catalog-query-fixture"
 import { expect, test } from "./map-test"
 
 const readNativeTestMapView = async (page: Page) =>
@@ -56,8 +58,8 @@ test("Given duplicate or partial canonical query values, when discovery loads, t
   const malformedPaths = [
     "/?q=%EC%83%88%EC%8B%B9&q=%EB%91%90%EB%B6%80&tag=vegetables&lat=37.501&lng=127.033&z=15",
     "/?q=%EC%83%88%EC%8B%B9&tag=vegetables&lat=37.501&lng=127.033",
-    "/?q=&tag=all&lat=0&lng=0&z=15",
-    "/?q=&tag=all&lat=37.4919&lng=127.02&z=15",
+    "/?q=&tag=all&lat=0&lng=180.1&z=15",
+    "/?q=&tag=all&lat=-90.1&lng=127.02&z=15",
   ] as const
 
   // When
@@ -67,10 +69,7 @@ test("Given duplicate or partial canonical query values, when discovery loads, t
     // Then
     await expect(page).toHaveURL("/")
     await expect(page.getByRole("searchbox", { name: "장소와 메뉴 검색" })).toHaveValue("")
-    await expect(page.getByRole("button", { name: "전체 필터" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    )
+    await expect(page.getByRole("combobox", { name: "식사 형태·선택" })).toHaveValue("all")
     await expect(page.getByTestId("map-view")).toContainText("37.5007, 127.0328 · 확대 15")
   }
 })
@@ -81,7 +80,7 @@ test("Manual QA: Given a canonical discovery URL, when list Back and marker Esca
   const canonicalPath = "/?q=%EC%83%88%EC%8B%B9&tag=vegetables&lat=37.501&lng=127.033&z=15"
   await page.goto(canonicalPath)
   const search = page.getByRole("searchbox", { name: "장소와 메뉴 검색" })
-  const vegetables = page.getByRole("button", { name: "채소 필터" })
+  const vegetables = page.getByRole("combobox", { name: "식사 형태·선택" })
   const result = page.getByRole("button", { name: "새싹 네모식당 상세 보기" })
   const marker = page.getByTestId("naver-map").getByRole("button", { name: "새싹 네모식당" })
 
@@ -103,7 +102,7 @@ test("Manual QA: Given a canonical discovery URL, when list Back and marker Esca
   await expect(page.getByTestId("place-detail")).toHaveCount(0)
   await expect(marker).toBeFocused()
   await expect(search).toHaveValue("새싹")
-  await expect(vegetables).toHaveAttribute("aria-pressed", "true")
+  await expect(vegetables).toHaveValue("vegetables")
   await expect
     .poll(() => readNativeTestMapView(page))
     .toEqual({ latitude: 37.501, longitude: 127.033, zoom: 15 })
@@ -120,52 +119,55 @@ test("Manual QA: Given a canonical discovery URL, when list Back and marker Esca
     mapView: await page.getByTestId("map-view").textContent(),
     searchValue: await search.inputValue(),
     url: new URL(page.url()).pathname + new URL(page.url()).search,
-    vegetablesPressed: await vegetables.getAttribute("aria-pressed"),
+    selectedFilter: await vegetables.inputValue(),
   }
   await testInfo.attach("canonical-history-state", {
     body: Buffer.from(JSON.stringify(state, null, 2)),
     contentType: "application/json",
   })
 })
-test("shows verified evidence and direct confirmation while excluding expired menus", async ({
+test("shows eligible consumer menus without internal records while excluding expired menus", async ({
   page,
 }) => {
   const validMenu = e2eCatalog.menus[0]
-  await page.route("**/api/map-catalog", async (route) => {
-    await route.fulfill({
-      contentType: "application/json",
-      json: {
-        ...e2eCatalog,
-        menus: [
-          ...e2eCatalog.menus,
-          {
-            ...validMenu,
-            id: "10000000-0000-4000-8000-000000000011",
-            name: "현장 확인 채소 접시",
-            evidenceUrl: null,
-            verificationMethod: "direct_confirmation",
-          },
-          {
-            ...validMenu,
-            id: "10000000-0000-4000-8000-000000000012",
-            name: "만료된 메뉴",
-            verifiedAt: "2000-01-01",
-            validUntil: "2000-02-01",
-          },
-        ],
-      },
-    })
-  })
+  await installCatalogQueryRoutes(
+    page,
+    PublicCatalogSnapshotSchema.parse({
+      ...e2eCatalog,
+      menus: [
+        ...e2eCatalog.menus,
+        {
+          ...validMenu,
+          id: "10000000-0000-4000-8000-000000000011",
+          name: "현장 확인 채소 접시",
+          evidenceUrl: null,
+          verificationMethod: "direct_confirmation",
+        },
+        {
+          ...validMenu,
+          id: "10000000-0000-4000-8000-000000000012",
+          name: "만료된 메뉴",
+          verifiedAt: "2000-01-01",
+          validUntil: "2000-02-01",
+        },
+      ],
+    }),
+  )
   await page.goto("/")
   await page.getByRole("button", { name: "장소 새로고침" }).click()
   await page.getByRole("button", { name: "새싹 네모식당 상세 보기" }).click()
 
   const detail = page.getByTestId("place-detail")
   await expect(detail.getByText("초록 그릇", { exact: true })).toBeVisible()
-  await expect(detail.getByRole("link", { name: "검증 근거 보기" }).first()).toBeVisible()
+  await expect(detail.getByRole("link", { name: "검증 근거 보기" })).toHaveCount(0)
+  await expect(detail.getByRole("link", { name: "네이버에서 보기" })).toHaveAttribute(
+    "href",
+    "https://map.naver.com/p/entry/place/1",
+  )
   await expect(detail.getByRole("link", { name: "NAVER 장소 정보 보기" })).toHaveCount(0)
   await expect(detail.getByText("현장 확인 채소 접시", { exact: true })).toBeVisible()
-  await expect(detail.getByText("직접 확인 기록", { exact: true })).toBeVisible()
+  await expect(detail.getByText("직접 확인 기록", { exact: true })).toHaveCount(0)
+  await expect(detail).not.toContainText(/2026-08-14|2026-11-12/)
   await expect(detail.getByText("만료된 메뉴", { exact: true })).toHaveCount(0)
 })
 test("shows an inside location and allows explicit retry", async ({ page }) => {
@@ -183,12 +185,12 @@ test("shows requesting while geolocation is pending", async ({ page }) => {
   })
   await page.goto("/")
   await expect(page.locator('[data-location-state="requesting"]')).toContainText("현재 위치를 확인")
-  await expect(page.getByTestId("map-view")).toContainText("37.5007, 127.0328")
+  await expect(page.getByTestId("map-view")).toContainText("36.2000, 127.8000 · 확대 7")
 })
 for (const scenario of [
   { name: "southwest boundary", latitude: 37.482, longitude: 127.01, state: "inside" },
   { name: "northeast boundary", latitude: 37.5185, longitude: 127.0545, state: "inside" },
-  { name: "outside", latitude: 37.6, longitude: 127.1, state: "outside" },
+  { name: "outside", latitude: 91, longitude: 127.1, state: "outside" },
 ] as const) {
   test(`resolves ${scenario.name} location and preserves the location contract`, async ({
     page,
@@ -227,7 +229,7 @@ for (const scenario of [
       '{"enableHighAccuracy":false,"timeout":5000,"maximumAge":300000}',
     )
     if (scenario.state === "outside") {
-      await expect(page.getByTestId("map-view")).toContainText("37.5007, 127.0328")
+      await expect(page.getByTestId("map-view")).toContainText("36.2000, 127.8000 · 확대 7")
       await expect(page.getByRole("img", { name: "내 위치" })).toHaveCount(0)
     }
   })

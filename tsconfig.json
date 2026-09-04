@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["dom", "dom.iterable", "ES2022"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "ES2022"
+    ],
     "allowJs": false,
     "allowImportingTsExtensions": true,
     "skipLibCheck": true,
@@ -114,7 +118,16 @@
     ".next-f3-ds01-showcase-verifier-3437/types/**/*.ts",
     ".next-f3-ds01-showcase-verifier-3437/dev/types/**/*.ts",
     ".next-f3-fresh-prod-190835/types/**/*.ts",
-    ".next-f3-fresh-prod-190835/dev/types/**/*.ts"
+    ".next-f3-fresh-prod-190835/dev/types/**/*.ts",
+    ".next-final-qa-r2/types/**/*.ts",
+    ".next-final-qa-r2/dev/types/**/*.ts",
+    ".next-final-minimal/types/**/*.ts",
+    ".next-final-minimal/dev/types/**/*.ts",
+    ".next-entry-preview/types/**/*.ts",
+    ".next-entry-preview/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules", "tests/fixtures/task7-app/**"]
+  "exclude": [
+    "node_modules",
+    "tests/fixtures/task7-app/**"
+  ]
 }

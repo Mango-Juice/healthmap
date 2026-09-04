@@ -4,17 +4,24 @@ import { useEffect, useRef, useState } from "react"
 import { captureProductAnalytics } from "../../lib/analytics/browser"
 import type { Menu, Place } from "../../lib/domain/catalog"
 import { buildProductionDirections, type DirectionsTarget } from "../../lib/domain/directions"
-import type { PlaceFilter } from "../../lib/domain/filter"
+import { matchingDiscoveryMenus } from "../../lib/domain/discovery"
+import type { CookingFilter, IngredientFilter, PlaceFilter } from "../../lib/domain/filter"
 import {
   buildAbsoluteMapShareUrl,
   buildAbsolutePlaceShareUrl,
   getRuntimeSiteEnvironment,
 } from "../../lib/share-links"
 import { LocateIcon, NavigationIcon, XIcon } from "../ui/health-map-icons"
-import { CATEGORY_LABELS } from "../ui/health-map-options"
 import { ActionButton } from "../ui/health-map-primitives"
-import { MENU_VERIFICATION_LABELS } from "./menu-verification"
+import {
+  menuApplicabilityNotice,
+  menuCategoryLabels,
+  menuReasons,
+  placeMapUrl,
+} from "./menu-fact-presentation"
 import styles from "./place-detail.module.css"
+import { PlaceVisitInfo } from "./place-visit-info"
+import { usePlaceMenus } from "./use-place-menus"
 
 type Properties = {
   readonly menus: readonly Menu[]
@@ -27,6 +34,8 @@ type Properties = {
     readonly query: string
     readonly zoom: number
     readonly tag: PlaceFilter
+    readonly ingredient: IngredientFilter
+    readonly cooking: CookingFilter
   }
 }
 
@@ -48,9 +57,16 @@ export function PlaceDetail({ directionsTarget, menus, onClose, place, shareMap 
   const [notice, setNotice] = useState<string>()
   const [manual, setManual] = useState<{ readonly target: ShareTarget; readonly url: string }>()
   const today = new Date().toISOString().slice(0, 10)
-  const visibleMenus = menus
+  const detailMenus = usePlaceMenus(place, menus)
+  const eligibleMenus = detailMenus.menus
     .filter((menu) => menu.placeId === place.id && menu.published && menu.validUntil >= today)
     .sort((left, right) => left.displayOrder - right.displayOrder)
+  const matchingMenus = matchingDiscoveryMenus({ place, menus: eligibleMenus, ...shareMap })
+  const matchingIds = new Set(matchingMenus.map((menu) => menu.id))
+  const visibleMenus = [
+    ...matchingMenus,
+    ...eligibleMenus.filter((menu) => !matchingIds.has(menu.id)),
+  ]
 
   useEffect(() => title.current?.focus({ preventScroll: true }), [])
 
@@ -66,6 +82,8 @@ export function PlaceDetail({ directionsTarget, menus, onClose, place, shareMap 
               q: shareMap.query,
               tag: shareMap.tag,
               z: shareMap.zoom,
+              ingredient: shareMap.ingredient,
+              cooking: shareMap.cooking,
             },
             environment,
           )
@@ -145,6 +163,10 @@ export function PlaceDetail({ directionsTarget, menus, onClose, place, shareMap 
         </ActionButton>
       </header>
       <div className={styles["body"]} data-testid="place-detail-body">
+        <PlaceVisitInfo place={place} />
+        {detailMenus.failed ? (
+          <p role="status">추가 메뉴를 불러오지 못했어요. 확인 가능한 메뉴를 보여드립니다.</p>
+        ) : null}
         <div className={styles["summary"]} data-detail-summary>
           <p className={styles["address"]} data-detail-meta>
             <LocateIcon />
@@ -152,35 +174,42 @@ export function PlaceDetail({ directionsTarget, menus, onClose, place, shareMap 
           </p>
           <p className={styles["categorySummary"]} data-detail-meta>
             <span>건강식 유형</span>
-            <strong className={styles["tags"]}>
-              {place.healthTags.map((tag) => CATEGORY_LABELS[tag]).join(" · ")}
-            </strong>
+            <strong className={styles["tags"]}>{menuCategoryLabels(place, matchingMenus)}</strong>
           </p>
         </div>
         <section aria-label="건강식 메뉴" data-detail-menu>
           <div className={styles["menuHeading"]}>
-            <h3 id="verified-menu-heading">확인한 메뉴</h3>
+            <h3 id="verified-menu-heading">메뉴</h3>
             <span>{visibleMenus.length}가지</span>
           </div>
           <ul aria-label="확인한 메뉴" className={styles["menuList"]}>
             {visibleMenus.map((menu) => (
               <li key={menu.id}>
                 <strong>{menu.name}</strong>
-                <span>
-                  {MENU_VERIFICATION_LABELS[menu.verificationMethod]} · {menu.verifiedAt} 확인
-                </span>
-                <span>{menu.validUntil}까지 유효</span>
-                {menu.evidenceUrl ? (
-                  <a href={menu.evidenceUrl} rel="noreferrer" target="_blank">
-                    검증 근거 보기
-                  </a>
+                {matchingIds.has(menu.id) ? (
+                  <span>선택한 조건에 맞는 메뉴</span>
                 ) : (
-                  <span>직접 확인 기록</span>
+                  <span>그 밖의 메뉴</span>
                 )}
+                {menuReasons(menu).map((reason) => (
+                  <span key={reason}>{reason}</span>
+                ))}
+                {menuApplicabilityNotice(menu) ? (
+                  <span>{menuApplicabilityNotice(menu)}</span>
+                ) : null}
+                {menu.schemaVersion === "2.0.0" && menu.facts.ordering_note ? (
+                  <span>{menu.facts.ordering_note}</span>
+                ) : null}
+                {menu.schemaVersion === "2.0.0" && menu.facts.dietary !== "unknown" ? (
+                  <span>
+                    채식으로 안내된 메뉴예요. 세부 재료와 조리 방식은 주문 전에 확인해 주세요.
+                  </span>
+                ) : null}
               </li>
             ))}
           </ul>
         </section>
+        <a href={`/suggest?place=${encodeURIComponent(placeMapUrl(place))}`}>메뉴·장소 정보 제안</a>
         {notice ? (
           <p className={styles["notice"]} role="status">
             {notice}

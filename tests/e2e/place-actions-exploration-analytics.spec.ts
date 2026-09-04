@@ -43,7 +43,7 @@ test("Given canonical map state, when a filter is selected, then one redacted sh
     .toBe(false)
 
   // When
-  await page.getByRole("button", { name: "단백질 필터" }).click()
+  await page.getByRole("combobox", { name: "식사 형태·선택" }).selectOption("protein")
 
   // Then
   await waitForEvent(transport.events, "filter_selected", { tag: "protein" })
@@ -79,6 +79,10 @@ test("Given every production place, when directions is requested, then each reda
     })
   })
   await page.goto("/")
+  await page
+    .getByRole("combobox", { name: "지역 선택" })
+    .selectOption({ label: "서울 강남구 · 5곳" })
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
 
   // When
   for (const name of [
@@ -117,7 +121,7 @@ test("Given an analytics endpoint failure, when sharing and map actions run, the
   // When
   await page.getByRole("button", { name: "공유", exact: true }).click()
   await page.getByRole("button", { name: "검색 결과로 돌아가기" }).click()
-  await page.getByRole("button", { name: "단백질 필터" }).click()
+  await page.getByRole("combobox", { name: "식사 형태·선택" }).selectOption("protein")
 
   // Then
   await expect(page.getByText("공유 창을 열었습니다.")).toHaveCount(0)

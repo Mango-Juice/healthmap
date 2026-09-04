@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto"
 import { readFile, writeFile } from "node:fs/promises"
-import { PublicCatalogSnapshotSchema } from "../../lib/domain/catalog"
+import { PublicCatalogQueryResponseSchema } from "../../lib/catalog/query-contract"
 import { longKoreanTypedStress, typedLongKoreanStressCatalog } from "../fixtures/e2e-catalog"
+import { installCatalogQueryRoutes } from "./catalog-query-fixture"
 import { expect, test } from "./map-test"
 
 const ROW_ID = "R29"
@@ -55,6 +56,10 @@ test("Given unavailable Web Share and working Clipboard, when a normal detail is
     })
   })
   await page.goto("/")
+  await page
+    .getByRole("combobox", { name: "지역 선택" })
+    .selectOption({ label: "서울 강남구 · 5곳" })
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
   await page.getByRole("button", { name: "새싹 네모식당 상세 보기" }).click()
   await page.getByRole("button", { exact: true, name: "공유" }).click()
 
@@ -66,9 +71,6 @@ test("Given rejected browser sharing and long typed detail content, when manual 
   context,
   page,
 }, testInfo) => {
-  await context.route("**/api/map-catalog", async (route) => {
-    await route.fulfill({ contentType: "application/json", json: typedLongKoreanStressCatalog })
-  })
   await page.addInitScript(() => {
     Object.defineProperty(navigator, "geolocation", {
       configurable: true,
@@ -82,15 +84,24 @@ test("Given rejected browser sharing and long typed detail content, when manual 
   })
   await page.setViewportSize(VIEWPORT)
   await page.goto("/")
+  await page
+    .getByRole("combobox", { name: "지역 선택" })
+    .selectOption({ label: "서울 강남구 · 5곳" })
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
 
   await expect(page.getByRole("button", { name: "새싹 네모식당 상세 보기" })).toBeVisible()
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
+  await expect(page.getByRole("button", { name: "장소 새로고침" })).toBeEnabled()
+  await installCatalogQueryRoutes(context, typedLongKoreanStressCatalog)
   const responsePromise = page.waitForResponse(
     (response) =>
-      new URL(response.url()).pathname === "/api/map-catalog" &&
+      new URL(response.url()).pathname === "/api/map-catalog/query" &&
       response.request().method() === "GET",
   )
   await page.getByRole("button", { name: "장소 새로고침" }).click()
-  const responseCatalog = PublicCatalogSnapshotSchema.parse(await (await responsePromise).json())
+  const responseCatalog = PublicCatalogQueryResponseSchema.parse(
+    await (await responsePromise).json(),
+  )
   expect(responseCatalog.catalogVersion).toBe(typedLongKoreanStressCatalog.catalogVersion)
 
   const detailButton = page.getByRole("button", {

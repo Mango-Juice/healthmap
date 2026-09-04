@@ -17,9 +17,13 @@ test("Given no analytics preference, when discovery actions run, then no analyti
   // Given
   const transport = await recordAnalyticsTransport(page)
   await page.goto("/")
+  await page
+    .getByRole("combobox", { name: "지역 선택" })
+    .selectOption({ label: "서울 강남구 · 5곳" })
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
 
   // When
-  await page.getByRole("button", { name: "단백질 필터" }).click()
+  await page.getByRole("combobox", { name: "식사 형태·선택" }).selectOption("protein")
   await page.getByRole("searchbox", { name: "장소와 메뉴 검색" }).fill("새싹")
   await page.getByRole("searchbox", { name: "장소와 메뉴 검색" }).press("Enter")
 
@@ -39,6 +43,10 @@ test("Given a private search, when committed and the result list is reopened, th
   await page.setViewportSize({ width: 390, height: 844 })
   const transport = await installAnalyticsInterceptor(page)
   await page.goto("/")
+  await page
+    .getByRole("combobox", { name: "지역 선택" })
+    .selectOption({ label: "서울 강남구 · 5곳" })
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
 
   // When
   await page.getByRole("searchbox", { name: "장소와 메뉴 검색" }).fill("새싹 네모식당")
@@ -80,9 +88,10 @@ test("Given direct map exploration, when location, filter, and marker actions oc
   })
   const transport = await installAnalyticsInterceptor(page)
   await page.goto("/")
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
 
   // When
-  await page.getByRole("button", { name: "단백질 필터" }).click()
+  await page.getByRole("combobox", { name: "식사 형태·선택" }).selectOption("protein")
   await page.getByTestId("naver-map").getByRole("button", { name: "무지개 한그릇 연구소" }).click()
 
   // Then

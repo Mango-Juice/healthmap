@@ -1,6 +1,6 @@
 "use client"
 
-import { type Dispatch, type MutableRefObject, type SetStateAction, useEffect } from "react"
+import { type Dispatch, type MutableRefObject, type SetStateAction, useEffect, useRef } from "react"
 import type { Place } from "../../lib/domain/catalog"
 import type { PlaceFilter } from "../../lib/domain/filter"
 import type { MapView } from "../../lib/domain/geo"
@@ -36,6 +36,7 @@ type Input = {
 }
 
 export function useSelectionUrlSync(input: Input): void {
+  const lastRecoveredUrl = useRef<string | undefined>(undefined)
   const {
     beginClose,
     catalogState,
@@ -89,6 +90,29 @@ export function useSelectionUrlSync(input: Input): void {
           return
         }
         setFilter(mapShareQuery.tag)
+        restoreDiscovery({
+          appliedBounds: {
+            southWest: {
+              latitude: Math.max(-90, mapShareQuery.lat - 0.04),
+              longitude: Math.max(-180, mapShareQuery.lng - 0.04),
+            },
+            northEast: {
+              latitude: Math.min(90, mapShareQuery.lat + 0.04),
+              longitude: Math.min(180, mapShareQuery.lng + 0.04),
+            },
+          },
+          query: mapShareQuery.q,
+          ingredient: mapShareQuery.ingredient,
+          cooking: mapShareQuery.cooking,
+          trayExpanded: true,
+          filter: mapShareQuery.tag,
+          view: {
+            latitude: mapShareQuery.lat,
+            longitude: mapShareQuery.lng,
+            zoom: mapShareQuery.z,
+          },
+          url: `/?${serializeMapShareQuery(mapShareQuery)}`,
+        })
         setView({
           latitude: mapShareQuery.lat,
           longitude: mapShareQuery.lng,
@@ -175,11 +199,15 @@ export function useSelectionUrlSync(input: Input): void {
           assertNever(shareState)
       }
     }
-    recoverFromUrl()
+    const recoverNavigation = (): void => {
+      recoverFromUrl()
+      lastRecoveredUrl.current = window.location.href
+    }
+    if (lastRecoveredUrl.current !== window.location.href) recoverNavigation()
     didInitializeUrl.current = true
     setDidResolveEntry(true)
-    window.addEventListener("popstate", recoverFromUrl)
-    return () => window.removeEventListener("popstate", recoverFromUrl)
+    window.addEventListener("popstate", recoverNavigation)
+    return () => window.removeEventListener("popstate", recoverNavigation)
   }, [
     beginClose,
     catalogState,

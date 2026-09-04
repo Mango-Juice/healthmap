@@ -16,7 +16,7 @@ test("Given a marker selection, when it is opened and closed through browser his
   await page.goto("/?q=&tag=balanced&lat=37.501&lng=127.033&z=15")
   await expect(page.getByTestId("map-view")).toHaveText("37.5010, 127.0330 · 확대 15")
   const originalView = await page.getByTestId("map-view").textContent()
-  await page.getByRole("button", { name: "단백질 필터" }).click()
+  await page.getByRole("combobox", { name: "식사 형태·선택" }).selectOption("protein")
 
   // When
   await page.getByTestId("naver-map").getByRole("button", { name: "무지개 한그릇 연구소" }).click()
@@ -28,10 +28,7 @@ test("Given a marker selection, when it is opened and closed through browser his
   await page.waitForURL("/?q=&tag=balanced&lat=37.501&lng=127.033&z=15")
   await expect(page.getByTestId("map-stage")).toBeVisible()
   await expect(page.getByRole("heading", { name: /무지개 한그릇 연구소/ })).toHaveCount(0)
-  await expect(page.getByRole("button", { name: "단백질 필터" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  )
+  await expect(page.getByRole("combobox", { name: "식사 형태·선택" })).toHaveValue("protein")
   await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(3)
   await expect(page.getByTestId("map-view")).toHaveText(originalView ?? "")
 })
@@ -79,7 +76,7 @@ test("Given a production place, when directions and sharing are requested, then 
   // Then
   await expect
     .poll(() => page.evaluate(() => sessionStorage.getItem("directions-url")))
-    .toContain("map.naver.com/p/directions/")
+    .toContain("map.naver.com/index.nhn?")
   await page.getByRole("button", { name: "공유", exact: true }).click()
   await expect(page.getByLabel("공유 URL")).toBeVisible()
 })
@@ -99,6 +96,10 @@ test("Given an open place sheet, when it is closed by the button or Escape, then
 }) => {
   await page.setViewportSize({ width: 375, height: 812 })
   await page.goto("/")
+  await page
+    .getByRole("combobox", { name: "지역 선택" })
+    .selectOption({ label: "서울 강남구 · 5곳" })
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
   await page.getByRole("button", { name: /검색 결과 \d+곳 접기/ }).click()
   await page.getByTestId("naver-map").getByRole("button", { name: "새싹 네모식당" }).click()
   await expect(page.getByTestId("place-detail")).toBeVisible()
@@ -126,6 +127,10 @@ test("Given each production place, when directions is selected, then each coordi
     })
   })
   await page.goto("/")
+  await page
+    .getByRole("combobox", { name: "지역 선택" })
+    .selectOption({ label: "서울 강남구 · 5곳" })
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
   for (const name of [
     "새싹 네모식당",
     "무지개 한그릇 연구소",
@@ -141,7 +146,7 @@ test("Given each production place, when directions is selected, then each coordi
     () => JSON.parse(sessionStorage.getItem("directions-urls") ?? "[]") as string[],
   )
   expect(urls).toHaveLength(5)
-  expect(urls.every((url) => url.includes("map.naver.com/p/directions/"))).toBe(true)
+  expect(urls.every((url) => url.includes("map.naver.com/index.nhn?"))).toBe(true)
   await expect(page).toHaveURL(/\/$/)
 })
 

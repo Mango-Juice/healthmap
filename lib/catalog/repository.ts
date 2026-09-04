@@ -18,6 +18,9 @@ export const createPublicCatalogRepository = (
     const placeById = new Map(catalog.places.map((place) => [place.id, place]))
     const placeIdsWithMenus = new Set(catalog.menus.map((menu) => menu.placeId))
     const isPublic =
+      placeById.size === catalog.places.length &&
+      new Set(catalog.places.map((place) => place.slug)).size === catalog.places.length &&
+      new Set(catalog.menus.map((menu) => menu.id)).size === catalog.menus.length &&
       catalog.places.every((place) => place.published && placeIdsWithMenus.has(place.id)) &&
       catalog.menus.every((menu) => {
         const parent = placeById.get(menu.placeId)

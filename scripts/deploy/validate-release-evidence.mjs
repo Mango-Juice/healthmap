@@ -20,6 +20,10 @@ const EXPECTED_KEYS = [
 ]
 const SECRET_PATTERN = /(?:service.?role|authorization|bearer\s+|sk_(?:live|test)_)/i
 const MAX_FUTURE_CLOCK_SKEW_MS = 5 * 60 * 1000
+export const CURRENT_RELEASE_EVIDENCE_CONTRACT = Object.freeze({
+  migrationVersion: "20260904055749",
+  schemaVersion: "2.0.0",
+})
 
 export function validateReleaseEvidence(value, nowIso = new Date().toISOString()) {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return ["contract"]
@@ -62,8 +66,8 @@ export function validateReleaseEvidence(value, nowIso = new Date().toISOString()
     value.deploymentId.length > 0 &&
     typeof value.rollbackDeploymentId === "string" &&
     value.rollbackDeploymentId.length > 0 &&
-    value.migrationVersion === "20260822130000" &&
-    value.schemaVersion === "1.0.0" &&
+    value.migrationVersion === CURRENT_RELEASE_EVIDENCE_CONTRACT.migrationVersion &&
+    value.schemaVersion === CURRENT_RELEASE_EVIDENCE_CONTRACT.schemaVersion &&
     typeof value.catalogVersion === "string" &&
     value.catalogVersion.length > 0 &&
     typeof value.manifestHash === "string" &&

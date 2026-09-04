@@ -1,5 +1,6 @@
 import type { GeoPoint, MapView } from "../domain/geo"
 import type { ViewportBounds } from "../domain/viewport"
+import { createMarkerRegistry } from "./marker-registry"
 
 // allow: SIZE_OK — this module is the single typed NAVER SDK boundary for loading and lifecycle.
 
@@ -21,6 +22,12 @@ export type NaverLatLng = object
 export type NaverMapListener = object
 export type NaverMarker = {
   readonly setMap: (map: NaverMap | null) => void
+  readonly setOptions: (options: {
+    readonly icon?: string
+    readonly position?: NaverLatLng
+    readonly title?: string
+    readonly zIndex?: number
+  }) => void
 }
 export type NaverMapsApi = {
   readonly Event: {
@@ -79,6 +86,7 @@ const readLongitude = (point: NaverLatLng | undefined): number | undefined => {
 }
 
 export type MapMarkerSpec = {
+  readonly id: string
   readonly iconUrl?: string | undefined
   readonly label: string
   readonly latitude: number
@@ -150,17 +158,7 @@ export const createNaverMapAdapter = (
     center: new maps.LatLng(view.latitude, view.longitude),
     zoom: view.zoom,
   })
-  let markers: Array<{
-    readonly listener: NaverMapListener
-    readonly marker: NaverMarker
-  }> = []
-  const clearMarkers = (removeNativeListeners: boolean): void => {
-    for (const entry of markers) {
-      if (removeNativeListeners) maps.Event.removeListener(entry.listener)
-      entry.marker.setMap(null)
-    }
-    markers = []
-  }
+  const markers = createMarkerRegistry(maps, map)
   let readinessListener: NaverMapListener | undefined
   const viewportListener = maps.Event.addListener(map, "idle", () => {
     if (onViewportChanged === undefined) return
@@ -204,7 +202,7 @@ export const createNaverMapAdapter = (
   let destroyed = false
   const teardown = (nativeListenersAreValid: boolean): void => {
     if (destroyed) return
-    clearMarkers(nativeListenersAreValid)
+    markers.clear(nativeListenersAreValid)
     if (nativeListenersAreValid && readinessListener !== undefined)
       maps.Event.removeListener(readinessListener)
     if (nativeListenersAreValid) maps.Event.removeListener(viewportListener)
@@ -219,23 +217,7 @@ export const createNaverMapAdapter = (
       map.setCenter(new maps.LatLng(point.latitude, point.longitude))
       map.setZoom(zoom)
     },
-    syncMarkers: (specs) => {
-      clearMarkers(true)
-      markers = specs.map((spec) => {
-        const marker = new maps.Marker({
-          clickable: true,
-          ...(spec.iconUrl ? { icon: spec.iconUrl } : {}),
-          map,
-          position: new maps.LatLng(spec.latitude, spec.longitude),
-          title: spec.label,
-          ...(spec.zIndex === undefined ? {} : { zIndex: spec.zIndex }),
-        })
-        return {
-          listener: maps.Event.addListener(marker, "click", spec.onSelect),
-          marker,
-        }
-      })
-    },
+    syncMarkers: markers.sync,
     teardownAfterProviderFailure: () => teardown(false),
     waitUntilReady: () => readiness,
   }

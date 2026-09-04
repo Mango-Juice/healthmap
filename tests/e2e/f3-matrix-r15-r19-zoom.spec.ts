@@ -7,8 +7,6 @@ const zoomViewport = { width: 188, height: 406 } as const
 const zoomPixels = { width: 376, height: 812 } as const
 const insideGeolocationScript =
   "Object.defineProperty(navigator,'geolocation',{configurable:true,value:{getCurrentPosition(success){success({coords:{latitude:37.5007,longitude:127.0328},timestamp:0})}}})"
-const pendingGeolocationScript =
-  "Object.defineProperty(navigator,'geolocation',{configurable:true,value:{getCurrentPosition(){}}})"
 const sourcePath = new URL("./f3-matrix-r15-r19-zoom.spec.ts", import.meta.url)
 const manifestRef = ".omo/evidence/f3-final/surface-matrix.json#baseline.sourceManifestSha256"
 const sha256 = async (path: string | URL): Promise<string> =>
@@ -81,13 +79,14 @@ test("R17 true 200 percent zoom keeps normal list readable and targets large", a
   baseURL,
 }, testInfo) => {
   const { context, page } = await createZoomPage(browser, requireBaseUrl(baseURL))
-  await context.addInitScript(pendingGeolocationScript)
   const errors = monitor(page)
   await page.goto("/")
   await expect(page.getByRole("list", { name: "검색 결과" })).toBeVisible()
   await expect(page.getByRole("searchbox", { name: "장소와 메뉴 검색" })).toBeVisible()
-  await expect(page.locator('[data-location-state="requesting"]')).toBeVisible()
+  await expect(page.locator('[data-location-state="inside"]')).toBeVisible()
   await expect(page.locator('[data-location-state="denied"]')).toHaveCount(0)
+  await expect(page.getByRole("status", { name: "검색 결과 수" })).toHaveText("5곳")
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
   const observations = await page.evaluate(() => {
     const search = document.querySelector<HTMLInputElement>('input[aria-label="장소와 메뉴 검색"]')
     const toggle = document.querySelector<HTMLButtonElement>("button[aria-expanded]")
@@ -106,6 +105,7 @@ test("R17 true 200 percent zoom keeps normal list readable and targets large", a
     return {
       cssViewport: { width: innerWidth, height: innerHeight },
       deniedCount: document.querySelectorAll('[data-location-state="denied"]').length,
+      resultCount: document.querySelectorAll('[data-test-naver-marker="true"]').length,
       input: { width: input.width, height: input.height },
       overflow: document.documentElement.scrollWidth > innerWidth,
       targetFailures: targets.filter((element) => {
@@ -118,6 +118,7 @@ test("R17 true 200 percent zoom keeps normal list readable and targets large", a
   expect(observations).toMatchObject({
     cssViewport: zoomViewport,
     deniedCount: 0,
+    resultCount: 5,
     overflow: false,
     targetFailures: 0,
     toggleTopmost: true,
@@ -207,19 +208,28 @@ test("R19 true 200 percent denied attention is visible above tray", async ({
   const errors = monitor(page)
   await page.goto("/")
   const attention = page.locator('[data-location-state="denied"]')
+  const retry = page.getByRole("button", { name: "현재 위치 다시 찾기" })
+  await expect(attention).toBeVisible()
+  await expect(attention).toHaveText("위치 권한이 거부되었습니다.")
+  await expect(page.getByRole("status", { name: "검색 결과 수" })).toHaveText("전체 5곳 · 0곳 표시")
+  await expect(page.getByRole("list", { name: "검색 결과" })).toHaveCount(0)
+  await expect(retry).toBeVisible()
+  await page.keyboard.press("Tab")
+  await page.keyboard.press("Tab")
+  await expect(retry).toBeFocused()
+  await page.keyboard.press("Enter")
   await expect(attention).toBeVisible()
   const observations = await page.evaluate(() => {
     const attention = document.querySelector<HTMLElement>('[data-location-state="denied"]')
     const tray = document.querySelector<HTMLElement>("[aria-label='검색 결과 패널']")
     const toggle = document.querySelector<HTMLElement>("[aria-expanded='true']")
-    if (attention === null || tray === null || toggle === null)
+    const retry = document.querySelector<HTMLButtonElement>(
+      "button[aria-label='현재 위치 다시 찾기']",
+    )
+    if (attention === null || tray === null || toggle === null || retry === null)
       throw new TypeError("R19 denied zoom targets missing")
     const rect = attention.getBoundingClientRect()
     const toggleRect = toggle.getBoundingClientRect()
-    const attentionPoint = document.elementFromPoint(
-      rect.left + rect.width / 2,
-      rect.top + rect.height / 2,
-    )
     const togglePoint = document.elementFromPoint(
       toggleRect.left + toggleRect.width / 2,
       toggleRect.top + toggleRect.height / 2,
@@ -228,8 +238,11 @@ test("R19 true 200 percent denied attention is visible above tray", async ({
       deniedVisible:
         rect.width > 0 && rect.height > 0 && getComputedStyle(attention).visibility !== "hidden",
       attentionInViewport: rect.top >= 0 && rect.bottom <= innerHeight,
-      attentionTopmost: attentionPoint === attention || attention.contains(attentionPoint),
       attentionAboveTray: rect.bottom <= tray.getBoundingClientRect().top,
+      focusReturnedToRetry: document.activeElement === retry,
+      noHorizontalOverflow: document.documentElement.scrollWidth <= innerWidth,
+      retryTargetLarge:
+        retry.getBoundingClientRect().width >= 44 && retry.getBoundingClientRect().height >= 44,
       toggleTopmost: togglePoint === toggle || toggle.contains(togglePoint),
       cssViewport: { width: innerWidth, height: innerHeight },
     }
@@ -237,8 +250,10 @@ test("R19 true 200 percent denied attention is visible above tray", async ({
   expect(observations).toEqual({
     deniedVisible: true,
     attentionInViewport: true,
-    attentionTopmost: true,
     attentionAboveTray: true,
+    focusReturnedToRetry: true,
+    noHorizontalOverflow: true,
+    retryTargetLarge: true,
     toggleTopmost: true,
     cssViewport: zoomViewport,
   })

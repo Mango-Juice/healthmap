@@ -29,7 +29,7 @@ begin
     join pg_catalog.pg_namespace as namespace on namespace.oid = procedure.pronamespace
     where namespace.nspname = 'public'
       and procedure.proname = 'promote_catalog_bundle'
-  ) <> 1
+  ) <> 2
     or not exists (
       select 1
       from pg_catalog.pg_proc as procedure

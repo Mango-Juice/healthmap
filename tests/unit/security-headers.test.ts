@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { CONTENT_SECURITY_POLICY } from "../../lib/security/headers"
+import vercelConfig from "../../vercel.json"
 
 afterEach(() => {
   vi.unstubAllEnvs()
@@ -36,6 +37,8 @@ describe("security headers", () => {
 
     expect(policy).toContain("https://nrbe.map.naver.net")
     expect(policy).toContain("https://nrbe.pstatic.net")
+    expect(policy).toMatch(/img-src[^;]+https:\/\/nrbe[.]pstatic[.]net/u)
+    expect(JSON.stringify(vercelConfig)).toMatch(/img-src[^;]+https:\/\/nrbe[.]pstatic[.]net/u)
     expect(policy).toContain("https://static.naver.net")
     expect(policy).not.toContain("http://oapi.map.naver.com")
     expect(policy).not.toContain("http://nrbe.map.naver.net")

@@ -4,7 +4,7 @@ import { ImageResponse } from "next/og"
 import { getPublishedPlaceMenus } from "../../route-seo.ts"
 import { getPublishedPlaceRouteData } from "./place-data.ts"
 
-export const alt = "강남·역삼 건강식 지도 장소 정보"
+export const alt = "건강식 지도 장소 정보"
 export const contentType = "image/png"
 export const size = { width: 1200, height: 630 }
 
@@ -75,7 +75,10 @@ export default async function OpenGraphImage({ params }: OpenGraphImagePropertie
           fontWeight: OG_FIXED_CANVAS_TOKENS.emphasisWeight,
         }}
       >
-        건강식 지도 · {TAG_LABELS[routeData.place.primaryTag]}
+        건강식 지도 ·{" "}
+        {routeData.place.schemaVersion === "2.0.0"
+          ? "메뉴 선택지"
+          : TAG_LABELS[routeData.place.primaryTag]}
       </div>
       <div
         style={{
@@ -114,7 +117,7 @@ export default async function OpenGraphImage({ params }: OpenGraphImagePropertie
           paddingTop: OG_FIXED_CANVAS_TOKENS.ctaPaddingTop,
         }}
       >
-        강남·역삼 건강식 지도에서 보기
+        건강식 지도에서 보기
       </div>
     </div>,
     size,

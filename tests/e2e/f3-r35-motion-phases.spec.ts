@@ -207,6 +207,10 @@ test("R35 phase-bound lifecycle attaches exact bytes", async ({ context, page },
   for (const viewport of VIEWPORTS) {
     await page.setViewportSize(viewport)
     await page.goto("/")
+    await page
+      .getByRole("combobox", { name: "지역 선택" })
+      .selectOption({ label: "서울 강남구 · 5곳" })
+    await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
     await expect(page.getByText("NAVER 지도 연결됨")).toBeVisible()
     const trigger = page.getByRole("button", { name: TRIGGER_NAME })
     await trigger.focus()

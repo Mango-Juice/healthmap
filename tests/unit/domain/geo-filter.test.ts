@@ -38,7 +38,7 @@ describe("map geography", () => {
       maximumAge: 300000,
     })
     expect(result).toEqual({ display: [true, true], location: [true, true] })
-    expect(isInsideLocationBounds({ latitude: 37.4819, longitude: 127.0328 })).toBe(false)
+    expect(isInsideLocationBounds({ latitude: -91, longitude: 127.0328 })).toBe(false)
     expect(beginLocationRequest()).toEqual({ kind: "requesting" })
   })
 
@@ -46,7 +46,7 @@ describe("map geography", () => {
     // Given
     const outcomes = [
       { kind: "success", point: { latitude: 37.5, longitude: 127.0328 } },
-      { kind: "success", point: { latitude: 37.6, longitude: 127.0328 } },
+      { kind: "success", point: { latitude: 91, longitude: 127.0328 } },
       { kind: "error", code: 1 },
       { kind: "error", code: 3 },
       { kind: "unsupported" },

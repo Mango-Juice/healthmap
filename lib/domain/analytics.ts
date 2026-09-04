@@ -1,5 +1,6 @@
 import { z } from "zod"
-import { HealthTagSchema, PlaceIdSchema } from "./contracts.ts"
+import { PlaceIdSchema } from "./contracts.ts"
+import { PlaceFilterSchema } from "./filter.ts"
 
 export const ANALYTICS_EVENT_NAMES = [
   "map_viewed",
@@ -40,10 +41,7 @@ const AnalyticsEventSchema = z.discriminatedUnion("event", [
   z
     .object({
       event: z.literal("filter_selected"),
-      properties: z
-        .object({ tag: z.union([z.literal("all"), HealthTagSchema]) })
-        .strict()
-        .readonly(),
+      properties: z.object({ tag: PlaceFilterSchema }).strict().readonly(),
     })
     .strict()
     .readonly(),

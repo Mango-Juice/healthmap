@@ -84,7 +84,7 @@ describe("catalog domain boundary", () => {
       { ...VALID_PLACE_ROW, health_tags: ["balanced", "medical_claim"] },
       { ...VALID_PLACE_ROW, primary_tag: "protein" },
       { ...VALID_PLACE_ROW, unexpected: "raw-data-leak" },
-      { ...VALID_PLACE_ROW, latitude: 37.4919 },
+      { ...VALID_PLACE_ROW, latitude: 90.001 },
     ]
 
     // When

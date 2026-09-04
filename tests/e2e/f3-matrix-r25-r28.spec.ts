@@ -1,7 +1,8 @@
 import type { Page, TestInfo } from "@playwright/test"
-import { PublicCatalogSnapshotSchema } from "../../lib/domain/catalog"
+import { PublicCatalogQueryResponseSchema } from "../../lib/catalog/query-contract"
 import { longKoreanTypedStress, typedLongKoreanStressCatalog } from "../fixtures/e2e-catalog"
 import { measureTypedStressLayout } from "../fixtures/e2e-typed-stress-layout"
+import { installCatalogQueryRoutes } from "./catalog-query-fixture"
 import { expect, test } from "./map-test"
 
 test.describe.configure({ retries: 0 })
@@ -68,24 +69,36 @@ test("R26 typed long Korean and unbroken URL has one scroll owner", async ({
   context,
   page,
 }, info) => {
-  await context.unroute("**/api/map-catalog")
-  await context.route("**/api/map-catalog", (route) =>
-    route.fulfill({ contentType: "application/json", json: typedLongKoreanStressCatalog }),
-  )
   await page.setViewportSize({ width: 375, height: 812 })
   await page.goto("/")
+  await page
+    .getByRole("combobox", { name: "지역 선택" })
+    .selectOption({ label: "서울 강남구 · 5곳" })
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
+  await expect(page.getByRole("button", { name: "장소 새로고침" })).toBeEnabled()
+  await installCatalogQueryRoutes(context, typedLongKoreanStressCatalog)
   const responsePromise = page.waitForResponse(
     (response) =>
-      response.url().includes("/api/map-catalog") && response.request().method() === "GET",
+      new URL(response.url()).pathname === "/api/map-catalog/query" &&
+      response.request().method() === "GET",
   )
   await page.getByRole("button", { name: "장소 새로고침" }).click()
-  const parsed = PublicCatalogSnapshotSchema.parse(await (await responsePromise).json())
+  const parsed = PublicCatalogQueryResponseSchema.parse(await (await responsePromise).json())
   expect(parsed.catalogVersion).toBe(typedLongKoreanStressCatalog.catalogVersion)
+  await page
+    .getByRole("searchbox", { name: "장소와 메뉴 검색" })
+    .fill(longKoreanTypedStress.placeName)
+  await expect(page.getByRole("status", { name: "검색 결과 수" })).toHaveText("1곳")
   const card = page.getByRole("button", { name: `${longKoreanTypedStress.placeName} 상세 보기` })
   await card.click()
   await expect(page.getByTestId("place-detail-body")).toContainText(longKoreanTypedStress.address)
   const title = page.getByRole("heading", { name: longKoreanTypedStress.placeName })
-  const evidence = page.getByTestId("place-detail-body").locator("a").first()
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, "share", { configurable: true, value: undefined })
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined })
+  })
+  await page.getByRole("button", { name: "지도 공유", exact: true }).click()
+  const evidence = page.getByLabel("공유 URL")
   const address = page.getByText(longKoreanTypedStress.address, { exact: true })
   await address.scrollIntoViewIfNeeded()
   const addressObservation = await page.evaluate(
@@ -100,7 +113,7 @@ test("R26 typed long Korean and unbroken URL has one scroll owner", async ({
       return {
         title: strings.title,
         address: strings.address,
-        evidenceUrl: strings.url,
+        privateEvidenceUrl: strings.url,
         titleRect: rect(titleElement),
         addressRect: rect(addressElement),
         titleInViewport: titleElement.getBoundingClientRect().top >= 0,
@@ -118,11 +131,16 @@ test("R26 typed long Korean and unbroken URL has one scroll owner", async ({
   await evidence.scrollIntoViewIfNeeded()
   await expect(title).toBeVisible()
   await expect(evidence).toBeVisible()
-  await expect(evidence).toHaveAttribute("href", longKoreanTypedStress.evidenceUrl)
+  const sharedUrl = new URL(await evidence.inputValue())
+  expect(sharedUrl.searchParams.get("q")).toBe(longKoreanTypedStress.placeName)
+  expect(sharedUrl.toString().length).toBeGreaterThan(200)
+  await expect(
+    page.getByTestId("place-detail").getByRole("link", { name: "검증 근거 보기" }),
+  ).toHaveCount(0)
   const metrics = await measureTypedStressLayout(page)
   expect(metrics).toEqual({ detailFits: true, documentFits: true, owners: ["place-detail-body"] })
   const urlObservation = await evidence.evaluate((element) => ({
-    href: element.getAttribute("href"),
+    value: element instanceof HTMLTextAreaElement ? element.value : null,
     text: element.textContent,
     rect: element.getBoundingClientRect().toJSON(),
     inViewport:
@@ -154,6 +172,10 @@ test("R28 reduced-motion detail closes and restores focus immediately", async ({
   await page.setViewportSize({ width: 375, height: 812 })
   await page.emulateMedia({ reducedMotion: "reduce" })
   await page.goto("/")
+  await page
+    .getByRole("combobox", { name: "지역 선택" })
+    .selectOption({ label: "서울 강남구 · 5곳" })
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
   const card = page.getByRole("button", { name: "새싹 네모식당 상세 보기" })
   await card.click()
   const detail = page.locator("[data-detail-phase]:not([data-testid='map-stage'])")

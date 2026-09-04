@@ -39,7 +39,7 @@ export function MapDiscoverySurface({ model }: { readonly model: MapDiscoverySur
             장소 새로고침
           </ActionButton>
         }
-        context="강남·역삼"
+        context="지역별 메뉴 찾기"
         description="건강식 선택지를 지도에서 살펴보세요."
         title="건강식 지도"
       />
@@ -74,9 +74,21 @@ export function MapDiscoverySurface({ model }: { readonly model: MapDiscoverySur
           </div>
         ) : (
           <>
-            <div className={styles["filter"]}>
-              <FilterRail selected={filter.selected} onSelect={filter.onSelect} />
-            </div>
+            {filter.legacy ? (
+              <div className={styles["filter"]}>
+                <FilterRail
+                  selected={
+                    filter.selected === "vegetables" ||
+                    filter.selected === "protein" ||
+                    filter.selected === "balanced" ||
+                    filter.selected === "plant_based"
+                      ? filter.selected
+                      : "all"
+                  }
+                  onSelect={filter.onSelect}
+                />
+              </div>
+            ) : null}
             {discovery.pending ? (
               <button className={styles["areaSearch"]} onClick={discovery.applyArea} type="button">
                 이 지역 검색
@@ -154,6 +166,28 @@ export function MapDiscoverySurface({ model }: { readonly model: MapDiscoverySur
                   onSelect={(place, trigger) => detail.onSelectPlace(place, "list", trigger)}
                   query={discovery.query}
                   results={catalog.results}
+                  conditions={{
+                    query: discovery.query,
+                    tag: filter.selected,
+                    ingredient: discovery.ingredient,
+                    cooking: discovery.cooking,
+                  }}
+                  onConditionsChange={
+                    filter.legacy
+                      ? undefined
+                      : (value) => {
+                          filter.onSelect(value.tag)
+                          discovery.setIngredient(value.ingredient ?? "all")
+                          discovery.setCooking(value.cooking ?? "all")
+                        }
+                  }
+                  regions={catalog.regions}
+                  onRegionSelect={discovery.selectRegion}
+                  total={catalog.total}
+                  legacyFacets={catalog.legacyFacets}
+                  distanceFromUser={catalog.distanceFromUser}
+                  onRegionReset={discovery.resetRegion}
+                  loadMore={catalog.loadMore}
                 />
               </aside>
             )}

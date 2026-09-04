@@ -1,80 +1,102 @@
 "use client"
 
-import type { PointerEvent } from "react"
-import { useRef } from "react"
-import { ChevronDownIcon } from "../ui/health-map-icons"
-import styles from "./pilot-discovery.module.css"
+import { type PointerEvent, useRef } from "react"
+import { ChevronDownIcon, XIcon } from "../ui/health-map-icons"
+import styles from "./pilot-drawer-handle.module.css"
 
 const SWIPE_THRESHOLD_PX = 36
 
 type Properties = {
   readonly count: number
+  readonly loading: boolean
   readonly expanded: boolean
   readonly onExpandedChange: (expanded: boolean) => void
+  readonly onClose: () => void
   readonly selectedName?: string | undefined
 }
-
-export function PilotDrawerHandle({ count, expanded, onExpandedChange, selectedName }: Properties) {
+export function PilotDrawerHandle({
+  count,
+  loading,
+  expanded,
+  onExpandedChange,
+  onClose,
+  selectedName,
+}: Properties) {
   const dragStartY = useRef<number>(undefined)
   const didSwipe = useRef(false)
-  const summary = selectedName ?? "검색 결과"
-  const meta = selectedName === undefined ? `${count}곳` : "장소 정보"
-
-  const handlePointerDown = (event: PointerEvent<HTMLButtonElement>): void => {
+  const label = `${selectedName ? "메뉴" : "검색 결과"} ${expanded ? "접기" : "펼치기"}`
+  const onPointerDown = (event: PointerEvent<HTMLButtonElement>) => {
     dragStartY.current = event.clientY
     didSwipe.current = false
     event.currentTarget.setPointerCapture(event.pointerId)
   }
-
-  const handlePointerUp = (event: PointerEvent<HTMLButtonElement>): void => {
-    const startY = dragStartY.current
+  const onPointerUp = (event: PointerEvent<HTMLButtonElement>) => {
+    const start = dragStartY.current
     dragStartY.current = undefined
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+    if (event.currentTarget.hasPointerCapture(event.pointerId))
       event.currentTarget.releasePointerCapture(event.pointerId)
-    }
-    if (startY === undefined) return
-    const distance = event.clientY - startY
-    if (Math.abs(distance) < SWIPE_THRESHOLD_PX) return
+    if (start === undefined || Math.abs(event.clientY - start) < SWIPE_THRESHOLD_PX) return
     didSwipe.current = true
-    onExpandedChange(distance < 0)
+    onExpandedChange(event.clientY < start)
   }
-
-  const handlePointerCancel = (event: PointerEvent<HTMLButtonElement>): void => {
-    dragStartY.current = undefined
-    didSwipe.current = false
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId)
-    }
-  }
-
-  const handleToggle = (): void => {
-    if (didSwipe.current) {
-      didSwipe.current = false
-      return
-    }
-    onExpandedChange(!expanded)
-  }
-
   return (
-    <div className={styles["drawerBar"]} data-expanded={expanded} data-testid="pilot-drawer-handle">
+    <div
+      className={styles["bar"]}
+      data-expanded={expanded}
+      data-selected={Boolean(selectedName)}
+      data-testid="pilot-drawer-handle"
+    >
       <button
+        className={styles["toggle"]}
         aria-controls="pilot-panel-content"
         aria-expanded={expanded}
-        aria-label={`${summary} ${meta} ${expanded ? "접기" : "펼치기"}`}
-        onClick={handleToggle}
-        onPointerCancel={handlePointerCancel}
-        onPointerDown={handlePointerDown}
-        onPointerUp={handlePointerUp}
+        aria-busy={loading}
+        aria-label={label}
+        title={label}
+        onClick={() => {
+          if (didSwipe.current) {
+            didSwipe.current = false
+            return
+          }
+          onExpandedChange(!expanded)
+        }}
+        onPointerDown={onPointerDown}
+        onPointerUp={onPointerUp}
+        onPointerCancel={() => {
+          dragStartY.current = undefined
+          didSwipe.current = false
+        }}
         type="button"
       >
-        <span aria-hidden="true" className={styles["drawerGrabber"]} />
-        <strong>{summary}</strong>
-        <span className={styles["drawerMeta"]}>{meta}</span>
+        <span aria-hidden="true" className={styles["grabber"]} />
+        {selectedName ? (
+          <span className={styles["hint"]}>{expanded ? "접기" : "메뉴 펼치기"}</span>
+        ) : (
+          <span className={styles["count"]}>
+            <b>
+              {loading ? (
+                <span role="status" aria-label="검색 중">
+                  …
+                </span>
+              ) : (
+                `${count}곳`
+              )}
+            </b>
+          </span>
+        )}
         <ChevronDownIcon />
       </button>
-      <output aria-label="검색 결과 수" className={styles["visuallyHidden"]}>
-        {count}곳
-      </output>
+      {selectedName ? (
+        <button
+          className={styles["close"]}
+          aria-label="장소 닫기"
+          title="장소 닫기"
+          onClick={onClose}
+          type="button"
+        >
+          <XIcon />
+        </button>
+      ) : null}
     </div>
   )
 }

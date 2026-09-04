@@ -1,89 +1,119 @@
 import { z } from "zod"
-import { HealthTagSchema, MenuIdSchema, PlaceIdSchema, PlaceSlugSchema } from "../domain/contracts"
+import { MenuIdSchema, PlaceIdSchema, PlaceSlugSchema } from "../domain/contracts"
+import { ExactNaverPlaceUrlSchema } from "../domain/place-links"
+import { PilotFactsSchema, PilotMediaSchema } from "./facts"
 
-export const PilotSourceSchema = z.enum(["seoul_vegetarian", "seoul_wholegrain", "mois_good_price"])
-export const PilotMatchLevelSchema = z.enum([
-  "exact_name_and_address",
-  "name_and_address_review",
-  "address_review",
-  "nearby_review",
+export const PilotSourceSchema = z.enum([
+  "seoul_vegetarian",
+  "seoul_wholegrain",
+  "mois_good_price",
+  "gangnam_model_restaurant",
+  "salady",
+  "slowcali",
+  "pokeallday",
+  "preppers",
 ])
-const PilotEvidenceUrlSchema = z
-  .url({ protocol: /^https$/, hostname: /^(?:fsi[.]seoul[.]go[.]kr|www[.]data[.]go[.]kr)$/ })
+const EvidenceUrlSchema = z
+  .url({
+    protocol: /^https$/,
+    hostname:
+      /^(?:fsi[.]seoul[.]go[.]kr|www[.]data[.]go[.]kr|(?:www[.])?salady[.]com|(?:www[.])?slowcali[.]co[.]kr|pokeallday[.]co[.]kr|prepperskorea[.]com)$/,
+  })
   .refine((value) => {
     const url = URL.parse(value)
-    return url !== null && url.username === "" && url.password === ""
-  }, "URL userinfo is not allowed")
-const HealthTagsSchema = z.array(HealthTagSchema).readonly()
-const PilotOfficialImageUrlSchema = z.url({
-  protocol: /^https$/,
-  hostname: /^(?:www[.])?slowcali[.]co[.]kr$/,
-})
-
-export const PilotOfficialImageSchema = z
-  .strictObject({
-    alt: z.string().trim().min(1),
-    height: z.number().int().positive(),
-    providerUrl: PilotOfficialImageUrlSchema,
-    url: PilotOfficialImageUrlSchema,
-    width: z.number().int().positive(),
+    return url !== null && url.username === "" && url.password === "" && url.hash === ""
   })
-  .readonly()
 
+export { PilotFactsSchema } from "./facts"
 export const PilotPlaceSchema = z
   .strictObject({
     address: z.string().trim().min(1),
-    healthTags: HealthTagsSchema,
     id: PlaceIdSchema,
-    latitude: z.number().min(37.492).max(37.5085),
-    longitude: z.number().min(127.02).max(127.0445),
-    matchLevel: PilotMatchLevelSchema,
+    latitude: z.number().finite().min(-90).max(90),
+    longitude: z.number().finite().min(-180).max(180),
     name: z.string().trim().min(1),
-    officialImage: PilotOfficialImageSchema.optional(),
+    brandId: z.string().min(1).nullable().default(null),
+    brandVariant: z.string().min(1).nullable().default(null),
+    phone: z.string().min(1).nullable().default(null),
+    naverPlaceUrl: ExactNaverPlaceUrlSchema.nullable().default(null),
+    media: z.array(PilotMediaSchema).readonly().default([]),
     reviewStatus: z.literal("candidate"),
     slug: PlaceSlugSchema,
     sources: z.array(PilotSourceSchema).min(1).readonly(),
   })
   .readonly()
-
 export const PilotMenuSchema = z
   .strictObject({
-    evidenceUrl: PilotEvidenceUrlSchema,
-    healthTags: HealthTagsSchema,
     id: MenuIdSchema,
-    name: z.string().trim().min(1),
     placeId: PlaceIdSchema,
-    priceKrw: z.number().int().positive().nullable(),
-    source: PilotSourceSchema,
-    verifiedAt: z.iso.date(),
+    name: z.string().trim().min(1),
+    facts: PilotFactsSchema,
+    branchApplicability: z.enum(["branch_confirmed", "brand_common_unverified"]),
+    placeMatch: z.enum(["exact_match", "human_resolved"]).default("exact_match"),
+    brandId: z.string().min(1).nullable().default(null),
+    brandVariant: z.string().min(1).nullable().default(null),
+    evidence: z
+      .array(
+        z
+          .strictObject({
+            source: PilotSourceSchema,
+            sourceReviewStatus: z.enum(["reviewed", "pending_review"]).default("reviewed"),
+            sourceSha256: z.string().regex(/^[a-f0-9]{64}$/),
+            digestKind: z.enum(["raw_source", "structured_source"]).default("raw_source"),
+            evidenceUrl: EvidenceUrlSchema,
+            capturedAt: z.iso.datetime({ offset: true }),
+            expiresAt: z.iso.datetime({ offset: true }),
+            publishedAt: z.iso.datetime({ offset: true }).nullable().default(null),
+            effectiveAt: z.iso.datetime({ offset: true }).nullable().default(null),
+            rawText: z.string().min(1),
+          })
+          .readonly(),
+      )
+      .min(1)
+      .readonly(),
   })
   .readonly()
-
 export const PilotCatalogSchema = z
   .strictObject({
-    catalogVersion: z.string().regex(/^pilot-[0-9]{8}$/),
+    schemaVersion: z.literal("pilot-menu-facts-2"),
+    catalogVersion: z.string().regex(/^pilot-[0-9]{8}-[a-f0-9]{12}$/),
+    asOf: z.iso.datetime({ offset: true }),
     menus: z.array(PilotMenuSchema).readonly(),
     places: z.array(PilotPlaceSchema).readonly(),
   })
   .readonly()
   .superRefine((catalog, context) => {
     const placeIds = new Set(catalog.places.map((place) => place.id))
-    if (placeIds.size !== catalog.places.length)
-      context.addIssue({
-        code: "custom",
-        message: "pilot place IDs must be unique",
-        path: ["places"],
-      })
-    const menuPlaceIds = new Set(catalog.menus.map((menu) => menu.placeId))
+    const menuIds = new Set(catalog.menus.map((menu) => menu.id))
+    if (placeIds.size !== catalog.places.length || menuIds.size !== catalog.menus.length)
+      context.addIssue({ code: "custom", message: "Pilot IDs must be unique" })
+    const parentIds = new Set(catalog.menus.map((menu) => menu.placeId))
     if (catalog.menus.some((menu) => !placeIds.has(menu.placeId)))
-      context.addIssue({ code: "custom", message: "pilot menu parent is missing", path: ["menus"] })
-    if (catalog.places.some((place) => !menuPlaceIds.has(place.id)))
-      context.addIssue({ code: "custom", message: "pilot place requires a menu", path: ["places"] })
+      context.addIssue({ code: "custom", message: "Pilot menu parent is missing" })
+    if (catalog.places.some((place) => !parentIds.has(place.id)))
+      context.addIssue({ code: "custom", message: "Pilot place requires a menu" })
+    const asOf = Date.parse(catalog.asOf)
+    if (
+      catalog.menus.some((menu) =>
+        menu.evidence.some(
+          (evidence) =>
+            Date.parse(evidence.capturedAt) > asOf || Date.parse(evidence.expiresAt) <= asOf,
+        ),
+      )
+    )
+      context.addIssue({ code: "custom", message: "Pilot evidence is not current at asOf" })
   })
-
 export type PilotCatalog = z.infer<typeof PilotCatalogSchema>
 export type PilotPlace = z.infer<typeof PilotPlaceSchema>
 export type PilotMenu = z.infer<typeof PilotMenuSchema>
 export type PilotSource = z.infer<typeof PilotSourceSchema>
-export type PilotMatchLevel = z.infer<typeof PilotMatchLevelSchema>
-export type PilotOfficialImage = z.infer<typeof PilotOfficialImageSchema>
+
+export const currentPilotCatalog = (catalog: PilotCatalog, now: number): PilotCatalog => {
+  const menus = catalog.menus.filter((menu) =>
+    menu.evidence.every(
+      (evidence) => Date.parse(evidence.capturedAt) <= now && Date.parse(evidence.expiresAt) > now,
+    ),
+  )
+  const ids = new Set(menus.map((menu) => menu.placeId))
+  return { ...catalog, menus, places: catalog.places.filter((place) => ids.has(place.id)) }
+}

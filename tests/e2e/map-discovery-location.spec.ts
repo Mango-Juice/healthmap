@@ -1,4 +1,8 @@
-import { e2eCatalog } from "../fixtures/e2e-catalog"
+import {
+  catalogQueryPattern,
+  emptyQueryCatalog,
+  fulfillCatalogQuery,
+} from "./catalog-query-fixture"
 import { expect, test } from "./map-test"
 
 test.beforeEach(async ({ context }) => {
@@ -30,7 +34,7 @@ for (const scenario of [
   { name: "denied", code: 1 },
   { name: "timeout", code: 3 },
 ] as const) {
-  test(`keeps the current map view for ${scenario.name} location`, async ({ page }) => {
+  test(`shows the national map for ${scenario.name} location`, async ({ page }) => {
     await page.addInitScript(({ code }) => {
       Object.defineProperty(navigator, "geolocation", {
         configurable: true,
@@ -54,28 +58,32 @@ for (const scenario of [
     }, scenario)
     await page.goto("/")
     await expect(page.locator(`[data-location-state="${scenario.name}"]`)).toBeVisible()
-    await expect(page.getByTestId("map-view")).toContainText("37.5007, 127.0328")
+    await expect(page.getByTestId("map-view")).toContainText("36.2000, 127.8000")
     await expect(page.getByRole("img", { name: "내 위치" })).toHaveCount(0)
   })
 }
-test("keeps the current map view when geolocation is unsupported", async ({ page }) => {
+test("shows the national map when geolocation is unsupported", async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(navigator, "geolocation", { configurable: true, value: undefined })
   })
   await page.goto("/")
   await expect(page.locator('[data-location-state="unsupported"]')).toBeVisible()
-  await expect(page.getByTestId("map-view")).toContainText("37.5007, 127.0328")
+  await expect(page.getByTestId("map-view")).toContainText("36.2000, 127.8000")
 })
 test("covers every filter and keyboard marker selection", async ({ page }) => {
   await page.goto("/")
   for (const [label, count] of [
-    ["채소", 4],
-    ["단백질", 3],
-    ["균형식", 5],
-    ["식물성", 2],
+    ["샐러드·포케", 0],
+    ["밥·정식", 0],
+    ["잡곡·현미", 0],
+    ["채식 표기", 2],
+    ["면", 0],
+    ["국·탕", 0],
+    ["샌드위치", 0],
+    ["주요리", 0],
     ["전체", 5],
   ] as const) {
-    await page.getByRole("button", { name: `${label} 필터` }).click()
+    await page.getByRole("combobox", { name: "식사 형태·선택" }).selectOption({ label })
     await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(count)
   }
   const marker = page.getByTestId("naver-map").getByRole("button", { name: "새싹 네모식당" })
@@ -91,7 +99,7 @@ test("constructs a NAVER map after SDK failure and retry", async ({ page }) => {
     if (attempts === 1) return route.abort()
     await route.fulfill({
       contentType: "text/javascript",
-      body: `(()=>{class LatLng{}class Map{constructor(el){this.el=el;el.innerHTML='<canvas data-fake-naver-map width="20" height="20"></canvas>'}setCenter(){}setZoom(){}destroy(){}}class Marker{constructor({map,title}){this.el=document.createElement('button');this.el.type='button';this.el.setAttribute('aria-label',title);map.el.append(this.el)}setMap(map){if(map===null)this.el.remove()}}const Event={addListener(target,name,listener){if(name==='tilesloaded')queueMicrotask(listener);if(name==='click'&&target.el)target.el.addEventListener('click',listener);return{target,name,listener}},removeListener(){}};window.naver={maps:{LatLng,Map,Marker,Event}}})()`,
+      body: `(()=>{class LatLng{}class Map{constructor(el){this.el=el;el.innerHTML='<canvas data-fake-naver-map width="20" height="20"></canvas>'}setCenter(){}setZoom(){}destroy(){}}class Marker{constructor({map,title}){this.el=document.createElement('button');this.el.type='button';this.el.setAttribute('aria-label',title);map.el.append(this.el)}setOptions(options){if(options.title!==undefined)this.el.setAttribute('aria-label',options.title);if(options.icon!==undefined)this.el.dataset.markerIcon=options.icon;if(options.zIndex!==undefined){this.el.dataset.markerZIndex=String(options.zIndex);this.el.style.zIndex=String(options.zIndex)}if(options.position){this.el.dataset.latitude=String(options.position.latitude);this.el.dataset.longitude=String(options.position.longitude);this.el.style.left=String(15+((options.position.longitude-127.02)/.03)*70)+'%';this.el.style.top=String(25+((37.51-options.position.latitude)/.02)*50)+'%'}}setMap(map){if(map===null)this.el.remove()}}const Event={addListener(target,name,listener){if(name==='tilesloaded')queueMicrotask(listener);if(name==='click'&&target.el)target.el.addEventListener('click',listener);return{target,name,listener}},removeListener(){}};window.naver={maps:{LatLng,Map,Marker,Event}}})()`,
     })
   })
   await page.goto("/")
@@ -101,18 +109,16 @@ test("constructs a NAVER map after SDK failure and retry", async ({ page }) => {
   await expect(page.locator("canvas[data-fake-naver-map]")).toBeVisible()
 })
 test("recovers catalog failure and supports empty catalog", async ({ page }) => {
+  await page.goto("/")
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
+  await expect(page.getByText("장소 데이터를 불러오는 중입니다.")).toHaveCount(0)
   let attempts = 0
-  await page.route("**/api/map-catalog", async (route) => {
+  await page.route(catalogQueryPattern, async (route) => {
     attempts += 1
     if (attempts === 1) return route.fulfill({ status: 503 })
-    if (attempts === 2)
-      return route.fulfill({
-        contentType: "application/json",
-        body: '{"catalogVersion":"empty-e2e","dataMode":"production","menus":[],"places":[]}',
-      })
-    await route.fulfill({ contentType: "application/json", json: e2eCatalog })
+    if (attempts === 2) return fulfillCatalogQuery(route, emptyQueryCatalog)
+    await fulfillCatalogQuery(route)
   })
-  await page.goto("/")
   await page.getByRole("button", { name: "장소 새로고침" }).click()
   await expect(page.getByText("장소 데이터를 불러오지 못했습니다.")).toBeVisible()
   await page.getByRole("button", { name: /다시 시도/ }).click()
@@ -122,11 +128,13 @@ test("recovers catalog failure and supports empty catalog", async ({ page }) => 
 })
 test("keeps map markers interactive while catalog refresh loads or fails", async ({ page }) => {
   // Given
+  await page.goto("/")
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
+  await expect(page.getByText("장소 데이터를 불러오는 중입니다.")).toHaveCount(0)
   const requests: import("@playwright/test").Route[] = []
-  await page.route("**/api/map-catalog", async (route) => {
+  await page.route(catalogQueryPattern, async (route) => {
     requests.push(route)
   })
-  await page.goto("/")
 
   // When
   await page.getByRole("button", { name: "장소 새로고침" }).click()
@@ -143,20 +151,26 @@ test("keeps map markers interactive while catalog refresh loads or fails", async
   await expect(marker).toBeVisible()
 })
 test("rejects malformed catalog and ignores stale rapid refresh", async ({ page }) => {
+  await page.goto("/")
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
+  await expect(page.getByText("장소 데이터를 불러오는 중입니다.")).toHaveCount(0)
   const requests: import("@playwright/test").Route[] = []
-  await page.route("**/api/map-catalog", async (route) => {
+  await page.route(catalogQueryPattern, async (route) => {
     requests.push(route)
   })
-  await page.goto("/")
   await page.getByRole("button", { name: "장소 새로고침" }).click()
   await page.getByRole("button", { name: "장소 새로고침" }).click()
   await expect.poll(() => requests.length).toBe(2)
-  await requests[1]?.fulfill({
-    contentType: "application/json",
-    body: '{"catalogVersion":"empty-e2e","dataMode":"production","menus":[],"places":[]}',
-  })
+  const emptyRequest = requests[1]
+  if (emptyRequest === undefined) throw new TypeError("Missing empty query request")
+  await fulfillCatalogQuery(emptyRequest, emptyQueryCatalog)
   await expect(page.getByText("표시할 장소가 없습니다.")).toBeVisible()
   await requests[0]?.fulfill({ status: 503 })
   await expect(page.getByText("표시할 장소가 없습니다.")).toBeVisible()
   await expect(page.getByText("장소 데이터를 불러오지 못했습니다.")).toHaveCount(0)
+  await page.getByRole("button", { name: "장소 새로고침" }).click()
+  await expect.poll(() => requests.length).toBe(3)
+  await requests[2]?.fulfill({ contentType: "application/json", json: emptyQueryCatalog })
+  await expect(page.getByText("장소 데이터를 불러오지 못했습니다.")).toBeVisible()
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(0)
 })

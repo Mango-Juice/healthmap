@@ -16,9 +16,15 @@ export type ShareState =
 
 const MapShareInputSchema = z
   .object({
-    latitude: z.coerce.number(),
-    longitude: z.coerce.number(),
-    zoom: z.coerce.number().int().min(13).max(18),
+    latitude: z
+      .union([z.number(), z.string().trim().min(1).transform(Number)])
+      .pipe(z.number().finite()),
+    longitude: z
+      .union([z.number(), z.string().trim().min(1).transform(Number)])
+      .pipe(z.number().finite()),
+    zoom: z
+      .union([z.number(), z.string().trim().min(1).transform(Number)])
+      .pipe(z.number().int().min(1).max(21)),
     tag: HealthTagSchema,
     source: z.literal("map_share"),
   })

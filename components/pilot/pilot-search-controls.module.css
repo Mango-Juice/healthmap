@@ -1,0 +1,34 @@
+.controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  padding: var(--hm-space-1) var(--hm-space-3) 0;
+  min-inline-size: 0;
+}
+
+.controls svg {
+  flex: 0 0 auto;
+  inline-size: var(--hm-icon-sm);
+  block-size: var(--hm-icon-sm);
+}
+
+.inputFrame {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-inline-size: 0;
+  block-size: calc(var(--hm-control-min) - 2 * var(--hm-border-width));
+  overflow: hidden;
+}
+
+.inputFrame input {
+  --hm-search-text-scale: 0.875;
+  flex: none;
+  inline-size: calc(100% / var(--hm-search-text-scale));
+  block-size: calc(
+    (var(--hm-control-min) - 2 * var(--hm-border-width)) /
+    var(--hm-search-text-scale)
+  );
+  font-size: var(--hm-type-body);
+  transform: scale(var(--hm-search-text-scale));
+  transform-origin: left center;
+}

@@ -1,0 +1,34 @@
+.conditions {
+  border: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--hm-space-2);
+  margin: 0;
+  min-inline-size: 0;
+  padding: var(--hm-space-2) 0;
+}
+.conditions legend {
+  color: var(--hm-ink-muted);
+  font-size: var(--hm-type-caption);
+}
+.conditions label {
+  display: grid;
+  flex: 1 1 var(--hm-control-min);
+  font-size: var(--hm-type-caption);
+  gap: var(--hm-space-1);
+  min-inline-size: 0;
+}
+.conditions select {
+  background: var(--hm-surface);
+  border: var(--hm-border-width) solid var(--hm-border);
+  border-radius: var(--hm-radius-control);
+  color: var(--hm-ink);
+  font: inherit;
+  min-block-size: var(--hm-control-min);
+  min-inline-size: 0;
+  padding: var(--hm-space-2);
+  width: 100%;
+}
+.conditions select:focus-visible {
+  outline: var(--hm-focus-ring) solid var(--hm-blue);
+}

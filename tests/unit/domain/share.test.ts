@@ -43,7 +43,7 @@ describe("share URL codec", () => {
     const inputs = [
       "/?lat=37.5&lng=127.03",
       "/?lat=37.5&lng=nope&z=15&tag=balanced&src=map_share",
-      "/?lat=37.5&lng=127.03&z=12&tag=balanced&src=map_share",
+      "/?lat=37.5&lng=127.03&z=0&tag=balanced&src=map_share",
       "/?lat=37.5&lng=127.03&z=15&tag=balanced&src=tracker",
       "/?lat=37.5&lat=37.6&lng=127.03&z=15&tag=balanced&src=map_share",
       "/?place=INVALID_%20_SLUG&referrer=https://private.example/path?q=secret",

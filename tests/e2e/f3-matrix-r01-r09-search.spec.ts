@@ -74,6 +74,8 @@ test("R04 typed search produces one result and marker", async ({ page }, testInf
   await page.setViewportSize({ width: 375, height: 812 })
   await page.goto("/")
   await page.getByRole("searchbox", { name: "장소와 메뉴 검색" }).fill("초록 그릇")
+  await expect(page.getByRole("status", { name: "검색 결과 수" })).toHaveText("1곳")
+  await expect(page.locator("[data-test-naver-marker='true']")).toHaveCount(1)
   const observed = {
     items: await page.getByRole("list", { name: "검색 결과" }).getByRole("listitem").count(),
     markers: await page.locator("[data-test-naver-marker='true']").count(),
@@ -91,12 +93,14 @@ test("R05 normalized search and plant tag produce two results", async ({ page },
   await page.setViewportSize({ width: 768, height: 1024 })
   await page.goto("/")
   await page.getByRole("searchbox", { name: "장소와 메뉴 검색" }).fill("  서울   강남구  ")
-  const plantFilter = page.getByRole("button", { name: "식물성 필터" })
-  await plantFilter.click()
-  await expect(plantFilter).toHaveAttribute("aria-pressed", "true")
-  await expect(plantFilter).toContainText("식물성")
+  const plantFilter = page.getByRole("combobox", { name: "식사 형태·선택" })
+  await plantFilter.selectOption("plant_based")
+  await expect(plantFilter).toHaveValue("plant_based")
+  await expect(plantFilter.locator("option:checked")).toHaveText("채식 표기")
+  await expect(page.getByRole("status", { name: "검색 결과 수" })).toHaveText("2곳")
+  await expect(page.locator("[data-test-naver-marker='true']")).toHaveCount(2)
   const observed = {
-    filterPressed: await plantFilter.getAttribute("aria-pressed"),
+    selectedFilter: await plantFilter.inputValue(),
     items: await page.getByRole("list", { name: "검색 결과" }).getByRole("listitem").count(),
     markers: await page.locator("[data-test-naver-marker='true']").count(),
     status: await page.getByRole("status", { name: "검색 결과 수" }).innerText(),
@@ -113,7 +117,12 @@ test("R05 normalized search and plant tag produce two results", async ({ page },
         })),
       ),
   }
-  expect(observed).toMatchObject({ filterPressed: "true", items: 2, markers: 2, status: "2곳" })
+  expect(observed).toMatchObject({
+    selectedFilter: "plant_based",
+    items: 2,
+    markers: 2,
+    status: "2곳",
+  })
   expect(observed.resultNames).toEqual([
     expect.stringContaining("잎사귀 가상 테이블"),
     expect.stringContaining("구름 도시락 공방"),
@@ -133,6 +142,8 @@ test("R06 typed missing search produces empty state", async ({ page }, testInfo)
   await page.setViewportSize({ width: 375, height: 812 })
   await page.goto("/")
   await page.getByRole("searchbox", { name: "장소와 메뉴 검색" }).fill("없는 메뉴")
+  await expect(page.getByRole("status", { name: "검색 결과 수" })).toHaveText("0곳")
+  await expect(page.locator("[data-test-naver-marker='true']")).toHaveCount(0)
   const observed = {
     emptyText: await page.getByText("검색 결과가 없습니다.").innerText(),
     items: await page.getByRole("list", { name: "검색 결과" }).getByRole("listitem").count(),

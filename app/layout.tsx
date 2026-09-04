@@ -11,7 +11,19 @@ const siteUrl = getValidatedSiteUrl(getRuntimeSiteEnvironment())
 
 export const metadata: Metadata = {
   title: "건강식 지도",
-  description: "강남과 역삼의 건강식 장소를 찾는 지도",
+  description: "잘 먹고 싶은 날, 가까운 한 끼부터. 메뉴와 재료로 먹을 곳을 찾아보세요.",
+  openGraph: {
+    title: "건강식 지도",
+    description: "잘 먹고 싶은 날, 가까운 한 끼부터. 메뉴와 재료로 먹을 곳을 찾아보세요.",
+    siteName: "건강식 지도",
+    locale: "ko_KR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "건강식 지도",
+    description: "잘 먹고 싶은 날, 가까운 한 끼부터.",
+  },
   ...(siteUrl === null ? {} : { metadataBase: siteUrl }),
 }
 

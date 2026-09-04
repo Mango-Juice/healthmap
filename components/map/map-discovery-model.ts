@@ -1,9 +1,11 @@
 import type { RefObject } from "react"
+import type { PublicRegion } from "../../lib/catalog/query-contract"
 import type { Menu, Place } from "../../lib/domain/catalog"
 import type { DirectionsTarget } from "../../lib/domain/directions"
 import type { PlaceDistance } from "../../lib/domain/distance"
-import type { PlaceFilter } from "../../lib/domain/filter"
+import type { CookingFilter, IngredientFilter, PlaceFilter } from "../../lib/domain/filter"
 import type { LocationState, MapView } from "../../lib/domain/geo"
+import type { ViewportBounds } from "../../lib/domain/viewport"
 import type { MapAdapterState } from "../../lib/map/adapter"
 import type { DetailMotion, DetailPhase } from "./detail-history"
 import type { CatalogState } from "./use-catalog"
@@ -19,8 +21,14 @@ export type MapDiscoverySurfaceModel = {
     readonly reload: () => void
     readonly results: readonly PlaceDistance[]
     readonly state: CatalogState
+    readonly regions: readonly PublicRegion[]
+    readonly total: number
+    readonly legacyFacets: readonly { readonly filter: PlaceFilter; readonly count: number }[]
+    readonly distanceFromUser: boolean
+    readonly loadMore: (() => void) | undefined
   }
   readonly discovery: {
+    readonly resetRegion: () => void
     readonly applyArea: () => void
     readonly onSearchCommit: () => void
     readonly pending: boolean
@@ -28,6 +36,11 @@ export type MapDiscoverySurfaceModel = {
     readonly setQuery: (query: string) => void
     readonly setTrayExpanded: (expanded: boolean) => void
     readonly trayExpanded: boolean
+    readonly ingredient: IngredientFilter
+    readonly cooking: CookingFilter
+    readonly setIngredient: (value: IngredientFilter) => void
+    readonly setCooking: (value: CookingFilter) => void
+    readonly selectRegion: (bounds: ViewportBounds) => void
   }
   readonly detail: {
     readonly clear: () => void
@@ -52,6 +65,7 @@ export type MapDiscoverySurfaceModel = {
   readonly filter: {
     readonly onSelect: (filter: PlaceFilter) => void
     readonly selected: PlaceFilter
+    readonly legacy: boolean
   }
   readonly location: {
     readonly request: (isUserRequested: boolean) => void

@@ -55,8 +55,12 @@ test("mobile detail is a contained dialog with an explicit recovery scroll and v
     })
   })
   await page.goto("/")
+  await page
+    .getByRole("combobox", { name: "지역 선택" })
+    .selectOption({ label: "서울 강남구 · 5곳" })
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
 
-  const rail = page.locator("fieldset")
+  const rail = page.getByRole("group", { name: "메뉴 조건" })
   await expect
     .poll(() => rail.evaluate((element) => getComputedStyle(element).scrollbarWidth))
     .not.toBe("none")

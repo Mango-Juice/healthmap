@@ -49,6 +49,7 @@ const naverImageOrigins = (): string =>
   [
     "https://static.naver.net",
     "https://nrbe.map.naver.net",
+    "https://nrbe.pstatic.net",
     "https://map.pstatic.net",
     "https://ssl.pstatic.net",
     ...(process.env["NODE_ENV"] === "development"

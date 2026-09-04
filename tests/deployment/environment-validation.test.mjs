@@ -39,6 +39,24 @@ test("environment validation accepts safe configured placeholders", () => {
   assert.deepEqual(validatePublicEnvironment(safeEnvironment), { malformed: [], missing: [] })
 })
 
+test("public Pilot requires its real map and site configuration without an unused database", () => {
+  const pilot = {
+    HEALTHMAP_PUBLIC_PILOT: "1",
+    NEXT_PUBLIC_NAVER_MAP_CLIENT_ID: safeEnvironment.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID,
+    NEXT_PUBLIC_SITE_URL: safeEnvironment.NEXT_PUBLIC_SITE_URL,
+  }
+  assert.deepEqual(validatePublicEnvironment(pilot), { malformed: [], missing: [] })
+  assert.deepEqual(
+    validatePublicEnvironment({ ...pilot, NEXT_PUBLIC_NAVER_MAP_CLIENT_ID: "" }).missing,
+    ["NEXT_PUBLIC_NAVER_MAP_CLIENT_ID"],
+  )
+  assert.ok(
+    validatePublicEnvironment({ ...pilot, HEALTHMAP_PUBLIC_PILOT: "0" }).missing.includes(
+      "NEXT_PUBLIC_SUPABASE_URL",
+    ),
+  )
+})
+
 test("environment validation rejects remote HTTP and script-shaped origins by name only", () => {
   const result = validatePublicEnvironment({
     ...safeEnvironment,
