@@ -1,21 +1,16 @@
 import { createHmac } from "node:crypto"
 import { join } from "node:path"
 import { requestJson } from "../http/request.ts"
-import { isPilotEnabled } from "../pilot/environment.ts"
 import { type Suggestion, SuggestionResultSchema } from "./contracts.ts"
 import { saveLocalSuggestion, suggestionFingerprint } from "./local-store.ts"
 
-export const isLocalSuggestionPilot = (url: URL): boolean =>
-  url.searchParams.get("scope") === "pilot" &&
-  isPilotEnabled(process.env) &&
+export const isLocalSuggestionDevelopment = (url: URL): boolean =>
   process.env["NODE_ENV"] === "development" &&
   !process.env["VERCEL"] &&
   ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)
 
 export const submitSuggestion = async (request: Request, submission: Suggestion) => {
-  const local = isLocalSuggestionPilot(new URL(request.url))
-  if (new URL(request.url).searchParams.get("scope") === "pilot" && !isPilotEnabled(process.env))
-    return null
+  const local = isLocalSuggestionDevelopment(new URL(request.url))
   const secret = process.env["HEALTHMAP_SUGGESTION_HASH_SECRET"]
   const url = process.env["NEXT_PUBLIC_SUPABASE_URL"]
   const key = process.env["HEALTHMAP_SUGGESTION_SERVICE_KEY"]
@@ -25,7 +20,7 @@ export const submitSuggestion = async (request: Request, submission: Suggestion)
     process.env["VERCEL"] === "1"
       ? (request.headers.get("x-vercel-forwarded-for") ?? "unknown")
       : "local-requestor"
-  const actor = createHmac("sha256", secret ?? "local-pilot-only")
+  const actor = createHmac("sha256", secret ?? "local-development-only")
     .update(`${new Date().toISOString().slice(0, 10)}:${identity}`)
     .digest("hex")
   if (local)

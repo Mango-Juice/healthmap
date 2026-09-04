@@ -42,7 +42,7 @@ export function usePilotQuery(input: Query) {
   }
   const key = params.toString()
   const request = useMemo(() => ({ key, retry }), [key, retry])
-  const regionRequest = useMemo(() => ({ url: "/api/pilot?mode=regions", retry }), [retry])
+  const regionRequest = useMemo(() => ({ url: "/api/places?mode=regions", retry }), [retry])
   const [loadedKey, setLoadedKey] = useState(key)
   const current = loadedKey === key
   const requestCursor = cursor?.key === key ? cursor.value : undefined
@@ -70,7 +70,7 @@ export function usePilotQuery(input: Query) {
     if (!requestCursor) setCursor(undefined)
     setLoading(true)
     setFailed(false)
-    const url = `/api/pilot?${request.key}${requestCursor ? `&cursor=${encodeURIComponent(requestCursor)}` : ""}`
+    const url = `/api/places?${request.key}${requestCursor ? `&cursor=${encodeURIComponent(requestCursor)}` : ""}`
     void fetch(url, { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new TypeError("Pilot places unavailable")

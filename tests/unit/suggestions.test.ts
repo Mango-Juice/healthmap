@@ -89,31 +89,30 @@ it("rejects oversized bodies and invalid JSON before storage", async () => {
   expect((await POST(request(JSON.stringify({ ...input, text: "short" })))).status).toBe(400)
 })
 
-it("uses service persistence for enabled Preview and rejects production Pilot scope", async () => {
+it("uses service persistence on configured Preview and Production without a scope", async () => {
   const http = await import("../../lib/http/request")
   const { submitSuggestion } = await import("../../lib/suggestions/server")
   const rpc = vi.spyOn(http, "requestJson").mockResolvedValue("queued")
   vi.stubEnv("VERCEL", "1")
   vi.stubEnv("VERCEL_ENV", "preview")
   vi.stubEnv("NODE_ENV", "production")
-  vi.stubEnv("HEALTHMAP_PILOT_ENABLED", "1")
   vi.stubEnv("HEALTHMAP_SUGGESTION_HASH_SECRET", "LOCAL_TEST_ONLY_SECRET_32_CHARACTERS")
   vi.stubEnv("HEALTHMAP_SUGGESTION_SERVICE_KEY", "LOCAL_TEST_ONLY_NO_NETWORK")
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.com")
   try {
-    const request = new Request("https://example.com/api/suggestions?scope=pilot")
+    const request = new Request("https://example.com/api/suggestions")
     expect(await submitSuggestion(request, SuggestionSchema.parse(input))).toBe("queued")
     expect(rpc).toHaveBeenCalledOnce()
     vi.stubEnv("VERCEL_ENV", "production")
-    expect(await submitSuggestion(request, SuggestionSchema.parse(input))).toBeNull()
-    expect(rpc).toHaveBeenCalledOnce()
+    expect(await submitSuggestion(request, SuggestionSchema.parse(input))).toBe("queued")
+    expect(rpc).toHaveBeenCalledTimes(2)
   } finally {
     rpc.mockRestore()
     vi.unstubAllEnvs()
   }
 })
 
-it("uses the secret API key without a JWT header for public Pilot submissions", async () => {
+it("uses the secret API key without a JWT header for public submissions", async () => {
   const { submitSuggestion } = await import("../../lib/suggestions/server")
   const gateway = vi
     .spyOn(globalThis, "fetch")
@@ -125,18 +124,34 @@ it("uses the secret API key without a JWT header for public Pilot submissions", 
   vi.stubEnv("VERCEL", "1")
   vi.stubEnv("VERCEL_ENV", "production")
   vi.stubEnv("NODE_ENV", "production")
-  vi.stubEnv("HEALTHMAP_PUBLIC_PILOT", "1")
   vi.stubEnv("HEALTHMAP_SUGGESTION_HASH_SECRET", "LOCAL_TEST_ONLY_SECRET_32_CHARACTERS")
   vi.stubEnv("HEALTHMAP_SUGGESTION_SERVICE_KEY", "sb_secret_LOCAL_TEST_ONLY")
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.com")
   try {
-    const request = new Request("https://example.com/api/suggestions?scope=pilot")
+    const request = new Request("https://example.com/api/suggestions")
     expect(await submitSuggestion(request, SuggestionSchema.parse(input))).toBe("queued")
     expect(gateway).toHaveBeenCalledOnce()
     const headers = new Headers(gateway.mock.calls[0]?.[1]?.headers)
     expect(headers.get("apikey")).toBe("sb_secret_LOCAL_TEST_ONLY")
   } finally {
     gateway.mockRestore()
+    vi.unstubAllEnvs()
+  }
+})
+
+it("keeps local suggestion storage limited to loopback development", async () => {
+  const { isLocalSuggestionDevelopment } = await import("../../lib/suggestions/server")
+  vi.stubEnv("NODE_ENV", "development")
+  vi.stubEnv("VERCEL", "")
+  try {
+    expect(isLocalSuggestionDevelopment(new URL("http://127.0.0.1/api/suggestions"))).toBe(true)
+    expect(isLocalSuggestionDevelopment(new URL("https://example.com/api/suggestions"))).toBe(false)
+    vi.stubEnv("VERCEL", "1")
+    expect(isLocalSuggestionDevelopment(new URL("http://127.0.0.1/api/suggestions"))).toBe(false)
+    vi.stubEnv("VERCEL", "")
+    vi.stubEnv("NODE_ENV", "production")
+    expect(isLocalSuggestionDevelopment(new URL("http://127.0.0.1/api/suggestions"))).toBe(false)
+  } finally {
     vi.unstubAllEnvs()
   }
 })

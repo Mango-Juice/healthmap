@@ -1,4 +1,3 @@
-import { isPilotEnabled } from "../../../lib/pilot/environment"
 import { queryPilotCatalog } from "../../../lib/pilot/query"
 import { parsePilotQuery } from "../../../lib/pilot/query-contract"
 import { readPilotCatalog } from "../../../lib/pilot/server"
@@ -6,8 +5,6 @@ import { readPilotCatalog } from "../../../lib/pilot/server"
 export const dynamic = "force-dynamic"
 export function GET(request: Request) {
   const headers = { "Cache-Control": "private, no-store" }
-  if (!isPilotEnabled(process.env))
-    return Response.json({ error: "not_found", retry: false }, { status: 404, headers })
   const query = parsePilotQuery(new URL(request.url).searchParams)
   if (!query.success)
     return Response.json({ error: "invalid_request", retry: false }, { status: 400, headers })

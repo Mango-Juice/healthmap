@@ -5,7 +5,6 @@ import styles from "../../components/suggestions/suggestion-form.module.css"
 import { ArrowLeftIcon } from "../../components/ui/health-map-icons"
 import { PlaceIdSchema } from "../../lib/domain/contracts"
 import { menusForPilotPlace } from "../../lib/pilot/discovery"
-import { isPilotEnabled } from "../../lib/pilot/environment"
 import { buildPilotPlaceInfoUrl } from "../../lib/pilot/place-links"
 import { readPilotCatalog } from "../../lib/pilot/server"
 import { SuggestionUrlSchema } from "../../lib/suggestions/contracts"
@@ -22,9 +21,8 @@ export default async function SuggestPage({
   readonly searchParams: Promise<Readonly<Record<string, string | string[] | undefined>>>
 }) {
   const query = await searchParams
-  const pilot = query["scope"] === "pilot" && isPilotEnabled(process.env)
   const id = PlaceIdSchema.safeParse(query["placeId"])
-  const catalog = pilot && id.success ? readPilotCatalog() : null
+  const catalog = id.success ? readPilotCatalog() : null
   const selected =
     catalog && id.success && menusForPilotPlace(catalog, id.data).length > 0
       ? catalog.places.find((place) => place.id === id.data)
@@ -35,7 +33,7 @@ export default async function SuggestPage({
     : legacyUrl.success
       ? legacyUrl.data
       : ""
-  const local = pilot && process.env["NODE_ENV"] === "development" && !process.env["VERCEL"]
+  const local = process.env["NODE_ENV"] === "development" && !process.env["VERCEL"]
   const configured =
     (process.env["HEALTHMAP_SUGGESTION_HASH_SECRET"]?.length ?? 0) >= 32 &&
     Boolean(process.env["HEALTHMAP_SUGGESTION_SERVICE_KEY"]) &&
@@ -45,7 +43,7 @@ export default async function SuggestPage({
     <main className={styles["page"]}>
       <div className={styles["container"]}>
         <nav aria-label="제안 페이지" className={styles["topbar"]}>
-          <Link href={pilot ? "/pilot" : "/"}>
+          <Link href="/">
             <ArrowLeftIcon />
             <span>지도로 돌아가기</span>
           </Link>
@@ -67,7 +65,6 @@ export default async function SuggestPage({
             ) : null}
           </header>
           <SuggestionForm
-            pilot={pilot}
             placeUrl={placeUrl}
             context={selected ? { name: selected.name, address: selected.address } : undefined}
             accepting={accepting}

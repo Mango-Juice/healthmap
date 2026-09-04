@@ -24,13 +24,14 @@ import { PilotSearchControls } from "./pilot-search-controls"
 import { usePilotLocation } from "./use-pilot-location"
 import { usePilotMapGesture } from "./use-pilot-map-gesture"
 import { usePilotQuery } from "./use-pilot-query"
+import { usePilotSheetMotion } from "./use-pilot-sheet-motion"
 import { usePilotViewport } from "./use-pilot-viewport"
 
 type Properties = {
   readonly clientId?: string | undefined
 }
 
-export function PilotDiscovery({ clientId }: Properties) {
+export function FoodMap({ clientId }: Properties) {
   const [filter, setFilter] = useState<PilotDiscoveryFilter>("all")
   const [ingredient, setIngredient] = useState<PilotIngredientFilter>("all")
   const [query, setQuery] = useState("")
@@ -65,6 +66,7 @@ export function PilotDiscovery({ clientId }: Properties) {
   }, [empty])
   const selectedResult = visibleResults.find((result) => result.place.id === selectedId)
   const selectedPlace = selectedResult?.place
+  const sheet = usePilotSheetMotion(trayExpanded, selectedPlace?.id)
   const openPlace = useCallback(
     (placeId: PilotPlace["id"], trigger?: HTMLElement): void => {
       viewport.interact()
@@ -182,7 +184,7 @@ export function PilotDiscovery({ clientId }: Properties) {
       <ApplicationMasthead
         compact
         action={
-          <Link className={styles["suggestAction"]} href="/suggest?scope=pilot" prefetch={false}>
+          <Link className={styles["suggestAction"]} href="/suggest" prefetch={false}>
             <PlusIcon />
             <span>제안하기</span>
           </Link>
@@ -196,13 +198,14 @@ export function PilotDiscovery({ clientId }: Properties) {
         <PilotFilters onSelect={changeFilter} selected={filter} />
       </div>
       <div className={styles["workspace"]}>
-        <div className={styles["panelStack"]}>
+        <div className={styles["panelStack"]} ref={sheet.stackRef}>
           <PilotMapDock
             emptyHint={empty ? emptyHint : undefined}
             pending={map.state === "ready" && viewport.pending}
             onArea={viewport.applyArea}
           />
           <aside
+            ref={sheet.panelRef}
             aria-label="건강식 검색 결과"
             className={styles["panel"]}
             data-expanded={trayExpanded}

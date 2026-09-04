@@ -1,8 +1,7 @@
-import { PlaceIdSchema } from "../../../../../lib/domain/contracts"
-import { menusForPilotPlace } from "../../../../../lib/pilot/discovery"
-import { isPilotEnabled } from "../../../../../lib/pilot/environment"
-import { toPilotMenuDto, toPilotPlaceDto } from "../../../../../lib/pilot/projection"
-import { readPilotCatalog } from "../../../../../lib/pilot/server"
+import { PlaceIdSchema } from "../../../../lib/domain/contracts"
+import { menusForPilotPlace } from "../../../../lib/pilot/discovery"
+import { toPilotMenuDto, toPilotPlaceDto } from "../../../../lib/pilot/projection"
+import { readPilotCatalog } from "../../../../lib/pilot/server"
 
 export const dynamic = "force-dynamic"
 export async function GET(
@@ -10,8 +9,6 @@ export async function GET(
   context: { readonly params: Promise<{ readonly id: string }> },
 ) {
   const headers = { "Cache-Control": "private, no-store" }
-  if (!isPilotEnabled(process.env))
-    return Response.json({ error: "not_found", retry: false }, { status: 404, headers })
   const id = PlaceIdSchema.safeParse((await context.params).id)
   if (!id.success)
     return Response.json({ error: "invalid_request", retry: false }, { status: 400, headers })

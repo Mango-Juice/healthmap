@@ -651,7 +651,7 @@
 
 .placeHeading {
   display: grid;
-  gap: var(--hm-space-2);
+  gap: 0;
   min-inline-size: 0;
 }
 
@@ -674,7 +674,7 @@
 
 .placeHeading button {
   align-items: center;
-  background: var(--hm-surface-subtle);
+  background: transparent;
   border: 0;
   border-radius: var(--hm-radius-control);
   color: var(--hm-ink-muted);
@@ -686,11 +686,19 @@
   font-size: var(--hm-type-caption);
   min-block-size: var(--hm-control-min);
   padding-inline: var(--hm-space-2);
+  padding-block: 0;
 }
 
 .placeHeading button:hover {
-  background: var(--hm-green-100);
   color: var(--hm-green-950);
+  text-decoration: underline;
+  text-underline-offset: var(--hm-space-1);
+}
+
+@media (min-width: 900px) {
+  .detailBody {
+    padding-block-start: var(--hm-space-1);
+  }
 }
 
 .placeHeading button svg {
@@ -1047,11 +1055,21 @@
     justify-content: flex-end;
     pointer-events: none;
     z-index: var(--hm-layer-detail);
+    transform: translateY(
+      var(
+        --hm-pilot-sheet-offset,
+        calc(
+          min(var(--hm-pilot-sheet-expanded), calc(100% - var(--hm-space-6))) -
+          var(--hm-pilot-sheet-peek)
+        )
+      )
+    );
+    transition: transform var(--hm-motion-standard) var(--hm-ease-out);
   }
 
   .panel {
-    block-size: var(--hm-pilot-sheet-peek);
-    flex: 0 1 auto;
+    block-size: min(var(--hm-pilot-sheet-expanded), calc(100% - var(--hm-space-6)));
+    flex: 0 0 auto;
     border: var(--hm-border-width) solid var(--hm-border);
     border-radius: var(--hm-radius-panel);
     box-shadow: var(--hm-shadow-detail);
@@ -1062,25 +1080,17 @@
     pointer-events: auto;
   }
 
-  .panel[data-expanded="true"] {
-    block-size: min(var(--hm-pilot-sheet-expanded), calc(100% - var(--hm-space-6)));
-    margin-block-end: var(--hm-space-3);
-  }
-
   .panel[data-selected="true"] {
     grid-template-rows: var(--hm-control-min) minmax(0, 1fr);
   }
 
-  .panel[data-selected="true"][data-expanded="false"] {
-    block-size: auto;
-    max-block-size: min(var(--hm-pilot-place-preview), 42dvb);
-    display: flex;
-    flex-direction: column;
-    margin-block-end: var(--hm-space-3);
-  }
-
   .panel[data-selected="true"][data-expanded="false"] .panelContent {
-    flex: 1;
+    max-block-size: calc(
+      min(var(--hm-pilot-place-preview), 42dvb) -
+      var(--hm-control-min) -
+      2 *
+      var(--hm-border-width)
+    );
   }
   .detail[data-expanded="false"] {
     block-size: auto;
@@ -1312,6 +1322,7 @@
   .list button,
   .visitAction,
   .panel,
+  .panelStack,
   .drawerBar button svg {
     transition-duration: var(--hm-motion-reduced);
   }

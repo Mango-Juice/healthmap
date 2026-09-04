@@ -9,13 +9,12 @@ import { ActionButton, StatusAlert } from "../ui/health-map-primitives"
 import styles from "./suggestion-form.module.css"
 
 type Properties = {
-  readonly pilot: boolean
   readonly placeUrl: string
   readonly context?: { readonly name: string; readonly address: string } | undefined
   readonly accepting: boolean
 }
 
-export function SuggestionForm({ pilot, placeUrl, context, accepting }: Properties) {
+export function SuggestionForm({ placeUrl, context, accepting }: Properties) {
   const [kind, setKind] = useState<Suggestion["kind"]>(placeUrl ? "menu_correction" : "place_add")
   const [textLength, setTextLength] = useState(0)
   const [message, setMessage] = useState("")
@@ -55,7 +54,7 @@ export function SuggestionForm({ pilot, placeUrl, context, accepting }: Properti
         setMessage("")
         try {
           const response = await requestJson(
-            `/api/suggestions${pilot ? "?scope=pilot" : ""}`,
+            "/api/suggestions",
             z.object({ state: z.enum(["queued", "duplicate"]) }).strict(),
             {
               method: "POST",

@@ -30,18 +30,7 @@
     gap: var(--hm-space-2);
     padding: 0 var(--hm-space-3);
     min-inline-size: 0;
-    touch-action: none;
-    position: relative;
-  }
-  .grabber {
-    position: absolute;
-    inset-block-start: var(--hm-space-1);
-    inset-inline-start: 50%;
-    transform: translateX(-50%);
-    inline-size: var(--hm-space-8);
-    block-size: var(--hm-space-1);
-    background: var(--hm-border-strong);
-    border-radius: var(--hm-radius-control);
+    touch-action: manipulation;
   }
   .count {
     font-size: var(--hm-type-caption);
@@ -53,6 +42,9 @@
   .bar svg {
     inline-size: var(--hm-icon-md);
     block-size: var(--hm-icon-md);
+  }
+  .toggle svg {
+    transition: transform var(--hm-motion-standard) var(--hm-ease-out);
   }
   .bar[data-selected="true"] .toggle {
     justify-content: space-between;
@@ -69,5 +61,11 @@
     flex: 0 0 var(--hm-control-min);
     display: grid;
     place-items: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toggle svg {
+    transition: none;
   }
 }

@@ -24,13 +24,13 @@ test("environment validation reports names but never values", () => {
     ...safeEnvironment,
     NEXT_PUBLIC_POSTHOG_KEY: "do-not-print-this-value",
     NEXT_PUBLIC_SITE_URL: "not-a-url",
-    NEXT_PUBLIC_SUPABASE_URL: "",
+    NEXT_PUBLIC_NAVER_MAP_CLIENT_ID: "",
   })
   const message = formatValidationFailure(result)
 
-  assert.deepEqual(result.missing, ["NEXT_PUBLIC_SUPABASE_URL"])
+  assert.deepEqual(result.missing, ["NEXT_PUBLIC_NAVER_MAP_CLIENT_ID"])
   assert.deepEqual(result.malformed, ["NEXT_PUBLIC_SITE_URL"])
-  assert.match(message, /NEXT_PUBLIC_SUPABASE_URL/)
+  assert.match(message, /NEXT_PUBLIC_NAVER_MAP_CLIENT_ID/)
   assert.match(message, /NEXT_PUBLIC_SITE_URL/)
   assert.doesNotMatch(message, /do-not-print-this-value|not-a-url/)
 })
@@ -39,22 +39,20 @@ test("environment validation accepts safe configured placeholders", () => {
   assert.deepEqual(validatePublicEnvironment(safeEnvironment), { malformed: [], missing: [] })
 })
 
-test("public Pilot requires its real map and site configuration without an unused database", () => {
-  const pilot = {
-    HEALTHMAP_PUBLIC_PILOT: "1",
+test("root map requires only its map and site configuration", () => {
+  const map = {
     NEXT_PUBLIC_NAVER_MAP_CLIENT_ID: safeEnvironment.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID,
     NEXT_PUBLIC_SITE_URL: safeEnvironment.NEXT_PUBLIC_SITE_URL,
   }
-  assert.deepEqual(validatePublicEnvironment(pilot), { malformed: [], missing: [] })
+  assert.deepEqual(validatePublicEnvironment(map), { malformed: [], missing: [] })
   assert.deepEqual(
-    validatePublicEnvironment({ ...pilot, NEXT_PUBLIC_NAVER_MAP_CLIENT_ID: "" }).missing,
+    validatePublicEnvironment({ ...map, NEXT_PUBLIC_NAVER_MAP_CLIENT_ID: "" }).missing,
     ["NEXT_PUBLIC_NAVER_MAP_CLIENT_ID"],
   )
-  assert.ok(
-    validatePublicEnvironment({ ...pilot, HEALTHMAP_PUBLIC_PILOT: "0" }).missing.includes(
-      "NEXT_PUBLIC_SUPABASE_URL",
-    ),
-  )
+  assert.deepEqual(validatePublicEnvironment({ ...map, HEALTHMAP_PUBLIC_PILOT: "0" }), {
+    malformed: [],
+    missing: [],
+  })
 })
 
 test("environment validation rejects remote HTTP and script-shaped origins by name only", () => {

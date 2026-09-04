@@ -1,9 +1,6 @@
 import { expect, test } from "@playwright/test"
 
-const routes = [
-  { heading: "건강식 지도", path: "/" },
-  { heading: "건강식 지도", path: "/pilot" },
-] as const
+const routes = [{ heading: "건강식 지도", path: "/" }] as const
 
 const viewports = [
   { height: 812, name: "mobile", width: 375 },

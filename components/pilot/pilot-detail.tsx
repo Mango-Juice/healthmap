@@ -28,7 +28,7 @@ export function PilotDetail({ expanded, onClose, result, titleRef }: Properties)
   const [detail, setDetail] = useState<PilotDetailResponse>()
   useEffect(() => {
     const controller = new AbortController()
-    void fetch(`/api/pilot/places/${place.id}`, { signal: controller.signal })
+    void fetch(`/api/places/${place.id}`, { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) return
         const parsed = PilotDetailResponseSchema.safeParse(await response.json())
@@ -132,7 +132,7 @@ export function PilotDetail({ expanded, onClose, result, titleRef }: Properties)
             ) : null}
             <Link
               className={styles["suggestionLink"]}
-              href={`/suggest?${new URLSearchParams({ scope: "pilot", placeId: place.id })}`}
+              href={`/suggest?${new URLSearchParams({ placeId: place.id })}`}
               prefetch={false}
             >
               바뀐 메뉴 알려주기
