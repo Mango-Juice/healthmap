@@ -118,7 +118,7 @@ export function PilotResults({
                     onClick={(event) => onSelect(place.id, event.currentTarget)}
                     type="button"
                   >
-                    <PilotThumbnail media={place.media} />
+                    <PilotThumbnail result={result} />
                     <span className={styles["cardHeading"]}>
                       <strong>{place.name}</strong>
                       <ChevronRightIcon />

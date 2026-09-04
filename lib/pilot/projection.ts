@@ -3,6 +3,18 @@ import type { PilotMenuDto, PilotPlaceDto } from "./dto"
 import { canonicalPilotRegion } from "./region"
 
 export const regionForPlace = (place: PilotPlace): string => canonicalPilotRegion(place.address)
+export const selectPilotMedia = (
+  media: PilotPlace["media"],
+  matchingMenuIds: readonly PilotMenu["id"][],
+): PilotPlace["media"][number] | undefined => {
+  const matching = new Set(matchingMenuIds)
+  return (
+    media.find(
+      (candidate) =>
+        candidate.subject === "menu" && candidate.menuIds.some((menuId) => matching.has(menuId)),
+    ) ?? media.find((candidate) => candidate.subject === "venue")
+  )
+}
 export const toPilotPlaceDto = (place: PilotPlace): PilotPlaceDto => ({
   id: place.id,
   slug: place.slug,

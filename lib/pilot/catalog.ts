@@ -92,6 +92,20 @@ export const PilotCatalogSchema = z
       context.addIssue({ code: "custom", message: "Pilot menu parent is missing" })
     if (catalog.places.some((place) => !parentIds.has(place.id)))
       context.addIssue({ code: "custom", message: "Pilot place requires a menu" })
+    const menuIdsByPlace = new Map<PilotPlace["id"], Set<PilotMenu["id"]>>()
+    for (const menu of catalog.menus) {
+      const menuIds = menuIdsByPlace.get(menu.placeId) ?? new Set<PilotMenu["id"]>()
+      menuIds.add(menu.id)
+      menuIdsByPlace.set(menu.placeId, menuIds)
+    }
+    if (
+      catalog.places.some((place) =>
+        place.media.some((media) =>
+          media.menuIds.some((menuId) => !menuIdsByPlace.get(place.id)?.has(menuId)),
+        ),
+      )
+    )
+      context.addIssue({ code: "custom", message: "Pilot media menu belongs to another place" })
     const asOf = Date.parse(catalog.asOf)
     if (
       catalog.menus.some((menu) =>

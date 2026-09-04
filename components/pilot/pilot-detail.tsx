@@ -11,6 +11,7 @@ import {
   type PilotPlaceResultDto as PilotResult,
 } from "../../lib/pilot/dto"
 import { buildPilotPlaceInfoUrl } from "../../lib/pilot/place-links"
+import { selectPilotMedia } from "../../lib/pilot/projection"
 import { ArrowLeftIcon, ArrowUpRightIcon, NavigationIcon } from "../ui/health-map-icons"
 import styles from "./pilot-discovery.module.css"
 import { PilotMenuList } from "./pilot-menu-list"
@@ -43,7 +44,7 @@ export function PilotDetail({ expanded, onClose, result, titleRef }: Properties)
   const matchingMenus = menus.filter((menu) => result.matchingMenuIds.includes(menu.id))
   const otherMenus = menus.filter((menu) => !result.matchingMenuIds.includes(menu.id))
   const firstMenu = matchingMenus[0]
-  const image = place.media[0]
+  const image = selectPilotMedia(place.media, result.matchingMenuIds)
   const imageIsVisible = image !== undefined && image.url !== failedImageUrl
   const directions = buildNaverRouteDirections(place)
   const placeUrl = buildPilotPlaceInfoUrl(place)
@@ -83,10 +84,9 @@ export function PilotDetail({ expanded, onClose, result, titleRef }: Properties)
                     sizes="(max-width: 899px) 100vw, 352px"
                     src={image.url}
                     width={800}
-                    unoptimized
                   />
                 </div>
-                {image.scope === "brand" ? <figcaption>브랜드 공통 메뉴 사진</figcaption> : null}
+                <figcaption>{image.attribution}</figcaption>
               </figure>
             ) : null}
             <PilotMenuList menus={matchingMenus} title="메뉴 둘러보기" />
