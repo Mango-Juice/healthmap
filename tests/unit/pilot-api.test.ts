@@ -17,7 +17,7 @@ describe("place HTTP handlers", () => {
     const response = getList(new Request("http://localhost/api/places?limit=1"))
     expect(response.status).toBe(200)
     const body = await response.text()
-    expect(body).toContain('"total":465')
+    expect(body).toContain('"total":676')
     expect(body).not.toContain('"evidence"')
     expect(body).not.toContain('"rawText"')
     expect(body).not.toContain('"sourceSha256"')
