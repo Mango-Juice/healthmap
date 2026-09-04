@@ -1,0 +1,295 @@
+.page {
+  min-block-size: 100dvb;
+  color: var(--hm-ink);
+  background: var(--hm-canvas);
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+
+.container {
+  max-inline-size: var(--hm-content-max);
+  margin-inline: auto;
+  padding: var(--hm-space-6) var(--hm-space-8) var(--hm-space-12);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--hm-space-4);
+  margin-block-end: var(--hm-space-8);
+  color: var(--hm-green-800);
+  font-size: var(--hm-type-label);
+}
+
+.topbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--hm-space-2);
+  min-block-size: var(--hm-control-min);
+  color: inherit;
+  text-decoration: none;
+}
+
+.topbar a:hover {
+  text-decoration: underline;
+  text-underline-offset: var(--hm-space-1);
+}
+
+.topbar svg {
+  inline-size: var(--hm-icon-sm);
+  block-size: var(--hm-icon-sm);
+}
+
+.topbar > span {
+  font-weight: var(--hm-weight-action);
+  white-space: nowrap;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: var(--hm-space-12);
+  align-items: start;
+}
+
+.intro {
+  padding-block: var(--hm-space-4);
+}
+
+.intro h1 {
+  margin: 0 0 var(--hm-space-4);
+  font-size: var(--hm-type-title);
+  line-height: var(--hm-leading-title);
+  font-weight: var(--hm-weight-action);
+}
+
+.intro p {
+  margin: 0;
+  color: var(--hm-ink-muted);
+  font-size: var(--hm-type-body);
+  line-height: var(--hm-leading-body);
+}
+
+.reviewNote {
+  margin-block-start: var(--hm-space-6);
+  padding-block-start: var(--hm-space-4);
+  border-block-start: var(--hm-border-width) solid var(--hm-border);
+}
+
+.reviewNote p {
+  font-size: var(--hm-type-label);
+}
+
+.availability {
+  margin-block-start: var(--hm-space-6);
+  border-inline-start: var(--hm-border-accent) solid var(--hm-border-strong);
+  padding-inline-start: var(--hm-space-3);
+}
+
+.availability strong {
+  display: block;
+  margin-block-end: var(--hm-space-1);
+  font-size: var(--hm-type-label);
+}
+
+.availability p {
+  font-size: var(--hm-type-label);
+  line-height: var(--hm-leading-tight);
+}
+
+.form {
+  min-inline-size: 0;
+  display: grid;
+  gap: var(--hm-space-6);
+  padding: var(--hm-space-8);
+  border: var(--hm-border-width) solid var(--hm-border);
+  border-radius: var(--hm-radius-panel);
+  background: var(--hm-surface);
+}
+
+.kindGroup {
+  min-inline-size: 0;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.kindGroup legend,
+.field > label {
+  font-size: var(--hm-type-label);
+  font-weight: var(--hm-weight-label);
+  line-height: var(--hm-leading-tight);
+}
+
+.kindGroup legend {
+  margin-block-end: var(--hm-space-2);
+}
+
+.kindChoices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--hm-space-2);
+}
+
+.kindChoices label {
+  display: flex;
+  align-items: center;
+  gap: var(--hm-space-2);
+  min-block-size: var(--hm-control-min);
+  padding: var(--hm-space-2) var(--hm-space-3);
+  border: var(--hm-border-width) solid var(--hm-border);
+  border-radius: var(--hm-radius-card);
+  font-size: var(--hm-type-label);
+  cursor: pointer;
+}
+
+.kindChoices label:has(input:checked) {
+  background: var(--hm-green-100);
+  border-color: var(--hm-green-800);
+  font-weight: var(--hm-weight-label);
+}
+
+.kindChoices input {
+  inline-size: var(--hm-icon-sm);
+  block-size: var(--hm-icon-sm);
+  flex: 0 0 auto;
+  margin: 0;
+  accent-color: var(--hm-green-800);
+}
+
+.placeContext {
+  display: grid;
+  grid-template-columns: var(--hm-icon-md) minmax(0, 1fr);
+  gap: var(--hm-space-3);
+  padding-block-end: var(--hm-space-4);
+  border-block-end: var(--hm-border-width) solid var(--hm-border);
+}
+
+.placeContext svg {
+  inline-size: var(--hm-icon-md);
+  block-size: var(--hm-icon-md);
+  color: var(--hm-green-800);
+}
+
+.placeContext strong {
+  display: block;
+  font-size: var(--hm-type-body);
+  line-height: var(--hm-leading-body);
+  margin-block: var(--hm-space-1);
+}
+
+.placeContext p {
+  margin: 0;
+  font-size: var(--hm-type-label);
+  line-height: var(--hm-leading-tight);
+  color: var(--hm-ink-muted);
+}
+
+.field {
+  display: grid;
+  gap: var(--hm-space-2);
+  min-inline-size: 0;
+}
+
+.field input,
+.field textarea {
+  font: inherit;
+  font-size: var(--hm-type-body);
+  line-height: var(--hm-leading-body);
+  inline-size: 100%;
+  min-inline-size: 0;
+  min-block-size: var(--hm-control-min);
+  padding: var(--hm-space-2) var(--hm-space-3);
+  border: var(--hm-border-width) solid var(--hm-border-strong);
+  border-radius: var(--hm-radius-card);
+  background: var(--hm-surface);
+  color: inherit;
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+  color: var(--hm-ink-muted);
+}
+
+.field textarea {
+  resize: vertical;
+}
+
+.help,
+.count {
+  margin: 0;
+  color: var(--hm-ink-muted);
+  font-size: var(--hm-type-caption);
+  line-height: var(--hm-leading-tight);
+}
+
+.fieldFoot,
+.submitRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--hm-space-2);
+}
+
+.count {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.submitRow {
+  border-block-start: var(--hm-border-width) solid var(--hm-border);
+  padding-block-start: var(--hm-space-4);
+  gap: var(--hm-space-4);
+}
+
+.submitRow button {
+  flex: 0 0 auto;
+}
+
+.form :focus-visible,
+.topbar a:focus-visible {
+  outline: var(--hm-focus-ring) solid var(--hm-blue);
+  outline-offset: var(--hm-focus-ring);
+}
+
+@media (max-width: 899px) {
+  .container {
+    padding: var(--hm-space-3) var(--hm-space-4) var(--hm-space-8);
+  }
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--hm-space-6);
+  }
+  .topbar {
+    margin-block-end: var(--hm-space-3);
+  }
+  .intro {
+    padding-block: 0;
+  }
+  .intro h1 {
+    margin-block-end: var(--hm-space-2);
+  }
+  .reviewNote {
+    margin-block-start: var(--hm-space-3);
+    padding-block-start: var(--hm-space-3);
+  }
+  .form {
+    padding: var(--hm-space-4);
+    gap: var(--hm-space-6);
+  }
+  .fieldFoot,
+  .submitRow {
+    flex-wrap: wrap;
+  }
+  .submitRow button {
+    inline-size: 100%;
+  }
+}
+
+@media (forced-colors: active) {
+  .form :focus-visible,
+  .topbar a:focus-visible {
+    outline-color: Highlight;
+  }
+}
