@@ -112,3 +112,31 @@ it("uses service persistence for enabled Preview and rejects production Pilot sc
     vi.unstubAllEnvs()
   }
 })
+
+it("uses the secret API key without a JWT header for public Pilot submissions", async () => {
+  const { submitSuggestion } = await import("../../lib/suggestions/server")
+  const gateway = vi
+    .spyOn(globalThis, "fetch")
+    .mockImplementation(async (_url, options) =>
+      new Headers(options?.headers).has("authorization")
+        ? new Response("Invalid JWT", { status: 401 })
+        : Response.json("queued"),
+    )
+  vi.stubEnv("VERCEL", "1")
+  vi.stubEnv("VERCEL_ENV", "production")
+  vi.stubEnv("NODE_ENV", "production")
+  vi.stubEnv("HEALTHMAP_PUBLIC_PILOT", "1")
+  vi.stubEnv("HEALTHMAP_SUGGESTION_HASH_SECRET", "LOCAL_TEST_ONLY_SECRET_32_CHARACTERS")
+  vi.stubEnv("HEALTHMAP_SUGGESTION_SERVICE_KEY", "sb_secret_LOCAL_TEST_ONLY")
+  vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.com")
+  try {
+    const request = new Request("https://example.com/api/suggestions?scope=pilot")
+    expect(await submitSuggestion(request, SuggestionSchema.parse(input))).toBe("queued")
+    expect(gateway).toHaveBeenCalledOnce()
+    const headers = new Headers(gateway.mock.calls[0]?.[1]?.headers)
+    expect(headers.get("apikey")).toBe("sb_secret_LOCAL_TEST_ONLY")
+  } finally {
+    gateway.mockRestore()
+    vi.unstubAllEnvs()
+  }
+})

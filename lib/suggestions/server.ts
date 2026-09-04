@@ -35,7 +35,11 @@ export const submitSuggestion = async (request: Request, submission: Suggestion)
   if (endpoint.protocol !== "https:") return null
   return requestJson(endpoint.toString(), SuggestionResultSchema, {
     method: "POST",
-    headers: { apikey: key, authorization: `Bearer ${key}`, "content-type": "application/json" },
+    headers: {
+      apikey: key,
+      ...(key.startsWith("sb_secret_") ? {} : { authorization: `Bearer ${key}` }),
+      "content-type": "application/json",
+    },
     body: JSON.stringify({
       p_submission: submission,
       p_actor: actor,
