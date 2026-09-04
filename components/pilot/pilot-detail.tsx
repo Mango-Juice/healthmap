@@ -89,7 +89,7 @@ export function PilotDetail({ expanded, onClose, result, titleRef }: Properties)
                 {image.scope === "brand" ? <figcaption>브랜드 공통 메뉴 사진</figcaption> : null}
               </figure>
             ) : null}
-            <PilotMenuList menus={matchingMenus} title="여기서 먹을 수 있어요" />
+            <PilotMenuList menus={matchingMenus} title="메뉴 둘러보기" />
             <PilotMenuList menus={otherMenus} title="함께 살펴볼 메뉴" />
           </div>
           <div className={styles["visitActions"]}>

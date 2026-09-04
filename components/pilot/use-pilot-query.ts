@@ -17,6 +17,18 @@ type Query = {
   readonly ingredient: PilotIngredientFilter
 }
 
+type PilotRegionRequestConditions = Pick<Query, "filter" | "ingredient" | "query">
+
+export const buildPilotRegionRequestUrl = (input: PilotRegionRequestConditions): string => {
+  const params = new URLSearchParams({
+    mode: "regions",
+    filter: input.filter,
+    ingredient: input.ingredient,
+  })
+  if (input.query.trim()) params.set("query", input.query)
+  return `/api/places?${params.toString()}`
+}
+
 export function usePilotQuery(input: Query) {
   const [regions, setRegions] = useState<PilotRegionsResponse>()
   const [page, setPage] = useState<PilotPlacesResponse>()
@@ -26,6 +38,7 @@ export function usePilotQuery(input: Query) {
   const [retry, setRetry] = useState(0)
   const [cursor, setCursor] = useState<{ readonly key: string; readonly value: string }>()
   const active = useRef(0)
+  const regionsActive = useRef(0)
   const params = new URLSearchParams({
     mode: "places",
     filter: input.filter,
@@ -42,31 +55,48 @@ export function usePilotQuery(input: Query) {
   }
   const key = params.toString()
   const request = useMemo(() => ({ key, retry }), [key, retry])
-  const regionRequest = useMemo(() => ({ url: "/api/places?mode=regions", retry }), [retry])
+  const regionRequestUrl = useMemo(
+    () =>
+      buildPilotRegionRequestUrl({
+        query: input.query,
+        filter: input.filter,
+        ingredient: input.ingredient,
+      }),
+    [input.filter, input.ingredient, input.query],
+  )
+  const regionRequest = useMemo(() => ({ url: regionRequestUrl, retry }), [regionRequestUrl, retry])
   const [loadedKey, setLoadedKey] = useState(key)
   const current = loadedKey === key
   const requestCursor = cursor?.key === key ? cursor.value : undefined
   useEffect(() => {
     const controller = new AbortController()
+    const generation = ++regionsActive.current
+    setRegions(undefined)
     setRegionsFailed(false)
     void fetch(regionRequest.url, { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new TypeError("Pilot regions unavailable")
         const parsed = PilotRegionsResponseSchema.parse(await response.json())
-        if (!controller.signal.aborted) setRegions(parsed)
+        if (controller.signal.aborted || generation !== regionsActive.current) return
+        setRegions(parsed)
       })
       .catch((error: unknown) => {
-        if (error instanceof Error && !controller.signal.aborted) setRegionsFailed(true)
+        if (
+          error instanceof Error &&
+          !controller.signal.aborted &&
+          generation === regionsActive.current
+        )
+          setRegionsFailed(true)
       })
     return () => controller.abort()
   }, [regionRequest])
   useEffect(() => {
+    const generation = ++active.current
     if (!input.ready) {
       setFailed(false)
       return
     }
     const controller = new AbortController()
-    const generation = ++active.current
     if (!requestCursor) setCursor(undefined)
     setLoading(true)
     setFailed(false)
