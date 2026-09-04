@@ -1067,6 +1067,10 @@
     transition: transform var(--hm-motion-standard) var(--hm-ease-out);
   }
 
+  .panelStack[data-dragging="true"] {
+    transition: none;
+  }
+
   .panel {
     block-size: min(var(--hm-pilot-sheet-expanded), calc(100% - var(--hm-space-6)));
     flex: 0 0 auto;

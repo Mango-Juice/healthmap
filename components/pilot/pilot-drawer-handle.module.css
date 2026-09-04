@@ -30,7 +30,7 @@
     gap: var(--hm-space-2);
     padding: 0 var(--hm-space-3);
     min-inline-size: 0;
-    touch-action: manipulation;
+    touch-action: none;
   }
   .count {
     font-size: var(--hm-type-caption);

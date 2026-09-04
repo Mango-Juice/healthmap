@@ -1,5 +1,7 @@
 "use client"
 
+import type { ComponentProps } from "react"
+
 import { ChevronDownIcon, XIcon } from "../ui/health-map-icons"
 import styles from "./pilot-drawer-handle.module.css"
 
@@ -7,7 +9,15 @@ type Properties = {
   readonly count: number
   readonly loading: boolean
   readonly expanded: boolean
-  readonly onExpandedChange: (expanded: boolean) => void
+  readonly toggleProps: Pick<
+    ComponentProps<"button">,
+    | "onClick"
+    | "onLostPointerCapture"
+    | "onPointerCancel"
+    | "onPointerDown"
+    | "onPointerMove"
+    | "onPointerUp"
+  >
   readonly onClose: () => void
   readonly selectedName?: string | undefined
 }
@@ -15,7 +25,7 @@ export function PilotDrawerHandle({
   count,
   loading,
   expanded,
-  onExpandedChange,
+  toggleProps,
   onClose,
   selectedName,
 }: Properties) {
@@ -28,13 +38,13 @@ export function PilotDrawerHandle({
       data-testid="pilot-drawer-handle"
     >
       <button
+        {...toggleProps}
         className={styles["toggle"]}
         aria-controls="pilot-panel-content"
         aria-expanded={expanded}
         aria-busy={loading}
         aria-label={label}
         title={label}
-        onClick={() => onExpandedChange(!expanded)}
         type="button"
       >
         {selectedName ? (

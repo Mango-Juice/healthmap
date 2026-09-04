@@ -66,7 +66,11 @@ export function FoodMap({ clientId }: Properties) {
   }, [empty])
   const selectedResult = visibleResults.find((result) => result.place.id === selectedId)
   const selectedPlace = selectedResult?.place
-  const sheet = usePilotSheetMotion(trayExpanded, selectedPlace?.id)
+  const sheet = usePilotSheetMotion({
+    expanded: trayExpanded,
+    onExpandedChange: setTrayExpanded,
+    selectedId: selectedPlace?.id,
+  })
   const openPlace = useCallback(
     (placeId: PilotPlace["id"], trigger?: HTMLElement): void => {
       viewport.interact()
@@ -215,7 +219,7 @@ export function FoodMap({ clientId }: Properties) {
               count={catalog.total}
               loading={catalog.loading}
               expanded={trayExpanded}
-              onExpandedChange={setTrayExpanded}
+              toggleProps={sheet.toggleProps}
               onClose={closePlace}
               selectedName={selectedPlace?.name}
             />
