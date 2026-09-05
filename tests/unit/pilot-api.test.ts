@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { currentPilotCatalog, PilotCatalogSchema } from "../../lib/pilot/catalog"
-import { PilotPlacesResponseSchema } from "../../lib/pilot/dto"
+import { PilotPlaceDtoSchema, PilotPlacesResponseSchema } from "../../lib/pilot/dto"
 import pilotCatalogJson from "../../lib/pilot/pilot-catalog.json"
+import { toPilotPlaceDto, toSubwayStoreDto } from "../../lib/pilot/projection"
 import { SubwayStoreSnapshotSchema } from "../../lib/pilot/subway"
 import subwayStoresJson from "../../lib/pilot/subway-stores.json"
 
@@ -20,6 +21,28 @@ const subway = toSubwayStoreCatalog(SubwayStoreSnapshotSchema.parse(subwayStores
 beforeEach(() => vi.clearAllMocks())
 afterEach(() => vi.unstubAllEnvs())
 describe("place HTTP handlers", () => {
+  it("rejects store fields that contradict the listing kind", () => {
+    const place = catalog.places[0]
+    const store = subway.stores[0]
+    if (!place || !store) throw new Error("missing place DTO fixtures")
+    const menuDto = toPilotPlaceDto(place)
+    const storeDto = toSubwayStoreDto(store)
+
+    expect(
+      PilotPlaceDtoSchema.safeParse({
+        ...storeDto,
+        storeDescription: null,
+        officialStoreUrl: null,
+      }).success,
+    ).toBe(false)
+    expect(
+      PilotPlaceDtoSchema.safeParse({
+        ...menuDto,
+        storeDescription: storeDto.storeDescription,
+        officialStoreUrl: storeDto.officialStoreUrl,
+      }).success,
+    ).toBe(false)
+  })
   it("serves the public DTO without a mode flag or internal evidence", async () => {
     vi.stubEnv("VERCEL_ENV", "production")
     vi.mocked(readPilotCatalog).mockReturnValue(catalog)

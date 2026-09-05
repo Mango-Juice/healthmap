@@ -13,23 +13,39 @@ export const PilotMenuDtoSchema = z
     applicabilityNotice: z.string().nullable(),
   })
   .readonly()
+const PilotPlaceDtoBaseShape = {
+  id: PlaceIdSchema,
+  slug: PlaceSlugSchema,
+  name: z.string().min(1),
+  brandId: z.string().min(1).nullable(),
+  address: z.string().min(1),
+  latitude: z.number().finite().min(-90).max(90),
+  longitude: z.number().finite().min(-180).max(180),
+  region: z.string().min(1),
+  phone: z.string().nullable(),
+  naverPlaceUrl: z.string().nullable(),
+  media: z.array(PilotMediaSchema).readonly(),
+} as const
+const MenuEvidencePlaceDtoSchema = z.strictObject({
+  ...PilotPlaceDtoBaseShape,
+  listingKind: z.literal("menu_evidence"),
+  storeDescription: z.null().default(null),
+  officialStoreUrl: z.null().default(null),
+})
+const StoreOnlyPlaceDtoSchema = z.strictObject({
+  ...PilotPlaceDtoBaseShape,
+  listingKind: z.literal("store_only"),
+  storeDescription: z.string().min(1),
+  officialStoreUrl: ExactSubwayStoreUrlSchema,
+})
 export const PilotPlaceDtoSchema = z
-  .strictObject({
-    id: PlaceIdSchema,
-    slug: PlaceSlugSchema,
-    name: z.string().min(1),
-    brandId: z.string().min(1).nullable(),
-    address: z.string().min(1),
-    latitude: z.number().finite().min(-90).max(90),
-    longitude: z.number().finite().min(-180).max(180),
-    region: z.string().min(1),
-    phone: z.string().nullable(),
-    naverPlaceUrl: z.string().nullable(),
-    media: z.array(PilotMediaSchema).readonly(),
-    listingKind: z.enum(["menu_evidence", "store_only"]).default("menu_evidence"),
-    storeDescription: z.string().min(1).nullable().default(null),
-    officialStoreUrl: ExactSubwayStoreUrlSchema.nullable().default(null),
-  })
+  .preprocess(
+    (value) =>
+      typeof value === "object" && value !== null && !("listingKind" in value)
+        ? { ...value, listingKind: "menu_evidence" }
+        : value,
+    z.discriminatedUnion("listingKind", [MenuEvidencePlaceDtoSchema, StoreOnlyPlaceDtoSchema]),
+  )
   .readonly()
 const PointSchema = z
   .strictObject({
