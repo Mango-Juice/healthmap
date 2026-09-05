@@ -1,7 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { pilotMenuFactLabel, presentPilotMenuName } from "../../lib/pilot/discovery"
+import {
+  pilotMenuDietaryNote,
+  pilotMenuFactLabel,
+  presentPilotMenuName,
+} from "../../lib/pilot/discovery"
 import type { PilotMenuDto } from "../../lib/pilot/dto"
 import { PilotCategoryTags } from "./pilot-category-tags"
 import styles from "./pilot-discovery.module.css"
@@ -22,6 +26,7 @@ export function PilotMenuList({ menus, title }: Properties) {
       <ul>
         {visibleMenus.map((menu, index) => {
           const facts = pilotMenuFactLabel(menu)
+          const dietaryNote = pilotMenuDietaryNote(menu.facts.dietary)
           return (
             <li key={menu.id}>
               <span aria-hidden="true" className={styles["menuIndex"]}>
@@ -47,9 +52,7 @@ export function PilotMenuList({ menus, title }: Properties) {
                 {menu.facts.ordering_note ? (
                   <p className={styles["orderingNote"]}>{menu.facts.ordering_note}</p>
                 ) : null}
-                {menu.facts.dietary !== "unknown" ? (
-                  <p>채식 메뉴로 소개되어 있어요. 재료와 조리 방식은 주문할 때 확인해 주세요.</p>
-                ) : null}
+                {dietaryNote ? <p>{dietaryNote}</p> : null}
               </div>
             </li>
           )

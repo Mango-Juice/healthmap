@@ -74,9 +74,9 @@ test("covers every filter and keyboard marker selection", async ({ page }) => {
   await page.goto("/")
   for (const [label, count] of [
     ["샐러드·포케", 0],
-    ["밥·정식", 0],
+    ["밥·도시락", 0],
     ["잡곡·현미", 0],
-    ["채식 표기", 2],
+    ["채식 메뉴", 2],
     ["면", 0],
     ["국·탕", 0],
     ["샌드위치", 0],

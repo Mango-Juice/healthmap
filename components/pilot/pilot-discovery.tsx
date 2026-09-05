@@ -43,6 +43,7 @@ export function FoodMap({ clientId }: Properties) {
   const [selectedId, setSelectedId] = useState<PilotPlace["id"]>()
   const [trayExpanded, setTrayExpanded] = useState(false)
   const [locationRequest, setLocationRequest] = useState(0)
+  const [compactMarkers, setCompactMarkers] = useState(false)
   const expireLocationFailure = useCallback(() => setLocationRequest(0), [])
   const detailTitle = useRef<HTMLHeadingElement>(null)
   const recoveryHeading = useRef<HTMLHeadingElement>(null)
@@ -68,6 +69,13 @@ export function FoodMap({ clientId }: Properties) {
   >(undefined)
   const location = usePilotLocation({ onOutcome: analytics.locationResolved })
   const viewport = usePilotViewport(location.point)
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 767px)")
+    const update = () => setCompactMarkers(query.matches)
+    update()
+    query.addEventListener("change", update)
+    return () => query.removeEventListener("change", update)
+  }, [])
   const catalog = usePilotQuery({
     ready: true,
     bounds: viewport.bounds,
@@ -145,11 +153,13 @@ export function FoodMap({ clientId }: Properties) {
   const markers = useMemo(
     () =>
       visibleResults.map((result) => ({
+        compactIcon: compactMarkers,
         id: result.place.id,
         iconUrl: markerIconForMenus(
-          result.menus.filter((menu) => result.matchingMenuIds.includes(menu.id)),
+          result.menus,
           result.place.id === selectedId,
           filter,
+          result.place.brandId,
         ),
         label: result.place.name,
         latitude: result.place.latitude,
@@ -157,7 +167,7 @@ export function FoodMap({ clientId }: Properties) {
         onSelect: () => openPlace(result.place.id, "map"),
         zIndex: markerZIndex(result.place.id === selectedId),
       })),
-    [filter, openPlace, selectedId, visibleResults],
+    [compactMarkers, filter, openPlace, selectedId, visibleResults],
   )
   const map = useNaverMapAdapter({
     clientId,

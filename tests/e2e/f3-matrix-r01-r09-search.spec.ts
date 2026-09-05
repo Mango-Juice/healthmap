@@ -96,7 +96,7 @@ test("R05 normalized search and plant tag produce two results", async ({ page },
   const plantFilter = page.getByRole("combobox", { name: "식사 형태·선택" })
   await plantFilter.selectOption("plant_based")
   await expect(plantFilter).toHaveValue("plant_based")
-  await expect(plantFilter.locator("option:checked")).toHaveText("채식 표기")
+  await expect(plantFilter.locator("option:checked")).toHaveText("채식 메뉴")
   await expect(page.getByRole("status", { name: "검색 결과 수" })).toHaveText("2곳")
   await expect(page.locator("[data-test-naver-marker='true']")).toHaveCount(2)
   const observed = {

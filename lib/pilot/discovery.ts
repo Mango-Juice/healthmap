@@ -7,8 +7,8 @@ export const PILOT_DISCOVERY_FILTERS = [
   { label: "샐러드·포케", value: "salad_poke" },
   { label: "구이·찜", value: "grilled_steamed" },
   { label: "잡곡·현미", value: "whole_grain" },
-  { label: "채식 표기", value: "plant_based" },
-  { label: "밥·정식", value: "rice" },
+  { label: "채식 메뉴", value: "plant_based" },
+  { label: "밥·도시락", value: "rice" },
 ] as const
 export const PILOT_INGREDIENT_FILTERS = [
   { label: "재료 전체", value: "all" },
@@ -21,8 +21,8 @@ export type PilotIngredientFilter = (typeof PILOT_INGREDIENT_FILTERS)[number]["v
 export type PilotDiscoveryTag = Exclude<PilotDiscoveryFilter, "all">
 export const PILOT_DISCOVERY_LABELS = {
   salad_poke: "샐러드·포케",
-  rice: "밥·정식",
-  plant_based: "채식 표기",
+  rice: "밥·도시락",
+  plant_based: "채식 메뉴",
   whole_grain: "잡곡·현미",
   grilled_steamed: "구이·찜",
 } as const
@@ -74,6 +74,15 @@ export const menusForPilotPlace = (catalog: PilotCatalog, placeId: PilotPlace["i
 export const presentPilotMenuName = (name: string): string => {
   const label = name.replace(/^\[비건\]/u, "")
   return /옵[션셥]/u.test(label) ? (label.split(/\s+\/\s+/u)[0] ?? label) : label
+}
+export const pilotMenuDietaryNote = (
+  dietary: PilotMenu["facts"]["dietary"],
+): string | undefined => {
+  if (dietary === "source_vegan_label")
+    return "출처에서 비건 메뉴로 소개하고 있어요. 재료와 조리 방식은 주문할 때 확인해 주세요."
+  if (dietary === "vegan_option")
+    return "비건으로 주문하려면 옵션 선택이나 변경이 필요해요. 재료와 조리 방식은 주문할 때 확인해 주세요."
+  return undefined
 }
 export type PilotResult = {
   readonly place: PilotPlace
@@ -127,16 +136,20 @@ export const orderedResultMenus = (catalog: PilotCatalog, result: PilotResult) =
 export const markerCategoryForMenus = (
   menus: readonly { readonly facts: Omit<PilotMenu["facts"], "status"> }[],
   filter: PilotDiscoveryFilter = "all",
+  brandId?: string | null,
 ): PilotDiscoveryTag | "neutral" => {
-  const first = menus[0]
-  if (first === undefined) return "neutral"
-  const tags = discoveryTagsForMenu(first)
-  if (filter !== "all" && tags.includes(filter)) return filter
-  return (
-    (["salad_poke", "whole_grain", "plant_based", "grilled_steamed", "rice"] as const).find((tag) =>
-      tags.includes(tag),
-    ) ?? "neutral"
-  )
+  if (menus.length === 0) return "neutral"
+  if (filter !== "all" && menus.some((menu) => discoveryTagsForMenu(menu).includes(filter)))
+    return filter
+  if (brandId === "bon_dosirak") return "rice"
+  if (brandId === "salady" || brandId === "slowcali" || brandId === "pokeallday")
+    return "salad_poke"
+  const counts = new Map<string, number>()
+  for (const menu of menus) counts.set(menu.facts.form, (counts.get(menu.facts.form) ?? 0) + 1)
+  const ranked = [...counts].sort((left, right) => right[1] - left[1])
+  const leading = ranked[0]
+  if (leading === undefined || leading[1] === ranked[1]?.[1]) return "neutral"
+  return leading[0] === "salad_poke" || leading[0] === "rice" ? leading[0] : "neutral"
 }
 export const pilotCategoryIcon = (category: PilotDiscoveryTag | "neutral", selected = false) =>
   `/markers/pilot-${category}${selected ? "-selected" : ""}.svg`
@@ -144,5 +157,6 @@ export const markerIconForMenus = (
   menus: readonly { readonly facts: Omit<PilotMenu["facts"], "status"> }[],
   selected: boolean,
   filter: PilotDiscoveryFilter = "all",
-): string => pilotCategoryIcon(markerCategoryForMenus(menus, filter), selected)
+  brandId?: string | null,
+): string => pilotCategoryIcon(markerCategoryForMenus(menus, filter, brandId), selected)
 export const markerZIndex = (selected: boolean): number | undefined => (selected ? 1000 : undefined)

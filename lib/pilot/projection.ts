@@ -19,6 +19,7 @@ export const toPilotPlaceDto = (place: PilotPlace): PilotPlaceDto => ({
   id: place.id,
   slug: place.slug,
   name: place.name,
+  brandId: place.brandId,
   address: place.address,
   latitude: place.latitude,
   longitude: place.longitude,

@@ -17,6 +17,7 @@ export const PilotPlaceDtoSchema = z
     id: PlaceIdSchema,
     slug: PlaceSlugSchema,
     name: z.string().min(1),
+    brandId: z.string().min(1).nullable(),
     address: z.string().min(1),
     latitude: z.number().finite().min(-90).max(90),
     longitude: z.number().finite().min(-180).max(180),

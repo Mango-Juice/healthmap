@@ -30,10 +30,17 @@ export type NaverMap = {
 export type MapContainer = { readonly dataset: DOMStringMap }
 export type NaverLatLng = object
 export type NaverMapListener = object
+export type NaverMarkerIcon =
+  | string
+  | {
+      readonly anchor: { readonly x: number; readonly y: number }
+      readonly content: HTMLElement
+      readonly size: { readonly height: number; readonly width: number }
+    }
 export type NaverMarker = {
   readonly setMap: (map: NaverMap | null) => void
   readonly setOptions: (options: {
-    readonly icon?: string
+    readonly icon?: NaverMarkerIcon
     readonly position?: NaverLatLng
     readonly title?: string
     readonly zIndex?: number
@@ -55,7 +62,7 @@ export type NaverMapsApi = {
   ) => NaverMap
   readonly Marker: new (options: {
     readonly clickable: boolean
-    readonly icon?: string
+    readonly icon?: NaverMarkerIcon
     readonly map: NaverMap
     readonly position: NaverLatLng
     readonly title: string
@@ -104,6 +111,7 @@ const readLongitude = (point: NaverLatLng | undefined): number | undefined => {
 }
 
 export type MapMarkerSpec = {
+  readonly compactIcon?: boolean | undefined
   readonly id: string
   readonly iconUrl?: string | undefined
   readonly label: string
