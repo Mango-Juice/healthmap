@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
+import { normalizeDiscoveryQuery } from "../../lib/domain/discovery"
 import type { ViewportBounds } from "../../lib/domain/viewport"
 import type { PilotDiscoveryFilter, PilotIngredientFilter } from "../../lib/pilot/discovery"
 import {
@@ -15,6 +16,7 @@ type Query = {
   readonly query: string
   readonly filter: PilotDiscoveryFilter
   readonly ingredient: PilotIngredientFilter
+  readonly onFirstPageSuccess?: ((normalizedQuery: string, resultCount: number) => void) | undefined
 }
 
 type PilotRegionRequestConditions = Pick<Query, "filter" | "ingredient" | "query">
@@ -113,6 +115,10 @@ export function usePilotQuery(input: Query) {
         )
         setLoadedKey(key)
         setLoading(false)
+        const normalizedQuery = normalizeDiscoveryQuery(input.query)
+        if (!requestCursor && normalizedQuery) {
+          input.onFirstPageSuccess?.(normalizedQuery, parsed.total)
+        }
       })
       .catch((error: unknown) => {
         if (error instanceof Error && !controller.signal.aborted && generation === active.current) {
@@ -121,7 +127,7 @@ export function usePilotQuery(input: Query) {
         }
       })
     return () => controller.abort()
-  }, [key, request, input.ready, requestCursor])
+  }, [key, request, input.ready, input.onFirstPageSuccess, input.query, requestCursor])
   return {
     regions,
     results: input.ready && current ? (page?.results ?? []) : [],

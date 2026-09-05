@@ -21,6 +21,7 @@ import { PilotMapControls } from "./pilot-map-controls"
 import { PilotMapDock } from "./pilot-map-dock"
 import { PilotResults } from "./pilot-results"
 import { PilotSearchControls } from "./pilot-search-controls"
+import { usePilotAnalytics } from "./use-pilot-analytics"
 import { usePilotLocation } from "./use-pilot-location"
 import { usePilotMapGesture } from "./use-pilot-map-gesture"
 import { usePilotQuery } from "./use-pilot-query"
@@ -34,6 +35,7 @@ type Properties = {
 type SelectionOrigin = "list" | "map"
 
 export function FoodMap({ clientId }: Properties) {
+  const analytics = usePilotAnalytics()
   const [filter, setFilter] = useState<PilotDiscoveryFilter>("all")
   const [ingredient, setIngredient] = useState<PilotIngredientFilter>("all")
   const [query, setQuery] = useState("")
@@ -53,7 +55,7 @@ export function FoodMap({ clientId }: Properties) {
       }
     | undefined
   >(undefined)
-  const location = usePilotLocation()
+  const location = usePilotLocation({ onOutcome: analytics.locationResolved })
   const viewport = usePilotViewport(location.point)
   const catalog = usePilotQuery({
     ready: true,
@@ -62,6 +64,7 @@ export function FoodMap({ clientId }: Properties) {
     query,
     filter,
     ingredient,
+    onFirstPageSuccess: analytics.searchSucceeded,
   })
   const visibleResults = catalog.results
   const empty = !catalog.loading && !catalog.failed && catalog.total === 0
@@ -77,7 +80,10 @@ export function FoodMap({ clientId }: Properties) {
   const selectedPlace = selectedResult?.place
   const sheet = usePilotSheetMotion({
     expanded: trayExpanded,
-    onExpandedChange: setTrayExpanded,
+    onExpandedChange: (expanded) => {
+      if (expanded && !trayExpanded && selectedPlace === undefined) analytics.resultListOpened()
+      setTrayExpanded(expanded)
+    },
     selectedId: selectedPlace?.id,
   })
   const openPlace = useCallback(
@@ -94,8 +100,9 @@ export function FoodMap({ clientId }: Properties) {
       selectedIdRef.current = placeId
       setTrayExpanded(false)
       setSelectedId(placeId)
+      analytics.placeOpened(placeId, origin)
     },
-    [viewport.interact],
+    [analytics, viewport.interact],
   )
   const closePlace = useCallback((): void => {
     const currentSelectedId = selectedIdRef.current
@@ -162,6 +169,7 @@ export function FoodMap({ clientId }: Properties) {
     viewport.interact()
     setFilter(value)
     setSelectedId(undefined)
+    analytics.filterSelected(value)
   }
   const changeIngredient = (value: PilotIngredientFilter): void => {
     viewport.interact()
@@ -233,7 +241,10 @@ export function FoodMap({ clientId }: Properties) {
             }
             onLocationFailureExpire={expireLocationFailure}
             pending={map.state === "ready" && viewport.pending}
-            onArea={viewport.applyArea}
+            onArea={() => {
+              viewport.applyArea()
+              analytics.searchAreaApplied()
+            }}
           />
           <aside
             ref={sheet.panelRef}
@@ -256,6 +267,7 @@ export function FoodMap({ clientId }: Properties) {
                   key={selectedResult.place.id}
                   expanded={trayExpanded}
                   onClose={closePlace}
+                  onDirectionsOpen={analytics.directionsOpened}
                   result={selectedResult}
                   titleRef={detailTitle}
                 />

@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { PlaceIdSchema } from "./contracts.ts"
-import { PlaceFilterSchema } from "./filter.ts"
+import { PLACE_FILTERS } from "./filter.ts"
 
 export const ANALYTICS_EVENT_NAMES = [
   "map_viewed",
@@ -19,6 +19,7 @@ export const ANALYTICS_EVENT_NAMES = [
 const EntrySourceSchema = z.enum(["direct", "map", "place_share", "map_share"])
 const ShareTargetSchema = z.enum(["place", "map"])
 const ResultCountBucketSchema = z.enum(["0", "1_5", "6_20", "21_plus"])
+const AnalyticsFilterSchema = z.enum([...PLACE_FILTERS, "grilled_steamed"])
 
 const AnalyticsEventSchema = z.discriminatedUnion("event", [
   z
@@ -32,7 +33,17 @@ const AnalyticsEventSchema = z.discriminatedUnion("event", [
     .object({
       event: z.literal("location_resolved"),
       properties: z
-        .object({ outcome: z.enum(["inside", "outside", "denied", "timeout", "unsupported"]) })
+        .object({
+          outcome: z.enum([
+            "inside",
+            "outside",
+            "resolved",
+            "denied",
+            "unavailable",
+            "timeout",
+            "unsupported",
+          ]),
+        })
         .strict()
         .readonly(),
     })
@@ -41,7 +52,7 @@ const AnalyticsEventSchema = z.discriminatedUnion("event", [
   z
     .object({
       event: z.literal("filter_selected"),
-      properties: z.object({ tag: PlaceFilterSchema }).strict().readonly(),
+      properties: z.object({ tag: AnalyticsFilterSchema }).strict().readonly(),
     })
     .strict()
     .readonly(),

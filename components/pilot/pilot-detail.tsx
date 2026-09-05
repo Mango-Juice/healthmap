@@ -8,6 +8,7 @@ import { presentPilotMenuName } from "../../lib/pilot/discovery"
 import {
   type PilotDetailResponse,
   PilotDetailResponseSchema,
+  type PilotPlaceDto as PilotPlace,
   type PilotPlaceResultDto as PilotResult,
 } from "../../lib/pilot/dto"
 import { buildPilotPlaceInfoUrl } from "../../lib/pilot/place-links"
@@ -19,11 +20,12 @@ import { PilotMenuList } from "./pilot-menu-list"
 type Properties = {
   readonly expanded: boolean
   readonly onClose: () => void
+  readonly onDirectionsOpen: (placeId: PilotPlace["id"]) => void
   readonly result: PilotResult
   readonly titleRef: RefObject<HTMLHeadingElement | null>
 }
 
-export function PilotDetail({ expanded, onClose, result, titleRef }: Properties) {
+export function PilotDetail({ expanded, onClose, onDirectionsOpen, result, titleRef }: Properties) {
   const { place } = result
   const [failedImageUrl, setFailedImageUrl] = useState<string>()
   const [detail, setDetail] = useState<PilotDetailResponse>()
@@ -109,6 +111,7 @@ export function PilotDetail({ expanded, onClose, result, titleRef }: Properties)
                 className={`${styles["visitAction"]} ${styles["compactAction"]}`}
                 data-primary="true"
                 href={directions.url}
+                onClick={() => onDirectionsOpen(place.id)}
                 rel="noopener noreferrer"
                 target="_blank"
               >

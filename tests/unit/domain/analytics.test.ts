@@ -31,6 +31,8 @@ describe("analytics privacy boundary", () => {
       { event: "search_used", properties: { result_count_bucket: "1_5" } },
       { event: "search_area_applied", properties: {} },
       { event: "result_list_opened", properties: {} },
+      { event: "location_resolved", properties: { outcome: "resolved" } },
+      { event: "location_resolved", properties: { outcome: "unavailable" } },
       {
         event: "place_opened",
         properties: { place_id: "6dd657be-fc3b-4bb8-8e67-fabbee0f2ea0", source: "shared_link" },
@@ -53,6 +55,15 @@ describe("analytics privacy boundary", () => {
 
     // Then
     expect(event).toEqual(input)
+  })
+
+  it("accepts the current root filter without widening arbitrary tags", () => {
+    expect(
+      parseAnalyticsEvent({ event: "filter_selected", properties: { tag: "grilled_steamed" } }),
+    ).toEqual({ event: "filter_selected", properties: { tag: "grilled_steamed" } })
+    expect(() =>
+      parseAnalyticsEvent({ event: "filter_selected", properties: { tag: "invented" } }),
+    ).toThrow()
   })
 
   it("Given unknown keys or forbidden sensitive values, when parsed, then the payload is rejected", () => {
