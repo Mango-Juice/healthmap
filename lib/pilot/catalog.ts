@@ -12,16 +12,25 @@ export const PilotSourceSchema = z.enum([
   "slowcali",
   "pokeallday",
   "preppers",
+  "bon_dosirak",
 ])
 const EvidenceUrlSchema = z
   .url({
     protocol: /^https$/,
     hostname:
-      /^(?:fsi[.]seoul[.]go[.]kr|www[.]data[.]go[.]kr|(?:www[.])?salady[.]com|(?:www[.])?slowcali[.]co[.]kr|pokeallday[.]co[.]kr|prepperskorea[.]com)$/,
+      /^(?:fsi[.]seoul[.]go[.]kr|www[.]data[.]go[.]kr|(?:www[.])?salady[.]com|(?:www[.])?slowcali[.]co[.]kr|pokeallday[.]co[.]kr|prepperskorea[.]com|(?:api|www)[.]bonif[.]co[.]kr)$/,
   })
   .refine((value) => {
     const url = URL.parse(value)
-    return url !== null && url.username === "" && url.password === "" && url.hash === ""
+    return (
+      url !== null &&
+      url.username === "" &&
+      url.password === "" &&
+      url.hash === "" &&
+      [...url.searchParams.keys()].every(
+        (key) => !/^(?:access[_-]?token|api[_-]?key|token|secret|signature)$/iu.test(key),
+      )
+    )
   })
 
 export { PilotFactsSchema } from "./facts"
