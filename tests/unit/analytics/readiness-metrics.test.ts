@@ -21,6 +21,14 @@ type ReadinessEvent = Readonly<{
 const elapsedMinutes = (from: string, to: string): number =>
   (Date.parse(to) - Date.parse(from)) / 60_000
 
+const seoulDay = (timestamp: string): string =>
+  new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+  }).format(new Date(timestamp))
+
 const distinctBrowsers = (events: readonly ReadinessEvent[]): ReadonlySet<string> =>
   new Set(events.map(({ browser }) => browser))
 
@@ -61,10 +69,13 @@ const actedBrowsers = (events: readonly ReadinessEvent[]): ReadonlySet<string> =
 
 const retention = (
   events: readonly ReadinessEvent[],
+  releaseStart: string,
   analysisEnd: string,
 ): Readonly<{ immature: number; matured: number; returned: number }> => {
   const firstViews = new Map<string, string>()
-  for (const item of events.filter(({ event }) => event === "map_viewed")) {
+  for (const item of events.filter(
+    ({ at, event }) => event === "map_viewed" && at >= releaseStart && at <= analysisEnd,
+  )) {
     const previous = firstViews.get(item.browser)
     if (previous === undefined || item.at < previous) firstViews.set(item.browser, item.at)
   }
@@ -76,7 +87,9 @@ const retention = (
       (candidate) =>
         candidate.event === "place_opened" &&
         candidate.browser === browser &&
-        candidate.at.slice(0, 10) > first.slice(0, 10) &&
+        candidate.at >= releaseStart &&
+        candidate.at <= analysisEnd &&
+        seoulDay(candidate.at) > seoulDay(first) &&
         elapsedMinutes(first, candidate.at) >= 0 &&
         elapsedMinutes(first, candidate.at) <= 20_160,
     ),
@@ -97,6 +110,7 @@ describe("regional readiness query definitions", () => {
       "discovery-to-place-30m",
       "matured-14d-return-proxy",
     ])
+    expect(readinessQueries.queries[3]?.query.query).toContain("toTimeZone(opened, 'Asia/Seoul')")
     for (const query of readinessQueries.queries) {
       expect(query.query.kind).toBe("HogQLQuery")
       expect(query.query.query).toContain("'unavailable'")
@@ -159,6 +173,19 @@ describe("regional readiness query definitions", () => {
     expect(convertedBrowsers(events)).toEqual(new Set(["boundary"]))
   })
 
+  it("rejects direction and place actions that precede their triggering events", () => {
+    const directionEvents: readonly ReadinessEvent[] = [
+      { at: "2026-10-01T00:05:00Z", browser: "a", event: "place_opened", placeId: "p1" },
+      { at: "2026-10-01T00:04:59Z", browser: "a", event: "directions_opened", placeId: "p1" },
+    ]
+    const discoveryEvents: readonly ReadinessEvent[] = [
+      { at: "2026-10-01T00:05:00Z", browser: "b", event: "search_used" },
+      { at: "2026-10-01T00:04:59Z", browser: "b", event: "place_opened", placeId: "p1" },
+    ]
+    expect(convertedBrowsers(directionEvents).size).toBe(0)
+    expect(actedBrowsers(discoveryEvents).size).toBe(0)
+  })
+
   it("uses distinct discovery browsers and reports the complement as 후속 행동 미관측", () => {
     const events: readonly ReadinessEvent[] = [
       { at: "2026-10-01T00:00:00Z", browser: "acted", event: "search_used" },
@@ -182,7 +209,7 @@ describe("regional readiness query definitions", () => {
     const events: readonly ReadinessEvent[] = [
       { at: "2026-10-01T00:00:00Z", browser: "immature", event: "map_viewed" },
     ]
-    expect(retention(events, "2026-10-14T23:59:59Z")).toEqual({
+    expect(retention(events, "2026-10-01T00:00:00Z", "2026-10-14T23:59:59Z")).toEqual({
       immature: 1,
       matured: 0,
       returned: 0,
@@ -193,12 +220,25 @@ describe("regional readiness query definitions", () => {
     const events: readonly ReadinessEvent[] = [
       { at: "2026-10-01T01:00:00Z", browser: "same-day", event: "map_viewed" },
       { at: "2026-10-01T02:00:00Z", browser: "same-day", event: "map_viewed" },
-      { at: "2026-10-01T23:00:00Z", browser: "same-day", event: "place_opened", placeId: "p1" },
+      { at: "2026-10-01T13:00:00Z", browser: "same-day", event: "place_opened", placeId: "p1" },
     ]
-    expect(retention(events, "2026-10-15T01:00:00Z")).toEqual({
+    expect(retention(events, "2026-10-01T00:00:00Z", "2026-10-15T01:00:00Z")).toEqual({
       immature: 0,
       matured: 1,
       returned: 0,
+    })
+  })
+
+  it("selects the first map view inside the release window", () => {
+    const events: readonly ReadinessEvent[] = [
+      { at: "2026-09-30T00:00:00Z", browser: "windowed", event: "map_viewed" },
+      { at: "2026-10-01T00:00:00Z", browser: "windowed", event: "map_viewed" },
+      { at: "2026-10-02T00:00:00Z", browser: "windowed", event: "place_opened", placeId: "p1" },
+    ]
+    expect(retention(events, "2026-10-01T00:00:00Z", "2026-10-15T00:00:00Z")).toEqual({
+      immature: 0,
+      matured: 1,
+      returned: 1,
     })
   })
 
@@ -207,10 +247,39 @@ describe("regional readiness query definitions", () => {
       { at: "2026-10-01T00:00:00Z", browser: "returned", event: "map_viewed" },
       { at: "2026-10-15T00:00:00Z", browser: "returned", event: "place_opened", placeId: "p1" },
     ]
-    expect(retention(events, "2026-10-15T00:00:00Z")).toEqual({
+    expect(retention(events, "2026-10-01T00:00:00Z", "2026-10-15T00:00:00Z")).toEqual({
       immature: 0,
       matured: 1,
       returned: 1,
+    })
+  })
+
+  it("includes a Seoul midnight crossing within one UTC date", () => {
+    const events: readonly ReadinessEvent[] = [
+      { at: "2026-10-01T14:30:00Z", browser: "crossing", event: "map_viewed" },
+      { at: "2026-10-01T15:30:00Z", browser: "crossing", event: "place_opened", placeId: "p1" },
+    ]
+    expect(retention(events, "2026-10-01T00:00:00Z", "2026-10-15T14:30:00Z")).toEqual({
+      immature: 0,
+      matured: 1,
+      returned: 1,
+    })
+  })
+
+  it("excludes a UTC date crossing that stays on one Seoul date", () => {
+    const events: readonly ReadinessEvent[] = [
+      { at: "2026-10-01T15:30:00Z", browser: "same-seoul-day", event: "map_viewed" },
+      {
+        at: "2026-10-02T14:30:00Z",
+        browser: "same-seoul-day",
+        event: "place_opened",
+        placeId: "p1",
+      },
+    ]
+    expect(retention(events, "2026-10-01T00:00:00Z", "2026-10-15T15:30:00Z")).toEqual({
+      immature: 0,
+      matured: 1,
+      returned: 0,
     })
   })
 
