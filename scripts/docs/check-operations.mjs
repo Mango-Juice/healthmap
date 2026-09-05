@@ -1,120 +1,105 @@
-import { access, readFile } from "node:fs/promises"
-import { isAbsolute, relative, resolve } from "node:path"
-import { CURRENT_RELEASE_EVIDENCE_CONTRACT } from "../deploy/validate-release-evidence.mjs"
-
-const documentPath = process.argv[2]
-if (!documentPath) {
-  console.error("usage: node scripts/docs/check-operations.mjs <markdown>")
-  process.exit(2)
-}
+import { access, readdir, readFile } from "node:fs/promises"
+import { isAbsolute, relative, resolve, sep } from "node:path"
 
 const root = resolve(new URL("../..", import.meta.url).pathname)
-const absoluteDocumentPath = resolve(root, documentPath)
-let markdown
-try {
-  markdown = await readFile(absoluteDocumentPath, "utf8")
-} catch {
-  console.error("RED operations document is missing or unreadable")
-  process.exit(1)
-}
-
-const headings = [...markdown.matchAll(/^(#{1,6})\s+(.+?)\s*#*\s*$/gm)].map((match) => ({
-  level: match[1].length,
-  text: match[2].trim(),
-}))
-const headingText = headings.map(({ text }) => text.toLowerCase())
-const tables = markdown.split("\n").filter((line) => /^\s*\|.+\|\s*$/.test(line))
-const codeBlocks = [...markdown.matchAll(/```[^\n]*\n([\s\S]*?)```/g)].map((match) => match[1])
-const links = [...markdown.matchAll(/\[[^\]]+\]\(([^)]+)\)/g)].map((match) => match[1])
-
-const requiredSections = [
-  "environment",
-  "local",
-  "preview",
-  "production",
-  "supabase",
-  "naver",
-  "posthog",
-  "smoke",
-  "rollback",
-  "incident",
-  "data import",
+const publicDocuments = [
+  "README.md",
+  "DESIGN.md",
+  "LICENSE",
+  "THIRD_PARTY_NOTICES.md",
+  "docs/README.md",
+  "docs/architecture.md",
+  "docs/development.md",
+  "docs/security.md",
 ]
-const requiredTerms = [
-  ["secret handling", /service[._-]?role|secret|server[._-]?only/i],
-  ["production-only catalog", /production.catalog only|only production rows/i],
+const requiredContent = [
+  ["README.md", "product summary", /건강식 지도/],
+  ["README.md", "service link", /https:\/\/healthmap-hazel\.vercel\.app/],
+  ["README.md", "source-viewing notice", /LICENSE/],
+  ["docs/architecture.md", "immutable release", /immutable|불변/i],
+  ["docs/architecture.md", "bounded query", /bounded|제한된/i],
+  ["docs/architecture.md", "validated cache", /검증.*캐시|cache.*valid/i],
+  ["docs/architecture.md", "safe intake", /제안|suggestion/i],
+  ["docs/architecture.md", "focus restoration", /focus|포커스/i],
+  ["docs/development.md", "install command", /pnpm install/],
+  ["docs/development.md", "development command", /pnpm dev/],
+  ["docs/development.md", "test command", /pnpm test/],
+  ["docs/security.md", "reporting guidance", /report|신고|제보/i],
+  ["docs/security.md", "no public contact claim", /공개.*연락|public.*contact/i],
+]
+const forbiddenContent = [
+  ["absolute-local-path", /\/Users\//],
+  ["private-archive-reference", /healthmap-private|\$PRIVATE|(?:^|[^A-Z])PRIVATE\//],
+  ["private-worktree-reference", /\.local-work/],
+  ["operator-schema-or-id", /suggestion_admin|dudckqsbpewtnqrbugcf|HEALTHMAP_PUBLICATION_APP_ROOT/],
   [
-    "atomic production import",
-    /complete dataset.{0,100}(transaction|commit)|transaction.{0,100}(complete|partial)/i,
+    "source-collection-material",
+    /acquisition (?:method|recipe)|extraction recipe|source-response analysis/i,
   ],
-  [
-    "native coordinate markers",
-    /naver(?: maps)? sdk(?=[\s\S]{0,180}static)(?=[\s\S]{0,180}svg)(?=[\s\S]{0,240}(?:supabase\s+coordinate|latitude[\s\S]{0,80}longitude))/i,
-  ],
-  ["NAVER allowlist", /allowed.domain|allowlist|allowed origin/i],
-  ["PostHog privacy", /posthog.{0,120}(privacy|autocapture|person_profiles|session recording)/i],
 ]
-const requiredCommands = [
-  "pnpm build",
-  "pnpm start",
-  "pnpm supabase:start",
-  "pnpm supabase:status",
-  "pnpm supabase:reset",
-  "pnpm supabase:stop",
-  "pnpm test:integration:local",
-  "curl -i",
-]
-const currentReleaseEvidencePhrase = `migration\n\`${CURRENT_RELEASE_EVIDENCE_CONTRACT.migrationVersion}\`, schema \`${CURRENT_RELEASE_EVIDENCE_CONTRACT.schemaVersion}\``
+const allowedPnpmCommands = new Set(["install", "exec", "add", "update", "dlx"])
+const isInsideRoot = (path) => path === root || path.startsWith(`${root}${sep}`)
+const linksIn = (markdown) =>
+  [...markdown.matchAll(/\[[^\]]+\]\(([^)]+)\)/g)].map((match) => match[1])
+
+const documentArgument = process.argv[2]
+const documents = documentArgument ? [documentArgument] : publicDocuments
 const packageJson = JSON.parse(await readFile(resolve(root, "package.json"), "utf8"))
 const packageScripts = new Set(Object.keys(packageJson.scripts))
 const failures = []
-for (const section of requiredSections) {
-  if (!headingText.some((heading) => heading.includes(section))) failures.push(`section:${section}`)
-}
-for (const [name, pattern] of requiredTerms) {
-  if (!pattern.test(markdown)) failures.push(`content:${name}`)
-}
-if (!markdown.includes(currentReleaseEvidencePhrase))
-  failures.push("content:current release evidence contract")
-if (tables.length < 2) failures.push("structure:environment tables")
-if (codeBlocks.length < 3) failures.push("structure:code blocks")
-for (const command of requiredCommands) {
-  if (!markdown.includes(command)) failures.push(`command:${command}`)
-}
-for (const match of markdown.matchAll(/pnpm\s+([a-z0-9:_-]+)/g)) {
-  const script = match[1]
-  if (!packageScripts.has(script) && !["install", "exec", "add", "update", "dlx"].includes(script))
-    failures.push(`stale-script:${script}`)
-}
-for (const link of links) {
-  if (/^(https?:|mailto:|#)/i.test(link)) continue
-  const target = link.split("#", 1)[0]
-  const targetPath = isAbsolute(target) ? target : resolve(absoluteDocumentPath, "..", target)
+const inspected = []
+
+for (const documentPath of documents) {
+  const absoluteDocumentPath = resolve(root, documentPath)
+  let markdown
   try {
-    await access(targetPath)
+    markdown = await readFile(absoluteDocumentPath, "utf8")
   } catch {
-    failures.push(`broken-link:${relative(root, targetPath)}`)
+    failures.push(`missing-document:${documentPath}`)
+    continue
+  }
+  inspected.push(documentPath)
+  for (const [name, pattern] of forbiddenContent) {
+    if (pattern.test(markdown)) failures.push(`private-content:${documentPath}:${name}`)
+  }
+  for (const link of linksIn(markdown)) {
+    if (/^(https?:|mailto:|#)/i.test(link)) continue
+    const target = link.split("#", 1)[0]
+    const targetPath = isAbsolute(target)
+      ? resolve(target)
+      : resolve(absoluteDocumentPath, "..", target)
+    if (!isInsideRoot(targetPath)) {
+      failures.push(`private-link:${documentPath}:${target}`)
+      continue
+    }
+    try {
+      await access(targetPath)
+    } catch {
+      failures.push(`broken-link:${documentPath}:${relative(root, targetPath)}`)
+    }
+  }
+  for (const match of markdown.matchAll(/pnpm\s+([a-z0-9:_-]+)/g)) {
+    const script = match[1]
+    if (!packageScripts.has(script) && !allowedPnpmCommands.has(script))
+      failures.push(`stale-script:${documentPath}:${script}`)
   }
 }
-for (const match of markdown.matchAll(
-  /`((?:app|components|data|lib|scripts|supabase|tests|\.env[^`]*)[^`]*)`/g,
-)) {
-  const candidate = match[1].split(/\s|[,;:)]/)[0]
-  if (!candidate.includes("/") && !candidate.startsWith(".")) continue
-  if (candidate.startsWith(".env") || candidate.includes("<") || candidate.includes("=")) continue
-  try {
-    await access(resolve(root, candidate))
-  } catch {
-    failures.push(`missing-path:${candidate}`)
+
+if (!documentArgument) {
+  const actualDocs = (await readdir(resolve(root, "docs"), { recursive: true }))
+    .filter((entry) => entry.endsWith(".md"))
+    .map((entry) => `docs/${entry}`)
+  for (const documentPath of actualDocs) {
+    if (!publicDocuments.includes(documentPath))
+      failures.push(`unexpected-document:${documentPath}`)
+  }
+  for (const [documentPath, name, pattern] of requiredContent) {
+    const markdown = await readFile(resolve(root, documentPath), "utf8")
+    if (!pattern.test(markdown)) failures.push(`missing-contract:${documentPath}:${name}`)
   }
 }
-const result = {
-  headings: headings.length,
-  tables: tables.length,
-  codeBlocks: codeBlocks.length,
-  links: links.length,
-  status: failures.length === 0 ? "PASS" : "FAIL",
-  failures,
-}
-console.log(JSON.stringify(result, null, 2))
+
+console.log(
+  JSON.stringify({ inspected, status: failures.length === 0 ? "PASS" : "FAIL", failures }, null, 2),
+)
 if (failures.length > 0) process.exit(1)

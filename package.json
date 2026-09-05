@@ -16,7 +16,7 @@
     "deploy:validate": "node --experimental-strip-types scripts/deploy/validate-environment.mjs",
     "deploy:validate:hosted": "node --experimental-strip-types scripts/deploy/validate-environment.mjs --hosted",
     "deploy:validate:evidence": "node scripts/deploy/validate-release-evidence.mjs",
-    "docs:check": "node scripts/docs/check-operations.mjs docs/operations.md",
+    "docs:check": "node scripts/docs/check-operations.mjs",
     "start": "next start",
     "test:deployment": "node --experimental-strip-types --test tests/deployment/*.test.mjs",
     "format": "biome check --write .",
