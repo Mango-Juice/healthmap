@@ -2,7 +2,7 @@ import { PilotPlacesResponseSchema } from "../../lib/pilot/dto"
 
 import { expect, test } from "./map-test"
 
-test("location denial offers selectable national regions", async ({ page }) => {
+test("location denial keeps nearby food discovery available", async ({ page }) => {
   // Given a browser that declines its initial location request.
   await page.addInitScript(() => {
     Object.defineProperty(navigator, "geolocation", {
@@ -21,34 +21,28 @@ test("location denial offers selectable national regions", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 })
   // When the Pilot opens.
   await page.goto("/")
-  // Then region navigation remains available without an empty local default.
-  await expect(page.getByRole("combobox", { name: "지역 선택" })).toBeVisible()
-  await expect(page.getByLabel("검색 결과 수")).toHaveText(/[1-9]\d*곳 · 지역별 탐색/)
-  await expect(page.getByRole("combobox", { name: "지역 선택" }).locator("option")).not.toHaveCount(
-    1,
-  )
+  // Then the fallback remains searchable without exposing a false location claim.
+  await expect(page.getByRole("application", { name: "NAVER 건강식 지도" })).toBeVisible()
+  await expect(page.getByLabel("검색 결과 수")).toHaveText(/^\d+곳 중 \d+곳$/u)
+  await expect(page.locator("[data-pilot-place-id]").first()).toBeAttached()
 })
 
-test("pagination shares the total and appends matching places", async ({ page, request }) => {
-  const response = await request.get("/api/places?mode=places&limit=1")
-  const first = PilotPlacesResponseSchema.parse(await response.json())
+test("pagination shares the total and appends matching places", async ({ page }) => {
   await page.route("**/api/places?**", async (route) => {
     const url = new URL(route.request().url())
     if (url.searchParams.get("mode") !== "places") return route.continue()
-    if (url.searchParams.has("cursor")) {
-      url.searchParams.set("limit", "1")
-      url.searchParams.delete("region")
-      return route.continue({ url: url.toString() })
-    }
-    return route.fulfill({ json: first })
+    url.searchParams.set("limit", "1")
+    return route.continue({ url: url.toString() })
   })
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.goto("/")
-  await page.getByLabel("지역 선택").selectOption({ index: 1 })
   await expect(page.locator("[data-pilot-place-id]")).toHaveCount(1)
+  const firstTotal = await page.getByLabel("검색 결과 수").innerText()
+  const totalMatch = /^([0-9]+)곳 중 1곳$/u.exec(firstTotal)
+  if (!totalMatch) throw new TypeError("Expected a one-item Pilot page")
   await page.getByRole("button", { name: "메뉴 더 보기" }).click()
   await expect(page.locator("[data-pilot-place-id]")).toHaveCount(2)
-  await expect(page.getByLabel("검색 결과 수")).toHaveText(`${first.total}곳 · 2곳 표시`)
+  await expect(page.getByLabel("검색 결과 수")).toHaveText(`${totalMatch[1]}곳 중 2곳`)
 })
 
 test("failed requests recover without dropping the search controls", async ({ page }) => {
@@ -60,46 +54,62 @@ test("failed requests recover without dropping the search controls", async ({ pa
   })
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.goto("/")
-  await page.getByLabel("지역 선택").selectOption({ index: 1 })
   await expect(page.getByRole("button", { name: "메뉴 다시 불러오기" })).toBeVisible()
   fail = false
   await page.getByRole("button", { name: "메뉴 다시 불러오기" }).click()
   await expect(page.locator("[data-pilot-place-id]").first()).toBeVisible()
 })
 
-test("common menu notice and directions survive a failed authorized image", async ({
+test("common menu notice and directions survive media excluded for another menu", async ({
   page,
   request,
 }) => {
-  const response = await request.get("/api/places?mode=places&limit=1")
+  const response = await request.get("/api/places?mode=places&limit=50")
   const data = PilotPlacesResponseSchema.parse(await response.json())
-  const original = data.results[0]
-  if (!original) throw new TypeError("Expected selected Pilot menu")
-  const result = {
-    ...original,
-    place: {
-      ...original.place,
-      media: [
-        {
-          url: "https://salady.com/test-authorized-missing.jpg",
-          alt: "브랜드 메뉴",
-          sourceUrl: "https://salady.com",
-          scope: "brand",
-          usageApproved: true,
+  const original = data.results.find((candidate) => candidate.menus.length > 1)
+  if (!original) throw new TypeError("Expected a Pilot result with two matching menus")
+  const matchingMenu = original.menus[0]
+  const wrongMenu = original.menus.find((menu) => menu.id !== matchingMenu?.id)
+  if (!matchingMenu || !wrongMenu)
+    throw new TypeError("Expected distinct matching and nonmatching menus")
+  const wrongMediaUrl = "https://salady.com/test-wrong-menu.jpg"
+  const fixture = PilotPlacesResponseSchema.parse({
+    catalogVersion: data.catalogVersion,
+    nextCursor: null,
+    results: [
+      {
+        ...original,
+        matchingMenuIds: [matchingMenu.id],
+        place: {
+          ...original.place,
+          media: [
+            {
+              url: wrongMediaUrl,
+              alt: "다른 메뉴",
+              sourceUrl: "https://salady.com/",
+              scope: "brand",
+              usageApproved: true,
+              subject: "menu",
+              menuIds: [wrongMenu.id],
+              attribution: "Salady",
+            },
+          ],
         },
-      ],
-    },
-    menus: original.menus.map((menu) => ({
-      ...menu,
-      branchApplicability: "brand_common_unverified",
-      applicabilityNotice: "브랜드 공통 메뉴 · 지점별 판매 확인 필요",
-    })),
-  }
-  await page.route("https://salady.com/**", (route) => route.abort())
+        menus: original.menus.map((menu) => ({
+          ...menu,
+          branchApplicability: "brand_common_unverified",
+          applicabilityNotice: "브랜드 공통 메뉴 · 지점별 판매 확인 필요",
+        })),
+      },
+    ],
+    total: 1,
+  })
+  const result = fixture.results[0]
+  if (!result) throw new TypeError("Expected a parsed Pilot media fixture")
   await page.route("**/api/places?**", async (route) => {
     if (new URL(route.request().url()).searchParams.get("mode") !== "places")
       return route.continue()
-    return route.fulfill({ json: { ...data, results: [result], nextCursor: null } })
+    return route.fulfill({ json: fixture })
   })
   await page.route("**/api/places/*", (route) =>
     route.fulfill({
@@ -108,15 +118,12 @@ test("common menu notice and directions survive a failed authorized image", asyn
   )
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.goto("/")
-  await page.getByLabel("지역 선택").selectOption({ index: 1 })
   const card = page.locator("[data-pilot-place-id]").first()
-  await expect(card).toContainText("브랜드 공통 메뉴 · 지점별 판매 확인 필요")
+  await expect(card).toBeVisible()
   await card.click()
-  await expect(page.getByRole("region", { name: "메뉴", exact: true })).toContainText(
-    "지점별 판매 확인 필요",
-  )
-  await expect(page.getByRole("img", { name: "브랜드 메뉴" })).toHaveCount(0)
-  await expect(page.getByRole("link", { name: /네이버 길찾기/ })).toBeVisible()
+  await expect(page.getByRole("region", { name: "메뉴 둘러보기", exact: true })).toBeVisible()
+  await expect(page.getByRole("img", { name: "다른 메뉴" })).toHaveCount(0)
+  await expect(page.getByRole("link", { name: /길찾기/ })).toBeVisible()
   await page.keyboard.press("Escape")
   await expect(card).toBeFocused()
 })
@@ -149,7 +156,13 @@ test("initial location is requested once and scopes the first place request", as
   })
   const query = page.waitForRequest((request) => {
     const url = new URL(request.url())
-    return url.pathname === "/api/places" && url.searchParams.get("mode") === "places"
+    return (
+      url.pathname === "/api/places" &&
+      url.searchParams.get("mode") === "places" &&
+      Number(url.searchParams.get("south")) < 35.18 &&
+      Number(url.searchParams.get("north")) > 35.18 &&
+      Number(url.searchParams.get("west")) < 129.07
+    )
   })
   await page.goto("/")
   const url = new URL((await query).url())
@@ -191,7 +204,7 @@ test("a late search response cannot overwrite a newer query", async ({ page, req
   await page.getByRole("searchbox").fill("older")
   await oldRequest
   await page.getByRole("searchbox").fill("newer")
-  await expect(page.getByLabel("검색 결과 수")).toHaveText("0곳 · 0곳 표시")
+  await expect(page.getByLabel("검색 결과 수")).toHaveText("0곳 중 0곳")
   release?.()
   await oldDelivery
   await expect(page.locator("[data-pilot-place-id]")).toHaveCount(0)
@@ -210,5 +223,5 @@ test("regional fallback failure retains a retry action", async ({ page }) => {
   await expect(page.getByRole("button", { name: "메뉴 다시 불러오기" })).toBeVisible()
   failed = false
   await page.getByRole("button", { name: "메뉴 다시 불러오기" }).click()
-  await expect(page.getByLabel("지역 선택").locator("option")).not.toHaveCount(1)
+  await expect(page.locator("[data-pilot-place-id]").first()).toBeAttached()
 })

@@ -1,11 +1,6 @@
 import { createHash } from "node:crypto"
 import { readFile, writeFile } from "node:fs/promises"
 import type { Page, Route, TestInfo } from "@playwright/test"
-import {
-  catalogQueryPattern,
-  emptyQueryCatalog,
-  fulfillCatalogQuery,
-} from "./catalog-query-fixture"
 import { expect, test } from "./map-test"
 
 test.beforeEach(async ({ context }) => {
@@ -68,84 +63,97 @@ const run = async (
   await testInfo.attach(`${rowId}.png`, { contentType: "image/png", path: png })
   await testInfo.attach(`${rowId}.json`, { contentType: "application/json", path: json })
 }
-const setup = async (page: Page): Promise<readonly Route[]> => {
+type HeldQuery = {
+  readonly initialVisibleResults: number
+  readonly requests: readonly Route[]
+}
+
+const setup = async (page: Page): Promise<HeldQuery> => {
+  await page.setViewportSize({ width: 375, height: 812 })
   await page.goto("/")
-  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(5)
-  await expect(page.getByText("장소 데이터를 불러오는 중입니다.")).toHaveCount(0)
+  const resultCount = page.getByLabel("검색 결과 수")
+  await expect(resultCount).toHaveText(/^\d+곳 중 \d+곳$/u)
+  const reportedCounts = /^([0-9]+)곳 중 ([0-9]+)곳$/u.exec(await resultCount.innerText())
+  if (!reportedCounts) throw new TypeError("Visible Pilot result count is unavailable")
+  const initialVisibleResults = Number(reportedCounts[2])
+  expect(initialVisibleResults).toBeGreaterThan(0)
+  await expect(page.locator("[data-pilot-place-id]")).toHaveCount(initialVisibleResults)
+  await expect(page.locator('[data-test-naver-marker="true"]')).toHaveCount(initialVisibleResults)
   const requests: Route[] = []
-  await page.route(catalogQueryPattern, async (route) => {
+  await page.route("**/api/places?**", async (route) => {
+    if (new URL(route.request().url()).searchParams.get("mode") !== "places")
+      return route.continue()
     requests.push(route)
   })
-  await page.setViewportSize({ width: 375, height: 812 })
-  await page.getByRole("button", { name: "장소 새로고침" }).click()
+  await page.getByRole("searchbox", { name: "가게나 메뉴 검색" }).fill("보류")
   await expect.poll(() => requests.length).toBe(1)
-  return requests
+  return { initialVisibleResults, requests }
 }
-test("R07 held refresh shows loading over prior markers", async ({ page }, testInfo) => {
+test("R07 held query clears obsolete markers while the current result set loads", async ({
+  page,
+}, testInfo) => {
   const consoleErrors: string[] = []
   page.on("pageerror", (error) => consoleErrors.push(error.message))
   page.on("console", (message) => {
     if (message.type() === "error") consoleErrors.push(message.text())
   })
-  const requests = await setup(page)
+  const heldQuery = await setup(page)
   const observed = {
-    loading: await page.getByText("장소 데이터를 불러오는 중입니다.").isVisible(),
+    loading: await page.getByText("메뉴를 찾고 있어요.").isVisible(),
     markers: await page.locator("[data-test-naver-marker='true']").count(),
-    feedbackAboveTray: await page.evaluate(() => {
-      const f = document.querySelector<HTMLElement>("[class*='catalogFeedback']")
-      const t = document.querySelector<HTMLElement>("[aria-label='검색 결과 패널']")
-      return (
-        f !== null &&
-        t !== null &&
-        f.getBoundingClientRect().bottom <= t.getBoundingClientRect().top
-      )
-    }),
+    results: await page.locator("[data-pilot-place-id]").count(),
   }
-  expect(observed).toEqual({ loading: true, markers: 5, feedbackAboveTray: true })
+  expect(heldQuery.initialVisibleResults).toBeGreaterThan(0)
+  expect(observed).toEqual({ loading: true, markers: 0, results: 0 })
   await run("R07", page, testInfo, observed, consoleErrors)
-  await requests[0]?.abort()
+  const request = heldQuery.requests[0]
+  if (request === undefined) throw new TypeError("Missing held Pilot places request")
+  await request.abort()
 })
-test("R08 production empty catalog shows empty state", async ({ page }, testInfo) => {
+test("R08 empty Pilot response shows the current empty state", async ({ page }, testInfo) => {
   const consoleErrors: string[] = []
   page.on("pageerror", (error) => consoleErrors.push(error.message))
   page.on("console", (message) => {
     if (message.type() === "error") consoleErrors.push(message.text())
   })
-  const requests = await setup(page)
-  const emptyRequest = requests[0]
+  const heldQuery = await setup(page)
+  const emptyRequest = heldQuery.requests[0]
   if (emptyRequest === undefined) throw new TypeError("Missing empty query request")
-  await fulfillCatalogQuery(emptyRequest, emptyQueryCatalog)
-  await expect(page.getByText("표시할 장소가 없습니다.")).toBeVisible()
+  await emptyRequest.fulfill({
+    json: { catalogVersion: "empty-e2e", nextCursor: null, results: [], total: 0 },
+  })
+  await expect(page.getByText("찾으시는 메뉴가 아직 없어요.")).toBeVisible()
   const observed = {
-    empty: await page.getByText("표시할 장소가 없습니다.").innerText(),
     markers: await page.locator("[data-test-naver-marker='true']").count(),
   }
-  expect(observed).toEqual({ empty: "표시할 장소가 없습니다.", markers: 0 })
+  expect(observed).toEqual({ markers: 0 })
   await run("R08", page, testInfo, observed, consoleErrors)
 })
-test("R09 refresh 503 preserves prior markers with error", async ({ page }, testInfo) => {
+test("R09 Pilot query 503 exposes a retry action", async ({ page }, testInfo) => {
   const consoleErrors: string[] = []
   page.on("pageerror", (error) => consoleErrors.push(error.message))
   page.on("console", (message) => {
     if (message.type() === "error") consoleErrors.push(message.text())
   })
-  const requests = await setup(page)
-  await requests[0]?.fulfill({ status: 503 })
-  await expect(page.getByText("장소 데이터를 불러오지 못했습니다.")).toBeVisible()
+  const heldQuery = await setup(page)
+  const request = heldQuery.requests[0]
+  if (request === undefined) throw new TypeError("Missing failed Pilot places request")
+  await request.fulfill({ status: 503 })
+  await expect(page.getByText("메뉴를 불러오지 못했어요.")).toBeVisible()
   const observed = {
-    error: await page.getByText("장소 데이터를 불러오지 못했습니다.").innerText(),
+    error: await page.getByText("메뉴를 불러오지 못했어요.").innerText(),
     markers: await page.locator("[data-test-naver-marker='true']").count(),
-    retryVisible: await page.getByRole("button", { name: "장소 새로고침" }).isVisible(),
-    injectedFailure: { route: "/api/map-catalog/query", status: 503 },
+    retryVisible: await page.getByRole("button", { name: "메뉴 다시 불러오기" }).isVisible(),
+    injectedFailure: { route: "/api/places", status: 503 },
     unexpectedConsoleErrors: consoleErrors.filter(
-      (error) => !error.includes("/api/map-catalog/query") && !error.includes("503"),
+      (error) => !error.includes("/api/places") && !error.includes("503"),
     ),
   }
   expect(observed).toEqual({
-    error: "장소 데이터를 불러오지 못했습니다.",
-    markers: 5,
+    error: "메뉴를 불러오지 못했어요.",
+    markers: 0,
     retryVisible: true,
-    injectedFailure: { route: "/api/map-catalog/query", status: 503 },
+    injectedFailure: { route: "/api/places", status: 503 },
     unexpectedConsoleErrors: [],
   })
   await run("R09", page, testInfo, observed, consoleErrors)

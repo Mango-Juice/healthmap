@@ -48,17 +48,26 @@ for (const row of rows) {
     })
     await page.setViewportSize({ width: row.width, height: row.height })
     await page.goto("/")
-    await expect(page.locator("[data-test-naver-marker='true']")).toHaveCount(5)
-    await expect(page.getByRole("list", { name: "검색 결과" }).getByRole("listitem")).toHaveCount(5)
-    await expect(page.locator('[data-location-state="inside"]')).toBeVisible()
+    const resultCount = page.getByLabel("검색 결과 수")
+    await expect(resultCount).toHaveText(/^\d+곳 중 \d+곳$/u)
+    const reportedCounts = /^([0-9]+)곳 중 ([0-9]+)곳$/u.exec(await resultCount.innerText())
+    if (!reportedCounts) throw new TypeError("Visible Pilot result count is unavailable")
+    const total = Number(reportedCounts[1])
+    const visible = Number(reportedCounts[2])
+    const resultItems = page.locator("[data-pilot-place-id]")
+    expect(total).toBeGreaterThanOrEqual(visible)
+    expect(visible).toBeGreaterThan(0)
+    await expect(resultItems).toHaveCount(visible)
+    await expect(page.locator("[data-test-naver-marker='true']")).toHaveCount(visible)
+    await expect(page.getByRole("application", { name: "NAVER 건강식 지도" })).toBeVisible()
     const observed = await page.evaluate(() => {
-      const tray = document.querySelector<HTMLElement>("[aria-label='검색 결과 패널']")
-      const map = document.querySelector<HTMLElement>("[data-testid='map-stage']")
+      const tray = document.querySelector<HTMLElement>("aside[aria-label='건강식 검색 결과']")
+      const map = document.querySelector<HTMLElement>("[data-testid='pilot-map-stage']")
       const markers = document.querySelectorAll("[data-test-naver-marker='true']").length
-      const items = document.querySelectorAll("li").length
+      const items = document.querySelectorAll("[data-pilot-place-id]").length
       const controls = [...document.querySelectorAll<HTMLElement>("button")]
         .filter((element) => element.getClientRects().length > 0)
-        .filter((element) => element.closest("[data-testid='naver-map']") === null)
+        .filter((element) => element.closest("[data-testid='pilot-naver-map']") === null)
       if (tray === null || map === null) throw new TypeError("row surface missing")
       const trayRect = tray.getBoundingClientRect()
       const mapRect = map.getBoundingClientRect()
@@ -75,8 +84,8 @@ for (const row of rows) {
         viewport: { height: window.innerHeight, width: window.innerWidth },
       }
     })
-    expect(observed.items).toBe(5)
-    expect(observed.markers).toBe(5)
+    expect(observed.items).toBe(visible)
+    expect(observed.markers).toBe(visible)
     expect(observed.controlsMeet44).toBe(true)
     expect(observed.documentOverflow).toBe(false)
     expect(observed.mapDominant).toBe(true)
