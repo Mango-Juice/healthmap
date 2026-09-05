@@ -1,3 +1,6 @@
+"use client"
+
+import { useState } from "react"
 import { pilotMenuFactLabel, presentPilotMenuName } from "../../lib/pilot/discovery"
 import type { PilotMenuDto } from "../../lib/pilot/dto"
 import { PilotCategoryTags } from "./pilot-category-tags"
@@ -9,12 +12,15 @@ type Properties = {
 }
 
 export function PilotMenuList({ menus, title }: Properties) {
+  const [expanded, setExpanded] = useState(false)
   if (menus.length === 0) return null
+  const visibleMenus = expanded ? menus : menus.slice(0, 3)
+  const hiddenCount = menus.length - visibleMenus.length
   return (
     <section aria-label={title} className={styles["menus"]}>
       <h3>{title}</h3>
       <ul>
-        {menus.map((menu, index) => {
+        {visibleMenus.map((menu, index) => {
           const facts = pilotMenuFactLabel(menu)
           return (
             <li key={menu.id}>
@@ -49,6 +55,11 @@ export function PilotMenuList({ menus, title }: Properties) {
           )
         })}
       </ul>
+      {hiddenCount > 0 ? (
+        <button className={styles["menuExpand"]} onClick={() => setExpanded(true)} type="button">
+          메뉴 {hiddenCount}개 더 보기
+        </button>
+      ) : null}
     </section>
   )
 }

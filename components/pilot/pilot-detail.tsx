@@ -73,27 +73,6 @@ export function PilotDetail({ expanded, onClose, onDirectionsOpen, result, title
               {matchingMenus.length > 1 ? <span> 외 {matchingMenus.length - 1}가지</span> : null}
             </p>
           ) : null}
-          <div className={styles["detailMore"]}>
-            {imageIsVisible ? (
-              <figure className={styles["placePhoto"]}>
-                <div className={styles["officialImage"]}>
-                  <Image
-                    alt={image.alt}
-                    height={400}
-                    loading="lazy"
-                    onError={() => setFailedImageUrl(image.url)}
-                    referrerPolicy="no-referrer"
-                    sizes="(max-width: 899px) 100vw, 352px"
-                    src={image.url}
-                    width={800}
-                  />
-                </div>
-                <figcaption>{image.attribution}</figcaption>
-              </figure>
-            ) : null}
-            <PilotMenuList menus={matchingMenus} title="메뉴 둘러보기" />
-            <PilotMenuList menus={otherMenus} title="함께 살펴볼 메뉴" />
-          </div>
           <div className={styles["visitActions"]}>
             <a
               aria-describedby="pilot-place-link-note"
@@ -125,6 +104,30 @@ export function PilotDetail({ expanded, onClose, onDirectionsOpen, result, title
               ? "네이버 지도의 장소 페이지를 새 창에서 엽니다."
               : "네이버 지도에서 지역과 장소 이름으로 검색한 결과를 새 창에서 엽니다."}
           </p>
+          <p className={styles["tagMeaning"]}>
+            태그는 음식과 메뉴에서 확인된 특징이며, 건강 효과를 보장하지 않아요.
+          </p>
+          <div className={styles["detailMore"]}>
+            {imageIsVisible ? (
+              <figure className={styles["placePhoto"]}>
+                <div className={styles["officialImage"]}>
+                  <Image
+                    alt={image.alt}
+                    height={400}
+                    loading="lazy"
+                    onError={() => setFailedImageUrl(image.url)}
+                    referrerPolicy="no-referrer"
+                    sizes="(max-width: 899px) 100vw, 352px"
+                    src={image.url}
+                    width={800}
+                  />
+                </div>
+                <figcaption>{image.attribution}</figcaption>
+              </figure>
+            ) : null}
+            <PilotMenuList menus={matchingMenus} title="조건에 맞는 메뉴" />
+            <PilotMenuList menus={otherMenus} title="함께 살펴볼 메뉴" />
+          </div>
           <div className={styles["detailMore"]}>
             <p className={styles["mapProvider"]}>장소 정보와 길찾기는 네이버 지도로 연결돼요.</p>
             {place.phone ? (

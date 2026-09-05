@@ -47,18 +47,22 @@ export function FoodMap({ clientId }: Properties) {
   const detailTitle = useRef<HTMLHeadingElement>(null)
   const recoveryHeading = useRef<HTMLHeadingElement>(null)
   const resultsHeading = useRef<HTMLHeadingElement>(null)
+  const resultsScroll = useRef<HTMLDivElement>(null)
   const emptyHeading = useRef<HTMLElement>(null)
   const pendingRecovery = useRef<string | undefined>(undefined)
   const [recoveryOpen, setRecoveryOpen] = useState(false)
   const [focusRecoveredResults, setFocusRecoveredResults] = useState(false)
   const selectedIdRef = useRef<PilotPlace["id"]>(undefined)
   const selectionTrigger = useRef<HTMLElement | null>(null)
+  const selectionScrollTop = useRef(0)
   const selectionOrigin = useRef<SelectionOrigin>("map")
   const pendingReturn = useRef<
     | {
         readonly element: HTMLElement | null
         readonly origin: SelectionOrigin
         readonly placeId: PilotPlace["id"]
+        readonly queryKey: string
+        readonly scrollTop: number
       }
     | undefined
   >(undefined)
@@ -74,6 +78,7 @@ export function FoodMap({ clientId }: Properties) {
     onFirstPageSuccess: analytics.searchSucceeded,
   })
   const visibleResults = catalog.results
+  const queryKey = `${query}\u0000${filter}\u0000${ingredient}\u0000${viewport.region ?? ""}\u0000${viewport.bounds ? JSON.stringify(viewport.bounds) : ""}`
   const empty = !catalog.loading && !catalog.failed && catalog.total === 0
   const outsideRegions = catalog.regions?.regions ?? []
   const outsideCount = catalog.regions?.total
@@ -112,6 +117,7 @@ export function FoodMap({ clientId }: Properties) {
             ? activeElement
             : null
       selectionOrigin.current = origin
+      selectionScrollTop.current = origin === "list" ? (resultsScroll.current?.scrollTop ?? 0) : 0
       selectedIdRef.current = placeId
       setTrayExpanded(false)
       setSelectedId(placeId)
@@ -127,13 +133,15 @@ export function FoodMap({ clientId }: Properties) {
         element: selectionTrigger.current,
         origin,
         placeId: currentSelectedId,
+        queryKey,
+        scrollTop: selectionScrollTop.current,
       }
     }
     selectedIdRef.current = undefined
     selectionTrigger.current = null
     setSelectedId(undefined)
     setTrayExpanded(origin === "list")
-  }, [])
+  }, [queryKey])
   const markers = useMemo(
     () =>
       visibleResults.map((result) => ({
@@ -268,7 +276,7 @@ export function FoodMap({ clientId }: Properties) {
 
   useEffect(() => {
     if (selectedPlace !== undefined || pendingReturn.current === undefined) return
-    const { element, origin, placeId } = pendingReturn.current
+    const { element, origin, placeId, queryKey: returnQueryKey, scrollTop } = pendingReturn.current
     pendingReturn.current = undefined
     const listResult = document.querySelector<HTMLElement>(
       `[data-pilot-place-id="${CSS.escape(placeId)}"]`,
@@ -278,6 +286,8 @@ export function FoodMap({ clientId }: Properties) {
       target.getClientRects().length > 0 &&
       getComputedStyle(target).visibility !== "hidden"
     const frame = window.requestAnimationFrame(() => {
+      if (origin === "list" && returnQueryKey === queryKey && resultsScroll.current)
+        resultsScroll.current.scrollTop = scrollTop
       const target = origin === "list" ? listResult : element
       const visibleTarget = isVisible(target)
         ? target
@@ -287,7 +297,7 @@ export function FoodMap({ clientId }: Properties) {
       })
     })
     return () => window.cancelAnimationFrame(frame)
-  }, [selectedPlace])
+  }, [queryKey, selectedPlace])
 
   return (
     <section aria-label="건강식 지도" className={styles["shell"]}>
@@ -351,6 +361,7 @@ export function FoodMap({ clientId }: Properties) {
               ) : (
                 <PilotResults
                   headingRef={resultsHeading}
+                  scrollRef={resultsScroll}
                   sortBasis={catalog.sortBasis}
                   sortOrigin={catalog.sortOrigin}
                   filter={filter}

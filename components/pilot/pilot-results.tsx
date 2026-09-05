@@ -37,6 +37,7 @@ type Properties = {
   readonly emptyHeadingRef?: RefObject<HTMLElement | null> | undefined
   readonly recovery?: ReactNode | undefined
   readonly headingRef?: RefObject<HTMLHeadingElement | null> | undefined
+  readonly scrollRef?: RefObject<HTMLDivElement | null> | undefined
 }
 
 export function PilotResults({
@@ -59,6 +60,7 @@ export function PilotResults({
   emptyHeadingRef,
   recovery,
   headingRef,
+  scrollRef,
 }: Properties) {
   return (
     <section className={styles["results"]}>
@@ -72,7 +74,7 @@ export function PilotResults({
           </output>
         </div>
       </header>
-      <div className={styles["scrollBody"]}>
+      <div className={styles["scrollBody"]} ref={scrollRef}>
         {failed && results.length === 0 ? (
           <div className={styles["empty"]} role="alert">
             <strong>메뉴를 불러오지 못했어요.</strong>
@@ -142,6 +144,16 @@ export function PilotResults({
                       <strong>{place.name}</strong>
                       <ChevronRightIcon />
                     </span>
+                    <span className={styles["cardLocation"]}>
+                      {distance !== undefined ? (
+                        <span className={styles["distance"]}>
+                          {distanceBasis}에서 직선 {distance.toFixed(1)}km
+                        </span>
+                      ) : null}
+                      <span className={styles["cardAddress"]} title={place.address}>
+                        {place.address}
+                      </span>
+                    </span>
                     <span className={styles["cardSummary"]}>
                       <span className={styles["menuPreview"]}>
                         {first ? presentPilotMenuName(first.name) : null}
@@ -152,16 +164,6 @@ export function PilotResults({
                     {first?.facts.ordering_note ? (
                       <span className={styles["cardNotices"]}>{first.facts.ordering_note}</span>
                     ) : null}
-                    <span className={styles["cardLocation"]}>
-                      <span className={styles["cardAddress"]} title={place.address}>
-                        {place.address}
-                      </span>
-                      {distance !== undefined ? (
-                        <span className={styles["distance"]}>
-                          {distanceBasis}에서 직선 {distance.toFixed(1)}km
-                        </span>
-                      ) : null}
-                    </span>
                   </button>
                 </li>
               )

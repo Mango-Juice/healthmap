@@ -771,6 +771,13 @@
   margin: 0;
 }
 
+.tagMeaning {
+  color: var(--hm-ink-muted);
+  font-size: var(--hm-type-caption);
+  line-height: var(--hm-leading-tight);
+  margin: 0;
+}
+
 .placePhoto {
   margin: var(--hm-space-2) 0;
 }
@@ -913,6 +920,21 @@
   background: var(--hm-green-100);
   border-radius: var(--hm-radius-card);
   padding: var(--hm-space-2) var(--hm-space-3);
+}
+
+.menuExpand {
+  align-items: center;
+  background: var(--hm-surface);
+  border: var(--hm-border-width) solid var(--hm-border-strong);
+  border-radius: var(--hm-radius-control);
+  color: var(--hm-green-800);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-weight: var(--hm-weight-action);
+  justify-content: center;
+  min-block-size: var(--hm-control-min);
+  padding-inline: var(--hm-space-4);
 }
 
 .visuallyHidden {
