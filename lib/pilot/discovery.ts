@@ -26,6 +26,13 @@ export const PILOT_DISCOVERY_LABELS = {
   whole_grain: "잡곡·현미",
   grilled_steamed: "구이·찜",
 } as const
+const PILOT_MARKER_CATEGORY_PRIORITY: readonly PilotDiscoveryTag[] = [
+  "plant_based",
+  "whole_grain",
+  "grilled_steamed",
+  "salad_poke",
+  "rice",
+]
 
 export const discoveryTagsForMenu = (menu: {
   readonly facts: Omit<PilotMenu["facts"], "status">
@@ -144,12 +151,17 @@ export const markerCategoryForMenus = (
   if (brandId === "bon_dosirak") return "rice"
   if (brandId === "salady" || brandId === "slowcali" || brandId === "pokeallday")
     return "salad_poke"
-  const counts = new Map<string, number>()
-  for (const menu of menus) counts.set(menu.facts.form, (counts.get(menu.facts.form) ?? 0) + 1)
-  const ranked = [...counts].sort((left, right) => right[1] - left[1])
-  const leading = ranked[0]
-  if (leading === undefined || leading[1] === ranked[1]?.[1]) return "neutral"
-  return leading[0] === "salad_poke" || leading[0] === "rice" ? leading[0] : "neutral"
+  const counts = new Map<PilotDiscoveryTag, number>()
+  for (const menu of menus) {
+    for (const tag of discoveryTagsForMenu(menu)) counts.set(tag, (counts.get(tag) ?? 0) + 1)
+  }
+  return PILOT_MARKER_CATEGORY_PRIORITY.reduce<PilotDiscoveryTag | "neutral">(
+    (leading, category) => {
+      const leadingCount = leading === "neutral" ? 0 : (counts.get(leading) ?? 0)
+      return (counts.get(category) ?? 0) > leadingCount ? category : leading
+    },
+    "neutral",
+  )
 }
 export const pilotCategoryIcon = (category: PilotDiscoveryTag | "neutral", selected = false) =>
   `/markers/pilot-${category}${selected ? "-selected" : ""}.svg`
