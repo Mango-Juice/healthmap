@@ -37,6 +37,7 @@ export function usePilotQuery(input: Query) {
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState(false)
   const [regionsFailed, setRegionsFailed] = useState(false)
+  const [regionsLoading, setRegionsLoading] = useState(true)
   const [retry, setRetry] = useState(0)
   const [cursor, setCursor] = useState<{ readonly key: string; readonly value: string }>()
   const active = useRef(0)
@@ -75,20 +76,24 @@ export function usePilotQuery(input: Query) {
     const generation = ++regionsActive.current
     setRegions(undefined)
     setRegionsFailed(false)
+    setRegionsLoading(true)
     void fetch(regionRequest.url, { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new TypeError("Pilot regions unavailable")
         const parsed = PilotRegionsResponseSchema.parse(await response.json())
         if (controller.signal.aborted || generation !== regionsActive.current) return
         setRegions(parsed)
+        setRegionsLoading(false)
       })
       .catch((error: unknown) => {
         if (
           error instanceof Error &&
           !controller.signal.aborted &&
           generation === regionsActive.current
-        )
+        ) {
           setRegionsFailed(true)
+          setRegionsLoading(false)
+        }
       })
     return () => controller.abort()
   }, [regionRequest])
@@ -135,7 +140,9 @@ export function usePilotQuery(input: Query) {
     results: input.ready && current ? (page?.results ?? []) : [],
     total: input.ready ? (current ? (page?.total ?? 0) : 0) : (regions?.total ?? 0),
     loading: input.ready && (loading || !current),
-    failed: failed || regionsFailed,
+    failed,
+    regionsFailed,
+    regionsLoading,
     loadMore:
       input.ready && current && page?.nextCursor
         ? () => {
@@ -146,5 +153,6 @@ export function usePilotQuery(input: Query) {
       setCursor(undefined)
       setRetry((value) => value + 1)
     },
+    retryRegions: () => setRetry((value) => value + 1),
   }
 }

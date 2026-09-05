@@ -9,10 +9,11 @@ import {
   type PilotDiscoveryFilter,
   type PilotIngredientFilter,
 } from "../../lib/pilot/discovery"
-import type { PilotPlaceDto as PilotPlace } from "../../lib/pilot/dto"
+import type { PilotPlaceDto as PilotPlace, PilotRegionDto } from "../../lib/pilot/dto"
 import { useNaverMapAdapter } from "../map/use-naver-map-adapter"
 import { ApplicationMasthead } from "../ui/application-masthead"
 import { PlusIcon } from "../ui/health-map-icons"
+import { PilotAreaRecovery } from "./pilot-area-recovery"
 import { PilotDetail } from "./pilot-detail"
 import styles from "./pilot-discovery.module.css"
 import { PilotDrawerHandle } from "./pilot-drawer-handle"
@@ -44,6 +45,12 @@ export function FoodMap({ clientId }: Properties) {
   const [locationRequest, setLocationRequest] = useState(0)
   const expireLocationFailure = useCallback(() => setLocationRequest(0), [])
   const detailTitle = useRef<HTMLHeadingElement>(null)
+  const recoveryHeading = useRef<HTMLHeadingElement>(null)
+  const resultsHeading = useRef<HTMLElement>(null)
+  const emptyHeading = useRef<HTMLElement>(null)
+  const pendingRecovery = useRef<string | undefined>(undefined)
+  const [recoveryOpen, setRecoveryOpen] = useState(false)
+  const [focusRecoveredResults, setFocusRecoveredResults] = useState(false)
   const selectedIdRef = useRef<PilotPlace["id"]>(undefined)
   const selectionTrigger = useRef<HTMLElement | null>(null)
   const selectionOrigin = useRef<SelectionOrigin>("map")
@@ -68,6 +75,14 @@ export function FoodMap({ clientId }: Properties) {
   })
   const visibleResults = catalog.results
   const empty = !catalog.loading && !catalog.failed && catalog.total === 0
+  const outsideRegions = catalog.regions?.regions ?? []
+  const outsideCount = catalog.regions?.total
+  const canRecover =
+    empty &&
+    !catalog.regionsLoading &&
+    !catalog.regionsFailed &&
+    outsideCount !== undefined &&
+    outsideCount > 0
   const emptyHint = query.trim()
     ? "검색어를 바꿔보세요."
     : filter !== "all" || ingredient !== "all"
@@ -154,6 +169,54 @@ export function FoodMap({ clientId }: Properties) {
       map.recenter(viewport.view, viewport.view.zoom)
     }
   }, [viewport.view, map.recenter, map.state])
+  useEffect(() => {
+    if (
+      pendingRecovery.current === undefined ||
+      pendingRecovery.current !== viewport.region ||
+      catalog.loading ||
+      catalog.failed
+    )
+      return
+    pendingRecovery.current = undefined
+    if (catalog.results.length > 0 && map.state === "ready") {
+      const mapRect = map.containerRef.current?.getBoundingClientRect()
+      const panelRect = sheet.panelRef.current?.getBoundingClientRect()
+      const panelOverlap =
+        mapRect && panelRect && window.matchMedia("(max-width: 899px)").matches
+          ? Math.min(mapRect.height, panelRect.height)
+          : 0
+      map.fitBounds(
+        catalog.results.map((result) => result.place),
+        { top: 24, right: 24, bottom: Math.max(24, panelOverlap + 12), left: 24 },
+      )
+    }
+    setTrayExpanded(true)
+    setFocusRecoveredResults(true)
+  }, [catalog.failed, catalog.loading, catalog.results, map, sheet.panelRef, viewport.region])
+  useEffect(() => {
+    if (!focusRecoveredResults || !trayExpanded) return
+    const timer = window.setTimeout(() => {
+      resultsHeading.current?.focus({ preventScroll: true })
+      setFocusRecoveredResults(false)
+    }, 300)
+    return () => window.clearTimeout(timer)
+  }, [focusRecoveredResults, trayExpanded])
+  const selectRecoveryRegion = (region: PilotRegionDto): void => {
+    pendingRecovery.current = region.id
+    setRecoveryOpen(false)
+    viewport.chooseRegion(region.id, region.bounds)
+    setSelectedId(undefined)
+  }
+  const openOutsideResults = (): void => {
+    const onlyRegion = outsideRegions.length === 1 ? outsideRegions[0] : undefined
+    if (onlyRegion) {
+      selectRecoveryRegion(onlyRegion)
+      return
+    }
+    setRecoveryOpen(true)
+    setTrayExpanded(true)
+    window.requestAnimationFrame(() => recoveryHeading.current?.focus({ preventScroll: true }))
+  }
   const chooseRegion = (id: string): void => {
     const regionBounds = catalog.regions?.regions.find((entry) => entry.id === id)?.bounds
     viewport.chooseRegion(id, regionBounds)
@@ -164,18 +227,24 @@ export function FoodMap({ clientId }: Properties) {
     analytics.searchIntentChanged(value)
     setQuery(value)
     setSelectedId(undefined)
+    setRecoveryOpen(false)
+    pendingRecovery.current = undefined
     setTrayExpanded(true)
   }
   const changeFilter = (value: PilotDiscoveryFilter): void => {
     viewport.interact()
     setFilter(value)
     setSelectedId(undefined)
+    setRecoveryOpen(false)
+    pendingRecovery.current = undefined
     analytics.filterSelected(value)
   }
   const changeIngredient = (value: PilotIngredientFilter): void => {
     viewport.interact()
     setIngredient(value)
     setSelectedId(undefined)
+    setRecoveryOpen(false)
+    pendingRecovery.current = undefined
   }
   useEffect(() => {
     if (selectedPlace !== undefined) detailTitle.current?.focus({ preventScroll: true })
@@ -246,6 +315,8 @@ export function FoodMap({ clientId }: Properties) {
               viewport.applyArea()
               analytics.searchAreaApplied()
             }}
+            outsideCount={canRecover ? outsideCount : undefined}
+            onOutside={canRecover ? openOutsideResults : undefined}
           />
           <aside
             ref={sheet.panelRef}
@@ -274,6 +345,7 @@ export function FoodMap({ clientId }: Properties) {
                 />
               ) : (
                 <PilotResults
+                  headingRef={resultsHeading}
                   sortBasis={catalog.sortBasis}
                   sortOrigin={catalog.sortOrigin}
                   filter={filter}
@@ -292,6 +364,19 @@ export function FoodMap({ clientId }: Properties) {
                   onLoadMore={catalog.loadMore}
                   results={visibleResults}
                   query={query}
+                  emptyHeadingRef={emptyHeading}
+                  recovery={
+                    empty && (recoveryOpen || catalog.regionsFailed || catalog.regionsLoading) ? (
+                      <PilotAreaRecovery
+                        failed={catalog.regionsFailed}
+                        headingRef={recoveryHeading}
+                        loading={catalog.regionsLoading}
+                        onRetry={catalog.retryRegions}
+                        onSelect={selectRecoveryRegion}
+                        regions={outsideRegions}
+                      />
+                    ) : undefined
+                  }
                 />
               )}
             </div>

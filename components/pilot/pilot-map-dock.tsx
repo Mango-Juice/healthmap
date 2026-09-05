@@ -8,6 +8,8 @@ type Properties = {
   readonly onLocationFailureExpire: () => void
   readonly pending: boolean
   readonly onArea: () => void
+  readonly outsideCount?: number | undefined
+  readonly onOutside?: (() => void) | undefined
 }
 
 export function PilotMapDock({
@@ -16,8 +18,16 @@ export function PilotMapDock({
   onLocationFailureExpire,
   pending,
   onArea,
+  outsideCount,
+  onOutside,
 }: Properties) {
-  if (emptyHint === undefined && locationFailure === undefined && !pending) return null
+  if (
+    emptyHint === undefined &&
+    locationFailure === undefined &&
+    !pending &&
+    outsideCount === undefined
+  )
+    return null
   return (
     <div className={styles["dock"]} data-testid="pilot-map-dock">
       {locationFailure !== undefined ? (
@@ -38,6 +48,11 @@ export function PilotMapDock({
         <button className={styles["areaSearch"]} onClick={onArea} type="button">
           <RotateCcwIcon />
           <span>이 지역 재검색</span>
+        </button>
+      ) : null}
+      {outsideCount !== undefined && onOutside !== undefined ? (
+        <button className={styles["outsideResults"]} onClick={onOutside} type="button">
+          현재 지도 밖 {outsideCount}곳 보기
         </button>
       ) : null}
     </div>

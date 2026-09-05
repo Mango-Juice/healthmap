@@ -1,3 +1,4 @@
+import type { ReactNode, RefObject } from "react"
 import { haversineDistanceMeters } from "../../lib/domain/distance"
 import type { GeoPoint } from "../../lib/domain/geo"
 import {
@@ -33,6 +34,9 @@ type Properties = {
   readonly onSelect: (id: PilotPlace["id"], trigger: HTMLButtonElement) => void
   readonly results: readonly PilotResult[]
   readonly query: string
+  readonly emptyHeadingRef?: RefObject<HTMLElement | null> | undefined
+  readonly recovery?: ReactNode | undefined
+  readonly headingRef?: RefObject<HTMLElement | null> | undefined
 }
 
 export function PilotResults({
@@ -52,12 +56,15 @@ export function PilotResults({
   onSelect,
   results,
   query,
+  emptyHeadingRef,
+  recovery,
+  headingRef,
 }: Properties) {
   return (
     <section className={styles["results"]}>
-      <header className={styles["resultsHeader"]}>
+      <header className={styles["resultsHeader"]} ref={headingRef} tabIndex={-1}>
         <div className={styles["resultsMeta"]}>
-          <output aria-label="검색 결과 수">
+          <output aria-label="검색 결과 수" aria-live="polite">
             {loading ? "찾는 중" : `${total}곳 중 ${results.length}곳`}
           </output>
         </div>
@@ -74,10 +81,14 @@ export function PilotResults({
           <div className={styles["empty"]} role="status">
             메뉴를 찾고 있어요.
           </div>
+        ) : results.length === 0 && recovery !== undefined ? (
+          recovery
         ) : results.length === 0 ? (
           <div className={styles["empty"]} role="status">
-            <strong>찾으시는 메뉴가 아직 없어요.</strong>
-            <span>실제 매장에는 다른 메뉴가 있을 수 있어요.</span>
+            <strong ref={emptyHeadingRef} tabIndex={-1}>
+              이 조건에서 찾은 곳이 없어요.
+            </strong>
+            <span>검색어나 메뉴 조건을 바꿔보세요.</span>
             {query ? (
               <ActionButton onClick={() => onQueryChange("")} variant="secondary">
                 검색어 지우기

@@ -179,6 +179,54 @@
   background: var(--hm-surface-subtle);
 }
 
+.areaRecovery {
+  display: grid;
+  gap: var(--hm-space-3);
+  padding: var(--hm-space-4);
+}
+
+.areaRecovery h2 {
+  margin: 0;
+  color: var(--hm-green-900);
+  font-size: var(--hm-type-subheading);
+}
+
+.areaRecovery h2:focus {
+  outline: none;
+}
+
+.areaRecovery p,
+.areaRecovery ul {
+  margin: 0;
+}
+
+.areaRecovery ul {
+  display: grid;
+  gap: var(--hm-space-2);
+  padding: 0;
+  list-style: none;
+}
+
+.areaRecovery li button {
+  inline-size: 100%;
+  min-block-size: var(--hm-control-min);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline: var(--hm-space-3);
+  border: var(--hm-border-width) solid var(--hm-border);
+  border-radius: var(--hm-radius-card);
+  background: var(--hm-surface);
+  color: var(--hm-ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.areaRecovery li button:focus-visible {
+  outline: var(--hm-focus-ring) solid var(--hm-blue);
+  outline-offset: var(--hm-space-1);
+}
+
 .detail {
   grid-template-rows: minmax(0, 1fr);
 }

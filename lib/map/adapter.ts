@@ -16,6 +16,16 @@ export type NaverMap = {
   readonly getZoom?: () => number
   readonly setCenter: (point: NaverLatLng) => void
   readonly setZoom: (zoom: number) => void
+  readonly fitBounds?: (
+    bounds: readonly NaverLatLng[],
+    options: {
+      readonly top: number
+      readonly right: number
+      readonly bottom: number
+      readonly left: number
+      readonly maxZoom: number
+    },
+  ) => void
 }
 export type MapContainer = { readonly dataset: DOMStringMap }
 export type NaverLatLng = object
@@ -62,10 +72,18 @@ declare global {
 
 export interface MapAdapter {
   destroy(): void
+  fitBounds(points: readonly GeoPoint[], margin: MapFitBoundsMargin): void
   recenter(point: GeoPoint, zoom: number): void
   syncMarkers(markers: readonly MapMarkerSpec[]): void
   teardownAfterProviderFailure(): void
   waitUntilReady(): Promise<void>
+}
+
+export type MapFitBoundsMargin = {
+  readonly top: number
+  readonly right: number
+  readonly bottom: number
+  readonly left: number
 }
 
 export type MapViewportSnapshot = {
@@ -213,6 +231,13 @@ export const createNaverMapAdapter = (
   }
   return {
     destroy: () => teardown(true),
+    fitBounds: (points, margin) => {
+      if (points.length === 0) return
+      map.fitBounds?.(
+        points.map((point) => new maps.LatLng(point.latitude, point.longitude)),
+        { ...margin, maxZoom: 15 },
+      )
+    },
     recenter: (point, zoom) => {
       map.setCenter(new maps.LatLng(point.latitude, point.longitude))
       map.setZoom(zoom)

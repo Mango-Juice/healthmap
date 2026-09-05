@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { GeoPoint, MapView } from "../../lib/domain/geo"
-import type { MapMarkerSpec, MapViewportSnapshot } from "../../lib/map/adapter"
+import type { MapFitBoundsMargin, MapMarkerSpec, MapViewportSnapshot } from "../../lib/map/adapter"
 import {
   cancelNaverMapsLoad,
   createNaverMapAdapter,
@@ -100,6 +100,11 @@ export function useNaverMapAdapter({
   const recenter = useCallback((point: GeoPoint, zoom: number): void => {
     adapterRef.current?.recenter(point, zoom)
   }, [])
+  const fitBounds = useCallback(
+    (points: readonly GeoPoint[], margin: MapFitBoundsMargin): void =>
+      adapterRef.current?.fitBounds(points, margin),
+    [],
+  )
 
   useEffect(() => {
     markersRef.current = markers
@@ -124,5 +129,5 @@ export function useNaverMapAdapter({
     [],
   )
 
-  return { containerRef, load, recenter, state }
+  return { containerRef, fitBounds, load, recenter, state }
 }

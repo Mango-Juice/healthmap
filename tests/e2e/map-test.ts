@@ -6,7 +6,10 @@ const NAVER_MAP_TEST_SDK = `(()=>{class LatLng{constructor(latitude,longitude){t
 
 export const installMapSdkTestRoutes = async (context: BrowserContext): Promise<void> => {
   await context.route("https://oapi.map.naver.com/**", async (route) => {
-    await route.fulfill({ contentType: "text/javascript", body: NAVER_MAP_TEST_SDK })
+    await route.fulfill({
+      contentType: "text/javascript",
+      body: `${NAVER_MAP_TEST_SDK};window.naver.maps.Map.prototype.fitBounds=function(points,options){const latitudes=points.map((point)=>point.latitude);const longitudes=points.map((point)=>point.longitude);this.bounds={sw:new window.naver.maps.LatLng(Math.min(...latitudes),Math.min(...longitudes)),ne:new window.naver.maps.LatLng(Math.max(...latitudes),Math.max(...longitudes))};this.center=new window.naver.maps.LatLng((this.bounds.sw.latitude+this.bounds.ne.latitude)/2,(this.bounds.sw.longitude+this.bounds.ne.longitude)/2);this.zoom=Math.min(this.zoom,options.maxZoom);this.element.dataset.fitBounds=JSON.stringify({count:points.length,options});this.listeners.idle?.()}`,
+    })
   })
 }
 

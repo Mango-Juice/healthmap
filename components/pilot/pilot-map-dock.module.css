@@ -4,7 +4,8 @@
   inset-inline-end: var(--hm-space-3);
   inset-block-end: var(--hm-space-6);
   display: grid;
-  grid-template-rows: auto var(--hm-control-min);
+  grid-auto-rows: var(--hm-control-min);
+  grid-template-rows: auto;
   gap: var(--hm-space-1);
   justify-items: center;
   pointer-events: none;
@@ -20,7 +21,6 @@
 }
 
 .areaSearch {
-  grid-row: 2;
   position: relative;
   isolation: isolate;
   display: flex;
@@ -37,6 +37,26 @@
   white-space: nowrap;
   cursor: pointer;
   pointer-events: auto;
+}
+
+.outsideResults {
+  min-block-size: var(--hm-control-min);
+  padding-inline: var(--hm-space-3);
+  border: var(--hm-border-width) solid var(--hm-border-strong);
+  border-radius: var(--hm-radius-card);
+  background: var(--hm-surface);
+  box-shadow: var(--hm-shadow-control);
+  color: var(--hm-green-800);
+  font: inherit;
+  font-size: var(--hm-type-caption);
+  font-weight: var(--hm-weight-label);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.outsideResults:focus-visible {
+  outline: var(--hm-focus-ring) solid var(--hm-blue);
+  outline-offset: var(--hm-space-1);
 }
 
 .areaSearch::before {

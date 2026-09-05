@@ -75,6 +75,8 @@ test("common menu notice and directions survive media excluded for another menu"
   const wrongMediaUrl = "https://salady.com/test-wrong-menu.jpg"
   const fixture = PilotPlacesResponseSchema.parse({
     catalogVersion: data.catalogVersion,
+    sortBasis: data.sortBasis,
+    sortOrigin: data.sortOrigin,
     nextCursor: null,
     results: [
       {
@@ -211,17 +213,23 @@ test("a late search response cannot overwrite a newer query", async ({ page, req
   await expect(page.getByRole("searchbox")).toHaveValue("newer")
 })
 
-test("regional fallback failure retains a retry action", async ({ page }) => {
+test("regional fallback failure retains a retry action", async ({ page, request }) => {
+  const source = PilotPlacesResponseSchema.parse(
+    await (await request.get("/api/places?mode=places&limit=1")).json(),
+  )
   let failed = true
   await page.route("**/api/places?**", async (route) => {
-    if (failed && new URL(route.request().url()).searchParams.get("mode") === "regions")
+    const mode = new URL(route.request().url()).searchParams.get("mode")
+    if (failed && mode === "regions")
       return route.fulfill({ status: 503, json: { error: "catalog_unavailable", retry: true } })
+    if (mode === "places")
+      return route.fulfill({ json: { ...source, nextCursor: null, results: [], total: 0 } })
     return route.continue()
   })
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.goto("/")
-  await expect(page.getByRole("button", { name: "메뉴 다시 불러오기" })).toBeVisible()
+  await expect(page.getByRole("button", { name: "지도 밖 결과 다시 확인" })).toBeVisible()
   failed = false
-  await page.getByRole("button", { name: "메뉴 다시 불러오기" }).click()
-  await expect(page.locator("[data-pilot-place-id]").first()).toBeAttached()
+  await page.getByRole("button", { name: "지도 밖 결과 다시 확인" }).click()
+  await expect(page.getByRole("button", { name: /현재 지도 밖/u })).toBeVisible()
 })
