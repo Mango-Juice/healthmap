@@ -68,5 +68,27 @@ export function usePilotAnalytics() {
         properties: { result_count_bucket: resultCountBucket(resultCount) },
       })
     }, []),
+    catalogResultReceived: useCallback(
+      (queryKind: "browse" | "search", filter: PilotDiscoveryFilter, resultCount: number): void => {
+        captureProductAnalytics({
+          event: "catalog_result_received",
+          properties: {
+            query_kind: queryKind,
+            filter,
+            result_count_bucket: resultCountBucket(resultCount),
+          },
+        })
+      },
+      [],
+    ),
+    catalogRequestFailed: useCallback(
+      (queryKind: "browse" | "search", reason: "network" | "http" | "invalid_response"): void => {
+        captureProductAnalytics({
+          event: "catalog_request_failed",
+          properties: { query_kind: queryKind, reason },
+        })
+      },
+      [],
+    ),
   }
 }

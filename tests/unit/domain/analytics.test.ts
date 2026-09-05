@@ -16,6 +16,8 @@ describe("analytics privacy boundary", () => {
       "search_used",
       "search_area_applied",
       "result_list_opened",
+      "catalog_result_received",
+      "catalog_request_failed",
     ]
 
     // When
@@ -31,6 +33,14 @@ describe("analytics privacy boundary", () => {
       { event: "search_used", properties: { result_count_bucket: "1_5" } },
       { event: "search_area_applied", properties: {} },
       { event: "result_list_opened", properties: {} },
+      {
+        event: "catalog_result_received",
+        properties: { query_kind: "browse", filter: "all", result_count_bucket: "21_plus" },
+      },
+      {
+        event: "catalog_request_failed",
+        properties: { query_kind: "search", reason: "invalid_response" },
+      },
       { event: "location_resolved", properties: { outcome: "resolved" } },
       { event: "location_resolved", properties: { outcome: "unavailable" } },
       {
@@ -79,6 +89,41 @@ describe("analytics privacy boundary", () => {
       { event: "search_used", properties: { result_count_bucket: "1_5", q: "두부" } },
       { event: "search_used", properties: { result_count_bucket: "7" } },
       { event: "search_area_applied", properties: { latitude: 37.5 } },
+      {
+        event: "catalog_result_received",
+        properties: {
+          query_kind: "search",
+          filter: "all",
+          result_count_bucket: "0",
+          query: "두부",
+        },
+      },
+      {
+        event: "catalog_result_received",
+        properties: {
+          query_kind: "browse",
+          filter: "all",
+          result_count_bucket: "1_5",
+          coordinates: "37.5,127.0",
+        },
+      },
+      {
+        event: "catalog_result_received",
+        properties: {
+          query_kind: "browse",
+          filter: "all",
+          result_count_bucket: "1_5",
+          address: "서울 강남구",
+        },
+      },
+      {
+        event: "catalog_request_failed",
+        properties: { query_kind: "browse", reason: "http", region: "부산" },
+      },
+      {
+        event: "catalog_request_failed",
+        properties: { query_kind: "browse", reason: "network", url: "https://private.test" },
+      },
       {
         event: "place_opened",
         properties: { place_id: "6dd657be-fc3b-4bb8-8e67-fabbee0f2ea0", source: "place_share" },

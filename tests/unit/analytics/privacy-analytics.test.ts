@@ -137,6 +137,14 @@ describe("privacy-safe product analytics", () => {
       { event: "search_used", properties: { result_count_bucket: "6_20" } },
       { event: "search_area_applied", properties: {} },
       { event: "result_list_opened", properties: {} },
+      {
+        event: "catalog_result_received",
+        properties: { query_kind: "browse", filter: "rice", result_count_bucket: "6_20" },
+      },
+      {
+        event: "catalog_request_failed",
+        properties: { query_kind: "search", reason: "network" },
+      },
     ] as const
 
     // When
@@ -170,6 +178,15 @@ describe("privacy-safe product analytics", () => {
       },
       { event: "search_used", properties: { result_count_bucket: "1_5", q: "두부" } },
       { event: "search_area_applied", properties: { coordinates: "37.5,127.0" } },
+      {
+        event: "catalog_result_received",
+        properties: {
+          query_kind: "search",
+          filter: "all",
+          result_count_bucket: "1_5",
+          region: "서울",
+        },
+      },
     ]
 
     // When
@@ -215,6 +232,33 @@ describe("privacy-safe product analytics", () => {
 
     // Then
     expect(event).toEqual({ event: "search_used", properties: { result_count_bucket: "1_5" } })
+  })
+
+  it("Given an SDK-enriched catalog result, when serialized, then only its bounded dimensions remain", () => {
+    // Given
+    const properties = {
+      query_kind: "search",
+      filter: "whole_grain",
+      result_count_bucket: "0",
+      query: "두부",
+      address: "서울 강남구",
+      coordinates: "37.5007,127.0328",
+      region: "서울",
+      $current_url: "https://healthmap.test/?q=두부",
+    }
+
+    // When
+    const event = sanitizeAnalyticsTransportEvent("catalog_result_received", properties)
+
+    // Then
+    expect(event).toEqual({
+      event: "catalog_result_received",
+      properties: {
+        query_kind: "search",
+        filter: "whole_grain",
+        result_count_bucket: "0",
+      },
+    })
   })
 
   it("Given local opt-out, when events are captured then opted back in, then capture stops immediately and resumes", () => {

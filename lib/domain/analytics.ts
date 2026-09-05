@@ -14,12 +14,23 @@ export const ANALYTICS_EVENT_NAMES = [
   "search_used",
   "search_area_applied",
   "result_list_opened",
+  "catalog_result_received",
+  "catalog_request_failed",
 ] as const
 
 const EntrySourceSchema = z.enum(["direct", "map", "place_share", "map_share"])
 const ShareTargetSchema = z.enum(["place", "map"])
 const ResultCountBucketSchema = z.enum(["0", "1_5", "6_20", "21_plus"])
 const AnalyticsFilterSchema = z.enum([...PLACE_FILTERS, "grilled_steamed"])
+const CatalogFilterSchema = z.enum([
+  "all",
+  "salad_poke",
+  "grilled_steamed",
+  "whole_grain",
+  "plant_based",
+  "rice",
+])
+const CatalogQueryKindSchema = z.enum(["browse", "search"])
 
 const AnalyticsEventSchema = z.discriminatedUnion("event", [
   z
@@ -127,6 +138,33 @@ const AnalyticsEventSchema = z.discriminatedUnion("event", [
     .object({
       event: z.literal("result_list_opened"),
       properties: z.object({}).strict().readonly(),
+    })
+    .strict()
+    .readonly(),
+  z
+    .object({
+      event: z.literal("catalog_result_received"),
+      properties: z
+        .object({
+          query_kind: CatalogQueryKindSchema,
+          filter: CatalogFilterSchema,
+          result_count_bucket: ResultCountBucketSchema,
+        })
+        .strict()
+        .readonly(),
+    })
+    .strict()
+    .readonly(),
+  z
+    .object({
+      event: z.literal("catalog_request_failed"),
+      properties: z
+        .object({
+          query_kind: CatalogQueryKindSchema,
+          reason: z.enum(["network", "http", "invalid_response"]),
+        })
+        .strict()
+        .readonly(),
     })
     .strict()
     .readonly(),

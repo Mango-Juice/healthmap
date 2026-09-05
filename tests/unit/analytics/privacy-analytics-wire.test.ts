@@ -146,4 +146,49 @@ describe("actual PostHog SDK wire privacy", () => {
     ])
       expect(outbound).not.toContain(sensitiveValue)
   })
+
+  it("Given a completed catalog request, when the actual SDK sends it, then only bounded result fields cross the wire", async () => {
+    // Given
+    const storage = new MemoryStorage()
+    const outboundBodies: string[] = []
+    installBrowserEnvironment(storage)
+    vi.stubGlobal("fetch", async (...args: readonly unknown[]) => {
+      const options = args[1]
+      if (typeof options === "object" && options !== null && "body" in options) {
+        const body = await decodeRequestBody(options.body)
+        if (body !== null) outboundBodies.push(body)
+      }
+      return new Response('{"status":1}', { status: 200 })
+    })
+    initializeOptedInAnalytics(storage)
+    await Promise.resolve()
+
+    // When
+    captureProductAnalytics({
+      event: "catalog_result_received",
+      properties: { query_kind: "search", filter: "plant_based", result_count_bucket: "0" },
+    })
+    const client = globalThis.healthmapAnalyticsLifecycle?.client
+    if (client === null || client === undefined) throw new Error("analytics client did not start")
+    await client.flush()
+
+    // Then
+    expect(outboundBodies).toHaveLength(1)
+    const payload = WirePayloadSchema.parse(JSON.parse(outboundBodies[0] ?? ""))
+    expect(payload.batch[0]).toMatchObject({
+      event: "catalog_result_received",
+      properties: {
+        $geoip_disable: true,
+        query_kind: "search",
+        filter: "plant_based",
+        result_count_bucket: "0",
+      },
+    })
+    expect(payload.batch[0]?.properties).toEqual({
+      $geoip_disable: true,
+      query_kind: "search",
+      filter: "plant_based",
+      result_count_bucket: "0",
+    })
+  })
 })

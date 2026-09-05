@@ -17,6 +17,21 @@ type Query = {
   readonly filter: PilotDiscoveryFilter
   readonly ingredient: PilotIngredientFilter
   readonly onFirstPageSuccess?: ((normalizedQuery: string, resultCount: number) => void) | undefined
+  readonly onFirstPageResult?:
+    | ((queryKind: "browse" | "search", filter: PilotDiscoveryFilter, resultCount: number) => void)
+    | undefined
+  readonly onFirstPageFailure?:
+    | ((queryKind: "browse" | "search", reason: "network" | "http" | "invalid_response") => void)
+    | undefined
+}
+
+class PilotQueryError extends Error {
+  readonly reason: "http" | "invalid_response"
+
+  constructor(reason: "http" | "invalid_response") {
+    super(reason)
+    this.reason = reason
+  }
 }
 
 type PilotRegionRequestConditions = Pick<Query, "filter" | "ingredient" | "query">
@@ -41,6 +56,7 @@ export function usePilotQuery(input: Query) {
   const [retry, setRetry] = useState(0)
   const [cursor, setCursor] = useState<{ readonly key: string; readonly value: string }>()
   const active = useRef(0)
+  const reportedRequest = useRef(0)
   const regionsActive = useRef(0)
   const params = new URLSearchParams({
     mode: "places",
@@ -104,14 +120,23 @@ export function usePilotQuery(input: Query) {
       return
     }
     const controller = new AbortController()
+    const localRequestKey = generation
     if (!requestCursor) setCursor(undefined)
     setLoading(true)
     setFailed(false)
     const url = `/api/places?${request.key}${requestCursor ? `&cursor=${encodeURIComponent(requestCursor)}` : ""}`
     void fetch(url, { signal: controller.signal })
       .then(async (response) => {
-        if (!response.ok) throw new TypeError("Pilot places unavailable")
-        const parsed = PilotPlacesResponseSchema.parse(await response.json())
+        if (!response.ok) throw new PilotQueryError("http")
+        let payload: unknown
+        try {
+          payload = await response.json()
+        } catch {
+          throw new PilotQueryError("invalid_response")
+        }
+        const parsedResult = PilotPlacesResponseSchema.safeParse(payload)
+        if (!parsedResult.success) throw new PilotQueryError("invalid_response")
+        const parsed = parsedResult.data
         if (controller.signal.aborted || generation !== active.current) return
         setPage((previous) =>
           requestCursor && previous
@@ -121,18 +146,38 @@ export function usePilotQuery(input: Query) {
         setLoadedKey(key)
         setLoading(false)
         const normalizedQuery = normalizeDiscoveryQuery(input.query)
-        if (!requestCursor && normalizedQuery) {
-          input.onFirstPageSuccess?.(normalizedQuery, parsed.total)
+        if (!requestCursor && reportedRequest.current !== localRequestKey) {
+          reportedRequest.current = localRequestKey
+          const queryKind = normalizedQuery.length === 0 ? "browse" : "search"
+          input.onFirstPageResult?.(queryKind, input.filter, parsed.total)
+          if (normalizedQuery) input.onFirstPageSuccess?.(normalizedQuery, parsed.total)
         }
       })
       .catch((error: unknown) => {
         if (error instanceof Error && !controller.signal.aborted && generation === active.current) {
           setFailed(true)
           setLoading(false)
+          if (!requestCursor && reportedRequest.current !== localRequestKey) {
+            reportedRequest.current = localRequestKey
+            input.onFirstPageFailure?.(
+              normalizeDiscoveryQuery(input.query).length === 0 ? "browse" : "search",
+              error instanceof PilotQueryError ? error.reason : "network",
+            )
+          }
         }
       })
     return () => controller.abort()
-  }, [key, request, input.ready, input.onFirstPageSuccess, input.query, requestCursor])
+  }, [
+    key,
+    request,
+    input.ready,
+    input.filter,
+    input.onFirstPageFailure,
+    input.onFirstPageResult,
+    input.onFirstPageSuccess,
+    input.query,
+    requestCursor,
+  ])
   return {
     regions,
     sortBasis: input.ready && current ? page?.sortBasis : undefined,

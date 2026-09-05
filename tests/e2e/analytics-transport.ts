@@ -34,6 +34,9 @@ const propertyAllowlist = new Set([
   "target",
   "action",
   "result_count_bucket",
+  "query_kind",
+  "filter",
+  "reason",
 ])
 
 export const parseAnalyticsTransportEvents = (

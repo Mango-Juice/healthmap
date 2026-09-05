@@ -131,6 +131,20 @@ export const sanitizeAnalyticsTransportEvent = (
     case "search_area_applied":
     case "result_list_opened":
       return toOutboundEvent({ event, properties: {} })
+    case "catalog_result_received":
+      return toOutboundEvent({
+        event,
+        properties: {
+          query_kind: properties["query_kind"],
+          filter: properties["filter"],
+          result_count_bucket: properties["result_count_bucket"],
+        },
+      })
+    case "catalog_request_failed":
+      return toOutboundEvent({
+        event,
+        properties: { query_kind: properties["query_kind"], reason: properties["reason"] },
+      })
     default:
       return null
   }

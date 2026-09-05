@@ -83,6 +83,8 @@ export function FoodMap({ clientId }: Properties) {
     query,
     filter,
     ingredient,
+    onFirstPageFailure: analytics.catalogRequestFailed,
+    onFirstPageResult: analytics.catalogResultReceived,
     onFirstPageSuccess: analytics.searchSucceeded,
   })
   const visibleResults = catalog.results
