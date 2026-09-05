@@ -285,9 +285,8 @@ export function FoodMap({ clientId }: Properties) {
       target?.isConnected === true &&
       target.getClientRects().length > 0 &&
       getComputedStyle(target).visibility !== "hidden"
+    let settleFrame: number | undefined
     const frame = window.requestAnimationFrame(() => {
-      if (origin === "list" && returnQueryKey === queryKey && resultsScroll.current)
-        resultsScroll.current.scrollTop = scrollTop
       const target = origin === "list" ? listResult : element
       const visibleTarget = isVisible(target)
         ? target
@@ -295,8 +294,16 @@ export function FoodMap({ clientId }: Properties) {
       ;(visibleTarget ?? document.querySelector<HTMLElement>("input[type='search']"))?.focus({
         preventScroll: true,
       })
+      if (origin === "list" && returnQueryKey === queryKey) {
+        settleFrame = window.requestAnimationFrame(() => {
+          if (resultsScroll.current) resultsScroll.current.scrollTop = scrollTop
+        })
+      }
     })
-    return () => window.cancelAnimationFrame(frame)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      if (settleFrame !== undefined) window.cancelAnimationFrame(settleFrame)
+    }
   }, [queryKey, selectedPlace])
 
   return (
