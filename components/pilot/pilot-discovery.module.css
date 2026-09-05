@@ -239,6 +239,17 @@
   padding: var(--hm-space-4);
 }
 
+.resultsTitle {
+  margin: 0;
+  color: var(--hm-green-900);
+  font-size: var(--hm-type-subheading);
+  line-height: var(--hm-leading-body);
+}
+
+.resultsTitle:focus {
+  outline: none;
+}
+
 .search {
   align-items: center;
   background: var(--hm-surface-subtle);

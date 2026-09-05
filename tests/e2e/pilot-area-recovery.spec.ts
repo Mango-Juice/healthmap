@@ -71,10 +71,21 @@ test("a collapsed mobile result dock recovers one outside region and fits its re
     "data-fit-bounds",
     /"maxZoom":15/u,
   )
-  await expect
-    .poll(() => page.evaluate(() => document.activeElement?.outerHTML ?? "missing"))
-    .toContain("resultsHeader")
+  const mobileResultsControl = page
+    .getByTestId("pilot-drawer-handle")
+    .getByRole("button", { name: "검색 결과 접기" })
+  await expect(mobileResultsControl).toBeVisible()
+  await expect(mobileResultsControl).toBeFocused()
   await page.screenshot({ path: test.info().outputPath("single-region-recovery.png") })
+
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto("/")
+  await page.getByRole("searchbox").fill("성수")
+  await page.getByRole("button", { name: "현재 지도 밖 1곳 보기" }).click()
+  const desktopResultsHeading = page.getByRole("heading", { name: "검색 결과", exact: true })
+  await expect(desktopResultsHeading).toBeVisible()
+  await expect(desktopResultsHeading).toBeFocused()
+  await page.screenshot({ path: test.info().outputPath("desktop-region-recovery.png") })
 })
 
 test("multiple outside regions require an explicit region choice", async ({ page, request }) => {
@@ -144,6 +155,11 @@ test("multiple outside regions require an explicit region choice", async ({ page
   await expect(page.getByRole("button", { name: "서울 영등포구 2곳" })).toBeVisible()
   await page.getByRole("button", { name: "부산 부산진구 1곳" }).click()
   await expect(page.getByRole("button", { name: "서면 균형식당 자세히 보기" })).toBeVisible()
+  const mobileResultsControl = page
+    .getByTestId("pilot-drawer-handle")
+    .getByRole("button", { name: "검색 결과 접기" })
+  await expect(mobileResultsControl).toBeVisible()
+  await expect(mobileResultsControl).toBeFocused()
 })
 
 test("global zero and aggregate failure remain distinct completed states", async ({

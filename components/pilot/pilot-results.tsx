@@ -36,7 +36,7 @@ type Properties = {
   readonly query: string
   readonly emptyHeadingRef?: RefObject<HTMLElement | null> | undefined
   readonly recovery?: ReactNode | undefined
-  readonly headingRef?: RefObject<HTMLElement | null> | undefined
+  readonly headingRef?: RefObject<HTMLHeadingElement | null> | undefined
 }
 
 export function PilotResults({
@@ -62,7 +62,10 @@ export function PilotResults({
 }: Properties) {
   return (
     <section className={styles["results"]}>
-      <header className={styles["resultsHeader"]} ref={headingRef} tabIndex={-1}>
+      <header className={styles["resultsHeader"]}>
+        <h2 className={styles["resultsTitle"]} ref={headingRef} tabIndex={-1}>
+          검색 결과
+        </h2>
         <div className={styles["resultsMeta"]}>
           <output aria-label="검색 결과 수" aria-live="polite">
             {loading ? "찾는 중" : `${total}곳 중 ${results.length}곳`}

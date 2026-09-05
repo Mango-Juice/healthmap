@@ -46,7 +46,7 @@ export function FoodMap({ clientId }: Properties) {
   const expireLocationFailure = useCallback(() => setLocationRequest(0), [])
   const detailTitle = useRef<HTMLHeadingElement>(null)
   const recoveryHeading = useRef<HTMLHeadingElement>(null)
-  const resultsHeading = useRef<HTMLElement>(null)
+  const resultsHeading = useRef<HTMLHeadingElement>(null)
   const emptyHeading = useRef<HTMLElement>(null)
   const pendingRecovery = useRef<string | undefined>(undefined)
   const [recoveryOpen, setRecoveryOpen] = useState(false)
@@ -196,7 +196,12 @@ export function FoodMap({ clientId }: Properties) {
   useEffect(() => {
     if (!focusRecoveredResults || !trayExpanded) return
     const timer = window.setTimeout(() => {
-      resultsHeading.current?.focus({ preventScroll: true })
+      const target = window.matchMedia("(max-width: 899px)").matches
+        ? document.querySelector<HTMLButtonElement>(
+            "[data-testid='pilot-drawer-handle'] button:first-child",
+          )
+        : resultsHeading.current
+      target?.focus({ preventScroll: true })
       setFocusRecoveredResults(false)
     }, 300)
     return () => window.clearTimeout(timer)
