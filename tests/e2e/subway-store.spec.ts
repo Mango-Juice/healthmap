@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test"
+import { expect, serverTest as test } from "./map-test"
 
 const evidenceDirectory =
   ".omo/evidence/regional-readiness/20260905T172102Z-subway-release/S2/browser"
