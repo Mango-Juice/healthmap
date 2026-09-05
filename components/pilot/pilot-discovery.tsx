@@ -321,7 +321,7 @@ export function FoodMap({ clientId }: Properties) {
       <ApplicationMasthead
         compact
         action={
-          <Link className={styles["suggestAction"]} href="/suggest" prefetch={false}>
+          <Link className={styles["suggestAction"]} href="/suggest">
             <PlusIcon />
             <span>제안하기</span>
           </Link>

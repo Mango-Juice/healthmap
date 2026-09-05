@@ -139,7 +139,6 @@ export function PilotDetail({ expanded, onClose, onDirectionsOpen, result, title
             <Link
               className={styles["suggestionLink"]}
               href={`/suggest?${new URLSearchParams({ placeId: place.id })}`}
-              prefetch={false}
             >
               바뀐 메뉴 알려주기
             </Link>

@@ -6,7 +6,6 @@ import { ArrowLeftIcon } from "../../components/ui/health-map-icons"
 import { PlaceIdSchema } from "../../lib/domain/contracts"
 import { menusForPilotPlace } from "../../lib/pilot/discovery"
 import { buildPilotPlaceInfoUrl } from "../../lib/pilot/place-links"
-import { readPilotCatalog } from "../../lib/pilot/server"
 import { SuggestionUrlSchema } from "../../lib/suggestions/contracts"
 
 export const metadata: Metadata = {
@@ -22,7 +21,7 @@ export default async function SuggestPage({
 }) {
   const query = await searchParams
   const id = PlaceIdSchema.safeParse(query["placeId"])
-  const catalog = id.success ? readPilotCatalog() : null
+  const catalog = id.success ? (await import("../../lib/pilot/server")).readPilotCatalog() : null
   const selected =
     catalog && id.success && menusForPilotPlace(catalog, id.data).length > 0
       ? catalog.places.find((place) => place.id === id.data)
