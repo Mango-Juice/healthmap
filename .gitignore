@@ -23,6 +23,7 @@ node_modules/
 
 # Hosting and local Supabase state
 .vercel/
+/.local-work/
 /supabase/.branches/
 /supabase/.temp/
 
