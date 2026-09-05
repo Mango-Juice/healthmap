@@ -45,7 +45,7 @@ export const toSubwayStoreDto = (store: SubwayStore): PilotPlaceDto => ({
   naverPlaceUrl: null,
   media: [],
   listingKind: "store_only",
-  storeDescription: "서브웨이 · 샌드위치 매장",
+  storeDescription: "서브웨이 · 샌드위치·샐러드 매장",
   officialStoreUrl: store.officialDetailUrl,
 })
 export const toPilotMenuDto = (menu: PilotMenu): PilotMenuDto => ({

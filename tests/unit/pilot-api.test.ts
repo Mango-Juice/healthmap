@@ -74,7 +74,9 @@ describe("place HTTP handlers", () => {
     const store = subway.stores[0]
     if (!store) throw new Error("missing Subway fixture")
 
-    const list = getList(new Request("http://localhost/api/places?query=subway&limit=1"))
+    const list = getList(
+      new Request("http://localhost/api/places?filter=salad_poke&query=subway&limit=1"),
+    )
     const detail = await getDetail(new Request("http://localhost"), {
       params: Promise.resolve({ id: store.id }),
     })

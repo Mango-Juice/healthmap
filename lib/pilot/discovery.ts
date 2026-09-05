@@ -145,6 +145,7 @@ export const markerCategoryForMenus = (
   filter: PilotDiscoveryFilter = "all",
   brandId?: string | null,
 ): PilotDiscoveryTag | "neutral" => {
+  if (brandId === "subway") return "salad_poke"
   if (menus.length === 0) return "neutral"
   if (filter !== "all" && menus.some((menu) => discoveryTagsForMenu(menu).includes(filter)))
     return filter

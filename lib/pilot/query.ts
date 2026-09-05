@@ -97,12 +97,18 @@ export const queryPilotCatalog = (
     matchingMenuIds: [...result.matchingMenuIds].sort(),
   }))
   const storeResults: readonly StoreOnlyResult[] =
-    query.filter === "all" && query.ingredient === "all"
+    (query.filter === "all" || query.filter === "salad_poke") && query.ingredient === "all"
       ? subwayStores.flatMap((store) => {
           if (appliedBounds !== undefined && !isInsideViewportBounds(store, appliedBounds))
             return []
           const searchable = normalizeDiscoveryQuery(
-            [store.brandId, store.brandName, store.name, store.address, "샌드위치 매장"].join(" "),
+            [
+              store.brandId,
+              store.brandName,
+              store.name,
+              store.address,
+              "샌드위치 샐러드 매장",
+            ].join(" "),
           )
           if (!tokens.every((token) => searchable.includes(token))) return []
           return [
@@ -184,7 +190,7 @@ export const queryPilotCatalog = (
   const fingerprint = createHash("sha256")
     .update(
       JSON.stringify([
-        "ordering-v1",
+        "ordering-v2",
         { ...identity, query: normalizedQuery },
         sortBasis,
         sortOrigin,
