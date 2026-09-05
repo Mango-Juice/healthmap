@@ -20,6 +20,7 @@ type Properties = {
   >
   readonly onClose: () => void
   readonly selectedName?: string | undefined
+  readonly selectedStoreOnly?: boolean | undefined
 }
 export function PilotDrawerHandle({
   count,
@@ -28,8 +29,10 @@ export function PilotDrawerHandle({
   toggleProps,
   onClose,
   selectedName,
+  selectedStoreOnly,
 }: Properties) {
-  const label = `${selectedName ? "메뉴" : "검색 결과"} ${expanded ? "접기" : "펼치기"}`
+  const selectedLabel = selectedStoreOnly ? "매장 정보" : "메뉴"
+  const label = `${selectedName ? selectedLabel : "검색 결과"} ${expanded ? "접기" : "펼치기"}`
   return (
     <div
       className={styles["bar"]}
@@ -48,7 +51,9 @@ export function PilotDrawerHandle({
         type="button"
       >
         {selectedName ? (
-          <span className={styles["hint"]}>{expanded ? "접기" : "메뉴 펼치기"}</span>
+          <span className={styles["hint"]}>
+            {expanded ? "접기" : selectedStoreOnly ? "정보 펼치기" : "메뉴 펼치기"}
+          </span>
         ) : (
           <span className={styles["count"]}>
             <b>

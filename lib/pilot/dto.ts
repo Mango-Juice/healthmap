@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { MenuIdSchema, PlaceIdSchema, PlaceSlugSchema } from "../domain/contracts"
 import { PilotFactsSchema, PilotMediaSchema } from "./facts"
+import { ExactSubwayStoreUrlSchema } from "./subway-url"
 
 export const PilotMenuDtoSchema = z
   .strictObject({
@@ -25,6 +26,9 @@ export const PilotPlaceDtoSchema = z
     phone: z.string().nullable(),
     naverPlaceUrl: z.string().nullable(),
     media: z.array(PilotMediaSchema).readonly(),
+    listingKind: z.enum(["menu_evidence", "store_only"]).default("menu_evidence"),
+    storeDescription: z.string().min(1).nullable().default(null),
+    officialStoreUrl: ExactSubwayStoreUrlSchema.nullable().default(null),
   })
   .readonly()
 const PointSchema = z

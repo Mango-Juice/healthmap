@@ -49,7 +49,8 @@ export function PilotDetail({ expanded, onClose, onDirectionsOpen, result, title
   const image = selectPilotMedia(place.media, result.matchingMenuIds)
   const imageIsVisible = image !== undefined && image.url !== failedImageUrl
   const directions = buildNaverRouteDirections(place)
-  const placeUrl = buildPilotPlaceInfoUrl(place)
+  const placeUrl = place.officialStoreUrl ?? buildPilotPlaceInfoUrl(place)
+  const storeOnly = place.listingKind === "store_only"
 
   return (
     <section className={styles["detail"]} data-expanded={expanded}>
@@ -67,6 +68,12 @@ export function PilotDetail({ expanded, onClose, onDirectionsOpen, result, title
             </h2>
           </header>
           <p className={styles["address"]}>{place.address}</p>
+          {storeOnly ? (
+            <p className={styles["storeSummary"]}>
+              {place.storeDescription}
+              <span>메뉴 정보는 아직 확인되지 않았어요.</span>
+            </p>
+          ) : null}
           {firstMenu ? (
             <p className={styles["quickMenu"]}>
               {presentPilotMenuName(firstMenu.name)}
@@ -100,13 +107,17 @@ export function PilotDetail({ expanded, onClose, onDirectionsOpen, result, title
             ) : null}
           </div>
           <p className={styles["visuallyHidden"]} id="pilot-place-link-note">
-            {place.naverPlaceUrl
-              ? "네이버 지도의 장소 페이지를 새 창에서 엽니다."
-              : "네이버 지도에서 지역과 장소 이름으로 검색한 결과를 새 창에서 엽니다."}
+            {place.officialStoreUrl
+              ? "서브웨이 공식 매장 페이지를 새 창에서 엽니다."
+              : place.naverPlaceUrl
+                ? "네이버 지도의 장소 페이지를 새 창에서 엽니다."
+                : "네이버 지도에서 지역과 장소 이름으로 검색한 결과를 새 창에서 엽니다."}
           </p>
-          <p className={styles["tagMeaning"]}>
-            태그는 음식과 메뉴에서 확인된 특징이며, 건강 효과를 보장하지 않아요.
-          </p>
+          {storeOnly ? null : (
+            <p className={styles["tagMeaning"]}>
+              태그는 음식과 메뉴에서 확인된 특징이며, 건강 효과를 보장하지 않아요.
+            </p>
+          )}
           <div className={styles["detailMore"]}>
             {imageIsVisible ? (
               <figure className={styles["placePhoto"]}>
@@ -125,8 +136,12 @@ export function PilotDetail({ expanded, onClose, onDirectionsOpen, result, title
                 <figcaption>{image.attribution}</figcaption>
               </figure>
             ) : null}
-            <PilotMenuList menus={matchingMenus} title="조건에 맞는 메뉴" />
-            <PilotMenuList menus={otherMenus} title="함께 살펴볼 메뉴" />
+            {storeOnly ? null : (
+              <>
+                <PilotMenuList menus={matchingMenus} title="조건에 맞는 메뉴" />
+                <PilotMenuList menus={otherMenus} title="함께 살펴볼 메뉴" />
+              </>
+            )}
           </div>
           <div className={styles["detailMore"]}>
             <p className={styles["mapProvider"]}>장소 정보와 길찾기는 네이버 지도로 연결돼요.</p>
@@ -136,12 +151,14 @@ export function PilotDetail({ expanded, onClose, onDirectionsOpen, result, title
                 {place.phone}
               </a>
             ) : null}
-            <Link
-              className={styles["suggestionLink"]}
-              href={`/suggest?${new URLSearchParams({ placeId: place.id })}`}
-            >
-              바뀐 메뉴 알려주기
-            </Link>
+            {storeOnly ? null : (
+              <Link
+                className={styles["suggestionLink"]}
+                href={`/suggest?${new URLSearchParams({ placeId: place.id })}`}
+              >
+                바뀐 메뉴 알려주기
+              </Link>
+            )}
           </div>
         </div>
       </div>

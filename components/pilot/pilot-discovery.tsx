@@ -366,6 +366,7 @@ export function FoodMap({ clientId }: Properties) {
               toggleProps={sheet.toggleProps}
               onClose={closePlace}
               selectedName={selectedPlace?.name}
+              selectedStoreOnly={selectedPlace?.listingKind === "store_only"}
             />
             <div className={styles["panelContent"]} id="pilot-panel-content">
               {selectedResult ? (

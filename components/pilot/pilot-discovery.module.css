@@ -760,7 +760,17 @@
   margin: 0;
 }
 
+.storeSummary {
+  color: var(--hm-green-800);
+  display: grid;
+  font-size: var(--hm-type-label);
+  font-weight: var(--hm-weight-label);
+  gap: var(--hm-space-1);
+  margin: 0;
+}
+
 .quickMenu span,
+.storeSummary span,
 .mapProvider {
   color: var(--hm-ink-muted);
   font-size: var(--hm-type-caption);

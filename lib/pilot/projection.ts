@@ -1,6 +1,7 @@
 import type { PilotMenu, PilotPlace } from "./catalog"
 import type { PilotMenuDto, PilotPlaceDto } from "./dto"
 import { canonicalPilotRegion } from "./region"
+import type { SubwayStore } from "./subway"
 
 export const regionForPlace = (place: PilotPlace): string => canonicalPilotRegion(place.address)
 export const selectPilotMedia = (
@@ -27,6 +28,25 @@ export const toPilotPlaceDto = (place: PilotPlace): PilotPlaceDto => ({
   phone: place.phone,
   naverPlaceUrl: place.naverPlaceUrl,
   media: place.media,
+  listingKind: "menu_evidence",
+  storeDescription: null,
+  officialStoreUrl: null,
+})
+export const toSubwayStoreDto = (store: SubwayStore): PilotPlaceDto => ({
+  id: store.id,
+  slug: store.slug,
+  name: `서브웨이 ${store.name}`,
+  brandId: store.brandId,
+  address: store.address,
+  latitude: store.latitude,
+  longitude: store.longitude,
+  region: canonicalPilotRegion(store.address),
+  phone: null,
+  naverPlaceUrl: null,
+  media: [],
+  listingKind: "store_only",
+  storeDescription: "서브웨이 · 샌드위치 매장",
+  officialStoreUrl: store.officialDetailUrl,
 })
 export const toPilotMenuDto = (menu: PilotMenu): PilotMenuDto => ({
   id: menu.id,

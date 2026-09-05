@@ -77,14 +77,14 @@ export function PilotResults({
       <div className={styles["scrollBody"]} ref={scrollRef}>
         {failed && results.length === 0 ? (
           <div className={styles["empty"]} role="alert">
-            <strong>메뉴를 불러오지 못했어요.</strong>
+            <strong>장소를 불러오지 못했어요.</strong>
             <ActionButton onClick={onRetry} variant="secondary">
-              메뉴 다시 불러오기
+              장소 다시 불러오기
             </ActionButton>
           </div>
         ) : loading && results.length === 0 ? (
           <div className={styles["empty"]} role="status">
-            메뉴를 찾고 있어요.
+            장소를 찾고 있어요.
           </div>
         ) : results.length === 0 && recovery !== undefined ? (
           recovery
@@ -154,13 +154,20 @@ export function PilotResults({
                         {place.address}
                       </span>
                     </span>
-                    <span className={styles["cardSummary"]}>
-                      <span className={styles["menuPreview"]}>
-                        {first ? presentPilotMenuName(first.name) : null}
-                        {menus.length > 1 ? <small> 외 {menus.length - 1}가지</small> : null}
+                    {place.listingKind === "store_only" ? (
+                      <span className={styles["cardSummary"]}>
+                        <span className={styles["menuPreview"]}>{place.storeDescription}</span>
+                        <small>메뉴 정보 미확인</small>
                       </span>
-                      <PilotCategoryTags menus={first ? [first] : []} />
-                    </span>
+                    ) : (
+                      <span className={styles["cardSummary"]}>
+                        <span className={styles["menuPreview"]}>
+                          {first ? presentPilotMenuName(first.name) : null}
+                          {menus.length > 1 ? <small> 외 {menus.length - 1}가지</small> : null}
+                        </span>
+                        <PilotCategoryTags menus={first ? [first] : []} />
+                      </span>
+                    )}
                     {first?.facts.ordering_note ? (
                       <span className={styles["cardNotices"]}>{first.facts.ordering_note}</span>
                     ) : null}
@@ -172,16 +179,16 @@ export function PilotResults({
         )}
         {failed && results.length > 0 ? (
           <div className={styles["pagination"]} role="alert">
-            <span>다음 메뉴를 불러오지 못했어요.</span>
+            <span>다음 장소를 불러오지 못했어요.</span>
             <ActionButton onClick={onRetry} variant="secondary">
-              메뉴 다시 불러오기
+              장소 다시 불러오기
             </ActionButton>
           </div>
         ) : null}
         {onLoadMore && !failed ? (
           <div className={styles["pagination"]}>
             <ActionButton onClick={onLoadMore} disabled={loading} variant="secondary">
-              {loading ? "불러오는 중" : "메뉴 더 보기"}
+              {loading ? "불러오는 중" : "장소 더 보기"}
             </ActionButton>
             <span>
               {total}곳 중 {results.length}곳 표시

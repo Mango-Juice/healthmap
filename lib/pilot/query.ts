@@ -1,13 +1,15 @@
 import { createHash } from "node:crypto"
 import { z } from "zod"
 import { normalizeDiscoveryQuery } from "../domain/discovery"
-import type { PilotCatalog } from "./catalog"
+import { haversineDistanceMeters } from "../domain/distance"
+import { isInsideViewportBounds } from "../domain/viewport"
+import type { PilotCatalog, PilotMenu, PilotPlace } from "./catalog"
 import { filterPilotPlaces, menusForPilotPlace } from "./discovery"
-import type { PilotPlacesResponse, PilotRegionsResponse } from "./dto"
-import { orderPilotResults, pilotResultBoundsCenter } from "./ordering"
-import { regionForPlace, toPilotMenuDto, toPilotPlaceDto } from "./projection"
+import type { PilotPlaceResultDto, PilotPlacesResponse, PilotRegionsResponse } from "./dto"
+import { toPilotMenuDto, toPilotPlaceDto, toSubwayStoreDto } from "./projection"
 import type { PilotQuery } from "./query-contract"
 import { canonicalPilotRegion } from "./region"
+import { combinedPilotCatalogVersion, type SubwayStore, type SubwayStoreCatalog } from "./subway"
 
 const CursorSchema = z.strictObject({
   version: z.string(),
@@ -18,10 +20,58 @@ export type PilotQueryError = {
   readonly error: "invalid_request" | "stale_cursor"
   readonly retry: boolean
 }
+type MenuEvidenceResult = {
+  readonly kind: "menu_evidence"
+  readonly place: PilotPlace
+  readonly matchingMenuIds: readonly PilotMenu["id"][]
+}
+type StoreOnlyResult = {
+  readonly kind: "store_only"
+  readonly place: SubwayStore
+  readonly matchingMenuIds: readonly []
+}
+type CombinedResult = MenuEvidenceResult | StoreOnlyResult
+
+const projectResult = (catalog: PilotCatalog, result: CombinedResult): PilotPlaceResultDto => {
+  if (result.kind === "menu_evidence")
+    return {
+      place: toPilotPlaceDto(result.place),
+      matchingMenuIds: result.matchingMenuIds,
+      menus: menusForPilotPlace(catalog, result.place.id)
+        .filter((menu) => result.matchingMenuIds.includes(menu.id))
+        .sort((left, right) => left.id.localeCompare(right.id))
+        .map(toPilotMenuDto),
+    }
+  return {
+    place: toSubwayStoreDto(result.place),
+    matchingMenuIds: [],
+    menus: [],
+  }
+}
+
+const relevanceRank = (catalog: PilotCatalog, result: CombinedResult, query: string): number => {
+  if (!query) return 0
+  const name = normalizeDiscoveryQuery(result.place.name)
+  if (name === query) return 0
+  if (name.includes(query)) return 1
+  if (
+    result.kind === "menu_evidence" &&
+    menusForPilotPlace(catalog, result.place.id).some(
+      (menu) =>
+        result.matchingMenuIds.includes(menu.id) &&
+        normalizeDiscoveryQuery(menu.name).includes(query),
+    )
+  )
+    return 2
+  return 3
+}
+
 export const queryPilotCatalog = (
   catalog: PilotCatalog,
   query: PilotQuery,
+  subway: SubwayStoreCatalog | undefined = undefined,
 ): PilotPlacesResponse | PilotRegionsResponse | PilotQueryError => {
+  const subwayStores = subway?.stores ?? []
   const { cursor, ...identity } = query
   const appliedBounds =
     query.south !== undefined &&
@@ -33,27 +83,51 @@ export const queryPilotCatalog = (
           northEast: { latitude: query.north, longitude: query.east },
         }
       : undefined
-  const matchingResults = filterPilotPlaces({
+  const normalizedQuery = normalizeDiscoveryQuery(query.query)
+  const tokens = normalizedQuery.split(" ").filter(Boolean)
+  const menuResults: readonly MenuEvidenceResult[] = filterPilotPlaces({
     catalog,
     filter: query.filter,
     ingredient: query.ingredient,
     query: query.query,
     appliedBounds,
-  })
-    .filter(
-      ({ place }) =>
-        query.region === undefined || regionForPlace(place) === canonicalPilotRegion(query.region),
-    )
-    .map((result) => ({ ...result, matchingMenuIds: [...result.matchingMenuIds].sort() }))
-  const normalizedQuery = normalizeDiscoveryQuery(query.query)
+  }).map((result) => ({
+    kind: "menu_evidence",
+    place: result.place,
+    matchingMenuIds: [...result.matchingMenuIds].sort(),
+  }))
+  const storeResults: readonly StoreOnlyResult[] =
+    query.filter === "all" && query.ingredient === "all"
+      ? subwayStores.flatMap((store) => {
+          if (appliedBounds !== undefined && !isInsideViewportBounds(store, appliedBounds))
+            return []
+          const searchable = normalizeDiscoveryQuery(
+            [store.brandId, store.brandName, store.name, store.address, "샌드위치 매장"].join(" "),
+          )
+          if (!tokens.every((token) => searchable.includes(token))) return []
+          return [
+            {
+              kind: "store_only",
+              place: store,
+              matchingMenuIds: [],
+            },
+          ]
+        })
+      : []
+  const matchingResults = [...menuResults, ...storeResults].filter(
+    ({ place }) =>
+      query.region === undefined ||
+      canonicalPilotRegion(place.address) === canonicalPilotRegion(query.region),
+  )
+  const catalogVersion = combinedPilotCatalogVersion(catalog.catalogVersion, subway)
   if (query.mode === "regions") {
     const groups = new Map<string, typeof matchingResults>()
     for (const result of matchingResults) {
-      const region = regionForPlace(result.place)
+      const region = canonicalPilotRegion(result.place.address)
       groups.set(region, [...(groups.get(region) ?? []), result])
     }
     return {
-      catalogVersion: catalog.catalogVersion,
+      catalogVersion,
       total: matchingResults.length,
       regions: Array.from(groups, ([id, entries]) => ({
         id,
@@ -85,9 +159,27 @@ export const queryPilotCatalog = (
             latitude: (appliedBounds.southWest.latitude + appliedBounds.northEast.latitude) / 2,
             longitude: (appliedBounds.southWest.longitude + appliedBounds.northEast.longitude) / 2,
           }
-        : pilotResultBoundsCenter(matchingResults)
+        : {
+            latitude:
+              (Math.min(...matchingResults.map(({ place }) => place.latitude)) +
+                Math.max(...matchingResults.map(({ place }) => place.latitude))) /
+              2,
+            longitude:
+              (Math.min(...matchingResults.map(({ place }) => place.longitude)) +
+                Math.max(...matchingResults.map(({ place }) => place.longitude))) /
+              2,
+          }
   const results = sortOrigin
-    ? orderPilotResults({ catalog, results: matchingResults, normalizedQuery, origin: sortOrigin })
+    ? [...matchingResults].sort((left, right) => {
+        const rank =
+          relevanceRank(catalog, left, normalizedQuery) -
+          relevanceRank(catalog, right, normalizedQuery)
+        if (rank !== 0) return rank
+        const distance =
+          haversineDistanceMeters(sortOrigin, left.place) -
+          haversineDistanceMeters(sortOrigin, right.place)
+        return distance || left.place.id.localeCompare(right.place.id)
+      })
     : matchingResults
   const fingerprint = createHash("sha256")
     .update(
@@ -96,7 +188,7 @@ export const queryPilotCatalog = (
         { ...identity, query: normalizedQuery },
         sortBasis,
         sortOrigin,
-        catalog.catalogVersion,
+        catalogVersion,
         catalog.menus.map((menu) => menu.id).sort(),
       ]),
     )
@@ -112,30 +204,23 @@ export const queryPilotCatalog = (
     }
     const parsed = CursorSchema.safeParse(raw)
     if (!parsed.success) return { error: "invalid_request", retry: false }
-    if (parsed.data.version !== catalog.catalogVersion || parsed.data.query !== fingerprint)
+    if (parsed.data.version !== catalogVersion || parsed.data.query !== fingerprint)
       return { error: "stale_cursor", retry: true }
     offset = parsed.data.offset
   }
   if (offset > results.length) return { error: "stale_cursor", retry: true }
   const nextOffset = offset + query.limit
   return {
-    catalogVersion: catalog.catalogVersion,
+    catalogVersion,
     sortBasis,
     sortOrigin,
     total: results.length,
-    results: results.slice(offset, nextOffset).map((result) => ({
-      place: toPilotPlaceDto(result.place),
-      matchingMenuIds: result.matchingMenuIds,
-      menus: menusForPilotPlace(catalog, result.place.id)
-        .filter((menu) => result.matchingMenuIds.includes(menu.id))
-        .sort((left, right) => left.id.localeCompare(right.id))
-        .map(toPilotMenuDto),
-    })),
+    results: results.slice(offset, nextOffset).map((result) => projectResult(catalog, result)),
     nextCursor:
       nextOffset < results.length
         ? Buffer.from(
             JSON.stringify({
-              version: catalog.catalogVersion,
+              version: catalogVersion,
               query: fingerprint,
               offset: nextOffset,
             }),
