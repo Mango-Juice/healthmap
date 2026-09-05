@@ -1,0 +1,13 @@
+# Healthmap source-viewing notice
+
+Copyright (c) 2026 Mango-Juice and contributors.
+
+Except for third-party components identified in `THIRD_PARTY_NOTICES.md`, the
+project-owned material in this repository is made available for source viewing
+and evaluation only. No permission is granted to use, copy, modify, distribute,
+sublicense, sell, or create derivative works from that material.
+
+This is not an open-source license. The package metadata is `UNLICENSED`.
+Third-party components remain available only under their own applicable terms.
+
+THE PROJECT-OWNED MATERIAL IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
