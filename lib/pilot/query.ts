@@ -97,7 +97,7 @@ export const queryPilotCatalog = (
         sortBasis,
         sortOrigin,
         catalog.catalogVersion,
-        results.flatMap(({ matchingMenuIds }) => matchingMenuIds).sort(),
+        catalog.menus.map((menu) => menu.id).sort(),
       ]),
     )
     .digest("hex")
