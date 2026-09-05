@@ -19,7 +19,7 @@ test("shows an error instead of a synthetic map when NAVER authorization fails",
   await page.goto("/")
 
   await expect(page.locator('[role="alert"][data-tone="error"]')).toContainText(
-    "NAVER 지도를 불러올 수 없습니다",
+    "지도를 불러오지 못했어요.",
   )
   await expect(page.getByText("NAVER 지도 연결됨")).toHaveCount(0)
   await expect(page.locator("[data-field-guide-map]")).toHaveCount(0)
@@ -31,7 +31,7 @@ test("shows an error instead of a synthetic map when NAVER authorization fails",
   await page.getByRole("button", { name: "다시 시도" }).click()
 
   await expect(page.locator('[role="alert"][data-tone="error"]')).toContainText(
-    "NAVER 지도를 불러올 수 없습니다",
+    "지도를 불러오지 못했어요.",
   )
   await expect(pageErrors).toEqual([])
   await expect(consoleErrors.filter((message) => message.includes("isArray"))).toEqual([])
