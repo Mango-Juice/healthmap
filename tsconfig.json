@@ -40,5 +40,5 @@
     ".next-entry-preview/types/**/*.ts",
     ".next-entry-preview/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules", "tests/fixtures/task7-app/**", ".next-*", ".omo"]
+  "exclude": ["node_modules", "tests/fixtures/task7-app/**", ".next-*", ".omo", ".local-work"]
 }

@@ -10,6 +10,7 @@ test-results
 
 # Local-only project state and QA evidence
 .omo
+.local-work
 .codegraph
 .debug-journal.md
 
