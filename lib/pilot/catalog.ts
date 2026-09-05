@@ -14,6 +14,7 @@ export const PilotSourceSchema = z.enum([
   "preppers",
   "bon_dosirak",
 ])
+const CredentialQueryKeys = new Set(["accesstoken", "apikey", "token", "secret", "signature"])
 const EvidenceUrlSchema = z
   .url({
     protocol: /^https$/,
@@ -26,9 +27,16 @@ const EvidenceUrlSchema = z
       url !== null &&
       url.username === "" &&
       url.password === "" &&
+      url.port === "" &&
       url.hash === "" &&
       [...url.searchParams.keys()].every(
-        (key) => !/^(?:access[_-]?token|api[_-]?key|token|secret|signature)$/iu.test(key),
+        (key) =>
+          !CredentialQueryKeys.has(
+            key
+              .normalize("NFKC")
+              .toLowerCase()
+              .replaceAll(/[^a-z0-9]/gu, ""),
+          ),
       )
     )
   })
