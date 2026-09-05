@@ -7,7 +7,6 @@ type Properties = {
   readonly state: MapAdapterState
   readonly onRetry: () => void
   readonly locating: boolean
-  readonly locationFailed: boolean
   readonly onLocate: () => void
 }
 export function PilotMapControls(props: Properties) {
@@ -24,13 +23,6 @@ export function PilotMapControls(props: Properties) {
         <LocateIcon />
         <span>내 위치</span>
       </button>
-      <div className={styles["mapNotices"]}>
-        {props.locationFailed ? (
-          <p className={styles["locationNotice"]} role="status">
-            위치를 확인하지 못했어요.
-          </p>
-        ) : null}
-      </div>
       {props.state === "loading" ? (
         <div className={styles["mapState"]} role="status">
           <LoaderIcon />

@@ -39,7 +39,8 @@ export function FoodMap({ clientId }: Properties) {
   const [query, setQuery] = useState("")
   const [selectedId, setSelectedId] = useState<PilotPlace["id"]>()
   const [trayExpanded, setTrayExpanded] = useState(false)
-  const [locationRequested, setLocationRequested] = useState(false)
+  const [locationRequest, setLocationRequest] = useState(0)
+  const expireLocationFailure = useCallback(() => setLocationRequest(0), [])
   const detailTitle = useRef<HTMLHeadingElement>(null)
   const selectedIdRef = useRef<PilotPlace["id"]>(undefined)
   const selectionTrigger = useRef<HTMLElement | null>(null)
@@ -227,6 +228,10 @@ export function FoodMap({ clientId }: Properties) {
         <div className={styles["panelStack"]} ref={sheet.stackRef}>
           <PilotMapDock
             emptyHint={empty ? emptyHint : undefined}
+            locationFailure={
+              locationRequest > 0 && location.status === "unavailable" ? locationRequest : undefined
+            }
+            onLocationFailureExpire={expireLocationFailure}
             pending={map.state === "ready" && viewport.pending}
             onArea={viewport.applyArea}
           />
@@ -295,9 +300,8 @@ export function FoodMap({ clientId }: Properties) {
             state={map.state}
             onRetry={map.load}
             locating={location.status === "requesting"}
-            locationFailed={locationRequested && location.status === "unavailable"}
             onLocate={() => {
-              setLocationRequested(true)
+              setLocationRequest((attempt) => attempt + 1)
               viewport.requestLocation()
               location.request()
               setSelectedId(undefined)

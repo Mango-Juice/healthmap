@@ -161,29 +161,6 @@
   outline: var(--hm-focus-ring) solid var(--hm-blue);
   outline-offset: var(--hm-space-1);
 }
-.locationNotice {
-  max-inline-size: 100%;
-  background: var(--hm-surface);
-  color: var(--hm-ink-muted);
-  font-size: var(--hm-type-caption);
-  padding: var(--hm-space-2);
-  margin: 0;
-  border-radius: var(--hm-radius-card);
-  z-index: var(--hm-layer-controls);
-}
-
-.mapNotices {
-  position: absolute;
-  inset-block-start: calc(var(--hm-control-min) + var(--hm-space-6));
-  inset-inline: var(--hm-space-3);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--hm-space-2);
-  pointer-events: none;
-  z-index: var(--hm-layer-controls);
-}
-
 @keyframes pilot-spin {
   to {
     transform: rotate(var(--hm-spinner-turn));
