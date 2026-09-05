@@ -31,6 +31,8 @@ type Properties = {
   readonly clientId?: string | undefined
 }
 
+type SelectionOrigin = "list" | "map"
+
 export function FoodMap({ clientId }: Properties) {
   const [filter, setFilter] = useState<PilotDiscoveryFilter>("all")
   const [ingredient, setIngredient] = useState<PilotIngredientFilter>("all")
@@ -41,8 +43,14 @@ export function FoodMap({ clientId }: Properties) {
   const detailTitle = useRef<HTMLHeadingElement>(null)
   const selectedIdRef = useRef<PilotPlace["id"]>(undefined)
   const selectionTrigger = useRef<HTMLElement | null>(null)
+  const selectionOrigin = useRef<SelectionOrigin>("map")
   const pendingReturn = useRef<
-    { readonly element: HTMLElement | null; readonly placeId: PilotPlace["id"] } | undefined
+    | {
+        readonly element: HTMLElement | null
+        readonly origin: SelectionOrigin
+        readonly placeId: PilotPlace["id"]
+      }
+    | undefined
   >(undefined)
   const location = usePilotLocation()
   const viewport = usePilotViewport(location.point)
@@ -72,11 +80,16 @@ export function FoodMap({ clientId }: Properties) {
     selectedId: selectedPlace?.id,
   })
   const openPlace = useCallback(
-    (placeId: PilotPlace["id"], trigger?: HTMLElement): void => {
+    (placeId: PilotPlace["id"], origin: SelectionOrigin, trigger?: HTMLElement): void => {
       viewport.interact()
       const activeElement = document.activeElement
       selectionTrigger.current =
-        trigger ?? (activeElement instanceof HTMLElement ? activeElement : null)
+        origin === "list"
+          ? (trigger ?? null)
+          : activeElement instanceof HTMLElement
+            ? activeElement
+            : null
+      selectionOrigin.current = origin
       selectedIdRef.current = placeId
       setTrayExpanded(false)
       setSelectedId(placeId)
@@ -85,13 +98,18 @@ export function FoodMap({ clientId }: Properties) {
   )
   const closePlace = useCallback((): void => {
     const currentSelectedId = selectedIdRef.current
+    const origin = selectionOrigin.current
     if (currentSelectedId !== undefined) {
-      pendingReturn.current = { element: selectionTrigger.current, placeId: currentSelectedId }
+      pendingReturn.current = {
+        element: selectionTrigger.current,
+        origin,
+        placeId: currentSelectedId,
+      }
     }
     selectedIdRef.current = undefined
     selectionTrigger.current = null
     setSelectedId(undefined)
-    setTrayExpanded(false)
+    setTrayExpanded(origin === "list")
   }, [])
   const markers = useMemo(
     () =>
@@ -105,7 +123,7 @@ export function FoodMap({ clientId }: Properties) {
         label: result.place.name,
         latitude: result.place.latitude,
         longitude: result.place.longitude,
-        onSelect: () => openPlace(result.place.id),
+        onSelect: () => openPlace(result.place.id, "map"),
         zIndex: markerZIndex(result.place.id === selectedId),
       })),
     [filter, openPlace, selectedId, visibleResults],
@@ -166,14 +184,18 @@ export function FoodMap({ clientId }: Properties) {
 
   useEffect(() => {
     if (selectedPlace !== undefined || pendingReturn.current === undefined) return
-    const { element, placeId } = pendingReturn.current
+    const { element, origin, placeId } = pendingReturn.current
     pendingReturn.current = undefined
-    const fallback = document.querySelector<HTMLElement>(
+    const listResult = document.querySelector<HTMLElement>(
       `[data-pilot-place-id="${CSS.escape(placeId)}"]`,
     )
-    const target = element?.isConnected ? element : fallback
+    const isVisible = (target: HTMLElement | null): target is HTMLElement =>
+      target?.isConnected === true &&
+      target.getClientRects().length > 0 &&
+      getComputedStyle(target).visibility !== "hidden"
     const frame = window.requestAnimationFrame(() => {
-      const visibleTarget = target?.getClientRects().length
+      const target = origin === "list" ? listResult : element
+      const visibleTarget = isVisible(target)
         ? target
         : document.querySelector<HTMLElement>("[data-testid='pilot-drawer-handle'] button")
       ;(visibleTarget ?? document.querySelector<HTMLElement>("input[type='search']"))?.focus({
@@ -243,7 +265,7 @@ export function FoodMap({ clientId }: Properties) {
                     viewport.bounds || viewport.region ? () => chooseRegion("") : undefined
                   }
                   onQueryChange={changeQuery}
-                  onSelect={openPlace}
+                  onSelect={(placeId, trigger) => openPlace(placeId, "list", trigger)}
                   total={catalog.total}
                   loading={catalog.loading}
                   failed={catalog.failed}
