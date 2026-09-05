@@ -26,7 +26,12 @@ export const PilotPlaceDtoSchema = z
     media: z.array(PilotMediaSchema).readonly(),
   })
   .readonly()
-const PointSchema = z.strictObject({ latitude: z.number(), longitude: z.number() }).readonly()
+const PointSchema = z
+  .strictObject({
+    latitude: z.number().finite().min(-90).max(90),
+    longitude: z.number().finite().min(-180).max(180),
+  })
+  .readonly()
 export const PilotRegionDtoSchema = z
   .strictObject({
     id: z.string(),
@@ -52,6 +57,8 @@ export const PilotRegionsResponseSchema = z
 export const PilotPlacesResponseSchema = z
   .strictObject({
     catalogVersion: z.string(),
+    sortBasis: z.enum(["map_center", "region_center", "catalog_center"]),
+    sortOrigin: PointSchema.nullable(),
     total: z.number().int().nonnegative(),
     results: z.array(PilotPlaceResultDtoSchema).max(100).readonly(),
     nextCursor: z.string().nullable(),

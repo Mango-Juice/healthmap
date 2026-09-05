@@ -274,7 +274,8 @@ export function FoodMap({ clientId }: Properties) {
                 />
               ) : (
                 <PilotResults
-                  origin={location.point}
+                  sortBasis={catalog.sortBasis}
+                  sortOrigin={catalog.sortOrigin}
                   filter={filter}
                   ingredient={ingredient}
                   onIngredientChange={changeIngredient}

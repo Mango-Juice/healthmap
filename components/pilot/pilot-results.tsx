@@ -1,3 +1,4 @@
+import { haversineDistanceMeters } from "../../lib/domain/distance"
 import type { GeoPoint } from "../../lib/domain/geo"
 import {
   type PilotDiscoveryFilter,
@@ -8,6 +9,7 @@ import type {
   PilotPlaceDto as PilotPlace,
   PilotPlaceResultDto as PilotResult,
 } from "../../lib/pilot/dto"
+import type { PilotSortBasis } from "../../lib/pilot/ordering"
 import { ChevronRightIcon } from "../ui/health-map-icons"
 import { ActionButton } from "../ui/health-map-primitives"
 import { PilotCategoryTags } from "./pilot-category-tags"
@@ -15,7 +17,8 @@ import styles from "./pilot-discovery.module.css"
 import { PilotThumbnail } from "./pilot-thumbnail"
 
 type Properties = {
-  readonly origin: GeoPoint | undefined
+  readonly sortBasis: PilotSortBasis | undefined
+  readonly sortOrigin: GeoPoint | null | undefined
   readonly total: number
   readonly loading: boolean
   readonly failed: boolean
@@ -33,7 +36,8 @@ type Properties = {
 }
 
 export function PilotResults({
-  origin,
+  sortBasis,
+  sortOrigin,
   total,
   loading,
   failed,
@@ -102,14 +106,15 @@ export function PilotResults({
               const { place } = result
               const menus = result.menus.filter((menu) => result.matchingMenuIds.includes(menu.id))
               const first = menus[0]
-              const distance = origin
-                ? 6371 *
-                  Math.hypot(
-                    ((place.latitude - origin.latitude) * Math.PI) / 180,
-                    (((place.longitude - origin.longitude) * Math.PI) / 180) *
-                      Math.cos(((place.latitude + origin.latitude) * Math.PI) / 360),
-                  )
+              const distance = sortOrigin
+                ? haversineDistanceMeters(sortOrigin, place) / 1000
                 : undefined
+              const distanceBasis =
+                sortBasis === "map_center"
+                  ? "지도 중심"
+                  : sortBasis === "region_center"
+                    ? "선택 지역 중심"
+                    : "검색 결과 중심"
               return (
                 <li key={place.id}>
                   <button
@@ -139,7 +144,7 @@ export function PilotResults({
                       </span>
                       {distance !== undefined ? (
                         <span className={styles["distance"]}>
-                          내 위치에서 직선 {distance.toFixed(1)}km
+                          {distanceBasis}에서 직선 {distance.toFixed(1)}km
                         </span>
                       ) : null}
                     </span>

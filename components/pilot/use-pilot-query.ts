@@ -130,6 +130,8 @@ export function usePilotQuery(input: Query) {
   }, [key, request, input.ready, input.onFirstPageSuccess, input.query, requestCursor])
   return {
     regions,
+    sortBasis: input.ready && current ? page?.sortBasis : undefined,
+    sortOrigin: input.ready && current ? page?.sortOrigin : undefined,
     results: input.ready && current ? (page?.results ?? []) : [],
     total: input.ready ? (current ? (page?.total ?? 0) : 0) : (regions?.total ?? 0),
     loading: input.ready && (loading || !current),

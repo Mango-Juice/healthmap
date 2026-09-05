@@ -1,8 +1,10 @@
 import { createHash } from "node:crypto"
 import { z } from "zod"
+import { normalizeDiscoveryQuery } from "../domain/discovery"
 import type { PilotCatalog } from "./catalog"
 import { filterPilotPlaces, menusForPilotPlace } from "./discovery"
 import type { PilotPlacesResponse, PilotRegionsResponse } from "./dto"
+import { orderPilotResults, pilotResultBoundsCenter } from "./ordering"
 import { regionForPlace, toPilotMenuDto, toPilotPlaceDto } from "./projection"
 import type { PilotQuery } from "./query-contract"
 import { canonicalPilotRegion } from "./region"
@@ -21,24 +23,6 @@ export const queryPilotCatalog = (
   query: PilotQuery,
 ): PilotPlacesResponse | PilotRegionsResponse | PilotQueryError => {
   const { cursor, ...identity } = query
-  const fingerprint = createHash("sha256")
-    .update(JSON.stringify(["region-aliases-v1", identity, catalog.menus.map((menu) => menu.id)]))
-    .digest("hex")
-  let offset = 0
-  if (cursor !== undefined) {
-    let raw: unknown
-    try {
-      raw = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8"))
-    } catch (error) {
-      if (error instanceof SyntaxError) return { error: "invalid_request", retry: false }
-      throw error
-    }
-    const parsed = CursorSchema.safeParse(raw)
-    if (!parsed.success) return { error: "invalid_request", retry: false }
-    if (parsed.data.version !== catalog.catalogVersion || parsed.data.query !== fingerprint)
-      return { error: "stale_cursor", retry: true }
-    offset = parsed.data.offset
-  }
   const appliedBounds =
     query.south !== undefined &&
     query.north !== undefined &&
@@ -49,7 +33,7 @@ export const queryPilotCatalog = (
           northEast: { latitude: query.north, longitude: query.east },
         }
       : undefined
-  const results = filterPilotPlaces({
+  const matchingResults = filterPilotPlaces({
     catalog,
     filter: query.filter,
     ingredient: query.ingredient,
@@ -60,16 +44,17 @@ export const queryPilotCatalog = (
       ({ place }) =>
         query.region === undefined || regionForPlace(place) === canonicalPilotRegion(query.region),
     )
-    .sort((a, b) => a.place.id.localeCompare(b.place.id))
+    .map((result) => ({ ...result, matchingMenuIds: [...result.matchingMenuIds].sort() }))
+  const normalizedQuery = normalizeDiscoveryQuery(query.query)
   if (query.mode === "regions") {
-    const groups = new Map<string, typeof results>()
-    for (const result of results) {
+    const groups = new Map<string, typeof matchingResults>()
+    for (const result of matchingResults) {
       const region = regionForPlace(result.place)
       groups.set(region, [...(groups.get(region) ?? []), result])
     }
     return {
       catalogVersion: catalog.catalogVersion,
-      total: results.length,
+      total: matchingResults.length,
       regions: Array.from(groups, ([id, entries]) => ({
         id,
         label: id,
@@ -87,16 +72,63 @@ export const queryPilotCatalog = (
       })).sort((a, b) => a.id.localeCompare(b.id)),
     }
   }
+  const sortBasis = appliedBounds
+    ? "map_center"
+    : query.region !== undefined
+      ? "region_center"
+      : "catalog_center"
+  const sortOrigin =
+    matchingResults.length === 0
+      ? null
+      : appliedBounds
+        ? {
+            latitude: (appliedBounds.southWest.latitude + appliedBounds.northEast.latitude) / 2,
+            longitude: (appliedBounds.southWest.longitude + appliedBounds.northEast.longitude) / 2,
+          }
+        : pilotResultBoundsCenter(matchingResults)
+  const results = sortOrigin
+    ? orderPilotResults({ catalog, results: matchingResults, normalizedQuery, origin: sortOrigin })
+    : matchingResults
+  const fingerprint = createHash("sha256")
+    .update(
+      JSON.stringify([
+        "ordering-v1",
+        { ...identity, query: normalizedQuery },
+        sortBasis,
+        sortOrigin,
+        catalog.catalogVersion,
+        results.flatMap(({ matchingMenuIds }) => matchingMenuIds).sort(),
+      ]),
+    )
+    .digest("hex")
+  let offset = 0
+  if (cursor !== undefined) {
+    let raw: unknown
+    try {
+      raw = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8"))
+    } catch (error) {
+      if (error instanceof SyntaxError) return { error: "invalid_request", retry: false }
+      throw error
+    }
+    const parsed = CursorSchema.safeParse(raw)
+    if (!parsed.success) return { error: "invalid_request", retry: false }
+    if (parsed.data.version !== catalog.catalogVersion || parsed.data.query !== fingerprint)
+      return { error: "stale_cursor", retry: true }
+    offset = parsed.data.offset
+  }
   if (offset > results.length) return { error: "stale_cursor", retry: true }
   const nextOffset = offset + query.limit
   return {
     catalogVersion: catalog.catalogVersion,
+    sortBasis,
+    sortOrigin,
     total: results.length,
     results: results.slice(offset, nextOffset).map((result) => ({
       place: toPilotPlaceDto(result.place),
       matchingMenuIds: result.matchingMenuIds,
       menus: menusForPilotPlace(catalog, result.place.id)
         .filter((menu) => result.matchingMenuIds.includes(menu.id))
+        .sort((left, right) => left.id.localeCompare(right.id))
         .map(toPilotMenuDto),
     })),
     nextCursor:

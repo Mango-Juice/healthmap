@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { currentPilotCatalog, PilotCatalogSchema } from "../../lib/pilot/catalog"
+import { PilotPlacesResponseSchema } from "../../lib/pilot/dto"
 import pilotCatalogJson from "../../lib/pilot/pilot-catalog.json"
 
 vi.mock("../../lib/pilot/server", () => ({ readPilotCatalog: vi.fn() }))
@@ -33,6 +34,19 @@ describe("place HTTP handlers", () => {
       ).status,
     ).toBe(400)
     expect(readPilotCatalog).not.toHaveBeenCalled()
+  })
+  it("returns conflict when a cursor belongs to different ordering conditions", async () => {
+    vi.mocked(readPilotCatalog).mockReturnValue(catalog)
+    const first = getList(new Request("http://localhost/api/places?limit=1"))
+    const cursor = PilotPlacesResponseSchema.parse(await first.json()).nextCursor
+
+    const response = getList(
+      new Request(
+        `http://localhost/api/places?limit=1&query=changed&cursor=${encodeURIComponent(cursor ?? "")}`,
+      ),
+    )
+
+    expect(response.status).toBe(409)
   })
   it("returns 404 for expired detail and 503 for unavailable snapshots", async () => {
     vi.stubEnv("VERCEL_ENV", "preview")
