@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef } from "react"
 
 import { captureProductAnalytics } from "../../lib/analytics/browser"
+import { normalizeDiscoveryQuery } from "../../lib/domain/discovery"
 import type { PilotDiscoveryFilter } from "../../lib/pilot/discovery"
 import type { PilotPlaceDto as PilotPlace } from "../../lib/pilot/dto"
 
@@ -17,6 +18,8 @@ const resultCountBucket = (count: number): "0" | "1_5" | "6_20" | "21_plus" => {
 
 export function usePilotAnalytics() {
   const viewed = useRef(false)
+  const searchIntent = useRef("")
+  const searchCaptured = useRef(false)
 
   useEffect(() => {
     if (viewed.current) return
@@ -46,7 +49,20 @@ export function usePilotAnalytics() {
     searchAreaApplied: useCallback((): void => {
       captureProductAnalytics({ event: "search_area_applied", properties: {} })
     }, []),
-    searchSucceeded: useCallback((_normalizedQuery: string, resultCount: number): void => {
+    searchIntentChanged: useCallback((query: string): void => {
+      const normalizedQuery = normalizeDiscoveryQuery(query)
+      if (normalizedQuery === searchIntent.current) return
+      searchIntent.current = normalizedQuery
+      searchCaptured.current = false
+    }, []),
+    searchSucceeded: useCallback((normalizedQuery: string, resultCount: number): void => {
+      if (
+        normalizedQuery !== searchIntent.current ||
+        normalizedQuery.length === 0 ||
+        searchCaptured.current
+      )
+        return
+      searchCaptured.current = true
       captureProductAnalytics({
         event: "search_used",
         properties: { result_count_bucket: resultCountBucket(resultCount) },

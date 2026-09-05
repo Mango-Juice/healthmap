@@ -161,6 +161,7 @@ export function FoodMap({ clientId }: Properties) {
   }
   const changeQuery = (value: string): void => {
     viewport.interact()
+    analytics.searchIntentChanged(value)
     setQuery(value)
     setSelectedId(undefined)
     setTrayExpanded(true)
