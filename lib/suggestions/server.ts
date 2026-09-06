@@ -24,7 +24,7 @@ export const submitSuggestion = async (request: Request, submission: Suggestion)
     .update(`${new Date().toISOString().slice(0, 10)}:${identity}`)
     .digest("hex")
   if (local)
-    return saveLocalSuggestion(join(process.cwd(), ".omo", "local-suggestions"), submission, actor)
+    return saveLocalSuggestion(join(process.cwd(), ".local", "suggestions"), submission, actor)
   if (!url || !key) return null
   const endpoint = new URL("/rest/v1/rpc/submit_pending_suggestion", url)
   if (endpoint.protocol !== "https:") return null

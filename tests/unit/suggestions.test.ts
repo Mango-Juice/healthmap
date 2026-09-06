@@ -1,4 +1,4 @@
-import { mkdtemp, readFile } from "node:fs/promises"
+import { mkdtemp, readFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, expect, it, vi } from "vitest"
@@ -28,33 +28,37 @@ describe("moderated suggestions", () => {
   })
   it("persists pending, deduplicates, rejects changed replay and limits requestor", async () => {
     const directory = await mkdtemp(join(tmpdir(), "healthmap-suggestion-"))
-    const submission = SuggestionSchema.parse(input)
-    expect(await saveLocalSuggestion(directory, submission, "actor")).toBe("queued")
-    expect(await saveLocalSuggestion(directory, submission, "actor")).toBe("duplicate")
-    expect(
-      await saveLocalSuggestion(
-        directory,
-        { ...submission, text: "Changed local fixture text" },
-        "actor",
-      ),
-    ).toBe("conflict")
-    for (let index = 2; index <= 6; index++) {
+    try {
+      const submission = SuggestionSchema.parse(input)
+      expect(await saveLocalSuggestion(directory, submission, "actor")).toBe("queued")
+      expect(await saveLocalSuggestion(directory, submission, "actor")).toBe("duplicate")
       expect(
         await saveLocalSuggestion(
           directory,
-          {
-            ...submission,
-            requestId: `11111111-1111-4111-8111-11111111111${index}`,
-            text: `LOCAL TEST ONLY menu fixture ${index}`,
-          },
+          { ...submission, text: "Changed local fixture text" },
           "actor",
         ),
-      ).toBe(index === 6 ? "limited" : "queued")
+      ).toBe("conflict")
+      for (let index = 2; index <= 6; index++) {
+        expect(
+          await saveLocalSuggestion(
+            directory,
+            {
+              ...submission,
+              requestId: `11111111-1111-4111-8111-11111111111${index}`,
+              text: `LOCAL TEST ONLY menu fixture ${index}`,
+            },
+            "actor",
+          ),
+        ).toBe(index === 6 ? "limited" : "queued")
+      }
+      const persisted = await readFile(join(directory, "pending.json"), "utf8")
+      expect(JSON.parse(persisted)).toHaveLength(5)
+      expect(persisted).toContain('"status": "pending"')
+      expect(persisted).not.toContain('"published"')
+    } finally {
+      await rm(directory, { force: true, recursive: true })
     }
-    const persisted = await readFile(join(directory, "pending.json"), "utf8")
-    expect(JSON.parse(persisted)).toHaveLength(5)
-    expect(persisted).toContain('"status": "pending"')
-    expect(persisted).not.toContain('"published"')
   })
 })
 
@@ -153,5 +157,25 @@ it("keeps local suggestion storage limited to loopback development", async () =>
     expect(isLocalSuggestionDevelopment(new URL("http://127.0.0.1/api/suggestions"))).toBe(false)
   } finally {
     vi.unstubAllEnvs()
+  }
+})
+
+it("stores local development suggestions outside the retired automation directory", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "healthmap-local-suggestion-"))
+  const cwd = vi.spyOn(process, "cwd").mockReturnValue(directory)
+  vi.stubEnv("NODE_ENV", "development")
+  vi.stubEnv("VERCEL", "")
+  try {
+    const { submitSuggestion } = await import("../../lib/suggestions/server")
+    const request = new Request("http://127.0.0.1/api/suggestions")
+
+    expect(await submitSuggestion(request, SuggestionSchema.parse(input))).toBe("queued")
+    await expect(
+      readFile(join(directory, ".local", "suggestions", "pending.json"), "utf8"),
+    ).resolves.toContain('"status": "pending"')
+  } finally {
+    cwd.mockRestore()
+    vi.unstubAllEnvs()
+    await rm(directory, { force: true, recursive: true })
   }
 })

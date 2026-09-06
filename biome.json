@@ -3,12 +3,10 @@
   "files": {
     "includes": [
       "**",
-      "!!.codegraph",
       "!!.git",
       "!!.next",
       "!!.next-*",
-      "!!.omo",
-      "!!.local-work",
+      "!!.local",
       "!!.vercel",
       "!!node_modules",
       "!!next-env.d.ts",

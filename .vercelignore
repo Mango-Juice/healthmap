@@ -8,10 +8,8 @@ coverage
 playwright-report
 test-results
 
-# Local-only project state and QA evidence
-.omo
-.local-work
-.codegraph
+# Local-only project state
+.local
 .debug-journal.md
 
 # Environment files must come from Vercel project settings

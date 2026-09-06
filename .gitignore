@@ -8,12 +8,10 @@ node_modules/
 /out/
 *.tsbuildinfo
 
-# Test and agent evidence
+# Test output
 /coverage/
 /playwright-report/
 /test-results/
-.omo/
-.codegraph
 *.log
 
 # Environment values stay private; the empty template is source
@@ -23,7 +21,7 @@ node_modules/
 
 # Hosting and local Supabase state
 .vercel/
-/.local-work/
+.local/
 /supabase/.branches/
 /supabase/.temp/
 
