@@ -54,9 +54,9 @@ test("failed requests recover without dropping the search controls", async ({ pa
   })
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.goto("/")
-  await expect(page.getByRole("button", { name: "메뉴 다시 불러오기" })).toBeVisible()
+  await expect(page.getByRole("button", { name: "장소 다시 불러오기" })).toBeVisible()
   fail = false
-  await page.getByRole("button", { name: "메뉴 다시 불러오기" }).click()
+  await page.getByRole("button", { name: "장소 다시 불러오기" }).click()
   await expect(page.locator("[data-pilot-place-id]").first()).toBeVisible()
 })
 

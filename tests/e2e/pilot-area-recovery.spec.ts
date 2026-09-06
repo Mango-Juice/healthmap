@@ -200,7 +200,7 @@ test("aggregate failure does not replace good local results", async ({ page }) =
   await page.goto("/")
   await expect(page.locator("[data-pilot-place-id]").first()).toBeVisible()
   await expect(page.getByRole("button", { name: "지도 밖 결과 다시 확인" })).toHaveCount(0)
-  await expect(page.getByRole("button", { name: "메뉴 다시 불러오기" })).toHaveCount(0)
+  await expect(page.getByRole("button", { name: "장소 다시 불러오기" })).toHaveCount(0)
 })
 
 test("map provider failure leaves the result list usable", async ({ page }) => {
