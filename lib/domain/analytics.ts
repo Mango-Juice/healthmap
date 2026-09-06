@@ -1,6 +1,5 @@
 import { z } from "zod"
 import { PlaceIdSchema } from "./contracts.ts"
-import { PLACE_FILTERS } from "./filter.ts"
 
 export const ANALYTICS_EVENT_NAMES = [
   "map_viewed",
@@ -8,9 +7,6 @@ export const ANALYTICS_EVENT_NAMES = [
   "filter_selected",
   "place_opened",
   "directions_opened",
-  "share_invoked",
-  "share_completed",
-  "shared_visit_explored",
   "search_used",
   "search_area_applied",
   "result_list_opened",
@@ -18,10 +14,7 @@ export const ANALYTICS_EVENT_NAMES = [
   "catalog_request_failed",
 ] as const
 
-const EntrySourceSchema = z.enum(["direct", "map", "place_share", "map_share"])
-const ShareTargetSchema = z.enum(["place", "map"])
 const ResultCountBucketSchema = z.enum(["0", "1_5", "6_20", "21_plus"])
-const AnalyticsFilterSchema = z.enum([...PLACE_FILTERS, "grilled_steamed"])
 const CatalogFilterSchema = z.enum([
   "all",
   "salad_poke",
@@ -36,7 +29,10 @@ const AnalyticsEventSchema = z.discriminatedUnion("event", [
   z
     .object({
       event: z.literal("map_viewed"),
-      properties: z.object({ source: EntrySourceSchema }).strict().readonly(),
+      properties: z
+        .object({ source: z.literal("direct") })
+        .strict()
+        .readonly(),
     })
     .strict()
     .readonly(),
@@ -45,15 +41,7 @@ const AnalyticsEventSchema = z.discriminatedUnion("event", [
       event: z.literal("location_resolved"),
       properties: z
         .object({
-          outcome: z.enum([
-            "inside",
-            "outside",
-            "resolved",
-            "denied",
-            "unavailable",
-            "timeout",
-            "unsupported",
-          ]),
+          outcome: z.enum(["resolved", "denied", "unavailable", "timeout", "unsupported"]),
         })
         .strict()
         .readonly(),
@@ -63,7 +51,7 @@ const AnalyticsEventSchema = z.discriminatedUnion("event", [
   z
     .object({
       event: z.literal("filter_selected"),
-      properties: z.object({ tag: AnalyticsFilterSchema }).strict().readonly(),
+      properties: z.object({ tag: CatalogFilterSchema }).strict().readonly(),
     })
     .strict()
     .readonly(),
@@ -71,7 +59,7 @@ const AnalyticsEventSchema = z.discriminatedUnion("event", [
     .object({
       event: z.literal("place_opened"),
       properties: z
-        .object({ place_id: PlaceIdSchema, source: z.enum(["map", "list", "shared_link"]) })
+        .object({ place_id: PlaceIdSchema, source: z.enum(["map", "list"]) })
         .strict()
         .readonly(),
     })
@@ -81,40 +69,7 @@ const AnalyticsEventSchema = z.discriminatedUnion("event", [
     .object({
       event: z.literal("directions_opened"),
       properties: z
-        .object({ place_id: PlaceIdSchema, source: z.enum(["naver_route", "naver_place"]) })
-        .strict()
-        .readonly(),
-    })
-    .strict()
-    .readonly(),
-  z
-    .object({
-      event: z.literal("share_invoked"),
-      properties: z.object({ target: ShareTargetSchema }).strict().readonly(),
-    })
-    .strict()
-    .readonly(),
-  z
-    .object({
-      event: z.literal("share_completed"),
-      properties: z
-        .object({
-          target: ShareTargetSchema,
-          outcome: z.enum(["web_share", "clipboard", "manual"]),
-        })
-        .strict()
-        .readonly(),
-    })
-    .strict()
-    .readonly(),
-  z
-    .object({
-      event: z.literal("shared_visit_explored"),
-      properties: z
-        .object({
-          source: z.enum(["place_share", "map_share"]),
-          action: z.enum(["filter", "place_opened", "location"]),
-        })
+        .object({ place_id: PlaceIdSchema, source: z.literal("naver_route") })
         .strict()
         .readonly(),
     })

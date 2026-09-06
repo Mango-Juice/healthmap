@@ -10,9 +10,6 @@ describe("analytics privacy boundary", () => {
       "filter_selected",
       "place_opened",
       "directions_opened",
-      "share_invoked",
-      "share_completed",
-      "shared_visit_explored",
       "search_used",
       "search_area_applied",
       "result_list_opened",
@@ -45,7 +42,7 @@ describe("analytics privacy boundary", () => {
       { event: "location_resolved", properties: { outcome: "unavailable" } },
       {
         event: "place_opened",
-        properties: { place_id: "6dd657be-fc3b-4bb8-8e67-fabbee0f2e01", source: "shared_link" },
+        properties: { place_id: "6dd657be-fc3b-4bb8-8e67-fabbee0f2e01", source: "list" },
       },
     ] as const
 

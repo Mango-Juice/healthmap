@@ -64,16 +64,6 @@ export function LocateIcon({ className }: NamedIconProperties) {
   )
 }
 
-export function FilterIcon({ className }: NamedIconProperties) {
-  return (
-    <Icon className={className}>
-      <path d="M4 7h7m4 0h5M4 17h3m4 0h9" />
-      <circle cx="13" cy="7" r="2" />
-      <circle cx="9" cy="17" r="2" />
-    </Icon>
-  )
-}
-
 export function MapPinIcon({ className }: NamedIconProperties) {
   return (
     <Icon className={className}>
@@ -146,18 +136,6 @@ export function ArrowLeftIcon({ className }: NamedIconProperties) {
     <Icon className={className}>
       <path d="m15 18-6-6 6-6" />
       <path d="M9 12h10" />
-    </Icon>
-  )
-}
-
-export function WheatIcon({ className }: NamedIconProperties) {
-  return (
-    <Icon className={className}>
-      <path d="M2 22 16 8" />
-      <path d="M16 8c-4 0-6-2-7-5 4 0 6 2 7 5Z" />
-      <path d="M13 11c0-4 2-6 5-7 0 4-2 6-5 7Z" />
-      <path d="M10 14c-4 0-6-2-7-5 4 0 6 2 7 5Z" />
-      <path d="M7 17c0-4 2-6 5-7 0 4-2 6-5 7Z" />
     </Icon>
   )
 }

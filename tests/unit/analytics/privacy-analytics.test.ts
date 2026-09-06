@@ -121,7 +121,7 @@ describe("privacy-safe product analytics", () => {
     })
     const events = [
       { event: "map_viewed", properties: { source: "direct" } },
-      { event: "location_resolved", properties: { outcome: "inside" } },
+      { event: "location_resolved", properties: { outcome: "resolved" } },
       { event: "filter_selected", properties: { tag: "all" } },
       {
         event: "place_opened",
@@ -131,9 +131,6 @@ describe("privacy-safe product analytics", () => {
         event: "directions_opened",
         properties: { place_id: "6dd657be-fc3b-4bb8-8e67-fabbee0f2e01", source: "naver_route" },
       },
-      { event: "share_invoked", properties: { target: "map" } },
-      { event: "share_completed", properties: { target: "place", outcome: "clipboard" } },
-      { event: "shared_visit_explored", properties: { source: "map_share", action: "location" } },
       { event: "search_used", properties: { result_count_bucket: "6_20" } },
       { event: "search_area_applied", properties: {} },
       { event: "result_list_opened", properties: {} },

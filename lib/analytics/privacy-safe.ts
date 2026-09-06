@@ -111,18 +111,6 @@ export const sanitizeAnalyticsTransportEvent = (
         event,
         properties: { place_id: properties["place_id"], source: properties["source"] },
       })
-    case "share_invoked":
-      return toOutboundEvent({ event, properties: { target: properties["target"] } })
-    case "share_completed":
-      return toOutboundEvent({
-        event,
-        properties: { target: properties["target"], outcome: properties["outcome"] },
-      })
-    case "shared_visit_explored":
-      return toOutboundEvent({
-        event,
-        properties: { source: properties["source"], action: properties["action"] },
-      })
     case "search_used":
       return toOutboundEvent({
         event,

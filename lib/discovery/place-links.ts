@@ -1,6 +1,6 @@
-import type { DiscoveryPlace } from "./catalog"
+import type { DiscoveryPlaceDto } from "./dto"
 
-type PlaceLinkTarget = Pick<DiscoveryPlace, "name" | "address" | "naverPlaceUrl">
+type PlaceLinkTarget = Pick<DiscoveryPlaceDto, "name" | "address" | "naverPlaceUrl">
 
 export const buildDiscoveryPlaceInfoUrl = (place: PlaceLinkTarget): string => {
   if (place.naverPlaceUrl) return place.naverPlaceUrl

@@ -23,18 +23,11 @@ license and every required notice from the exact installed package.
 | `@types/node` | 22.20.1 | MIT | [DefinitelyTyped/DefinitelyTyped](https://github.com/DefinitelyTyped/DefinitelyTyped) |
 | `@types/react` | 19.2.18 | MIT | [DefinitelyTyped/DefinitelyTyped](https://github.com/DefinitelyTyped/DefinitelyTyped) |
 | `@types/react-dom` | 19.2.4 | MIT | [DefinitelyTyped/DefinitelyTyped](https://github.com/DefinitelyTyped/DefinitelyTyped) |
-| `react-doctor` | 0.9.12 | SEE LICENSE IN LICENSE | [millionco/react-doctor](https://github.com/millionco/react-doctor) |
-| `react-grab` | 0.1.50 | MIT | [aidenybai/react-grab](https://github.com/aidenybai/react-grab) |
-| `react-scan` | 0.5.7 | MIT | [aidenybai/react-scan](https://github.com/aidenybai/react-scan) |
-| `supabase` | 2.114.0 | MIT | [supabase/cli](https://github.com/supabase/cli) |
 | `tailwindcss` | 4.3.3 | MIT | [tailwindlabs/tailwindcss](https://github.com/tailwindlabs/tailwindcss) |
 | `typescript` | 5.9.3 | Apache-2.0 | [microsoft/TypeScript](https://github.com/microsoft/TypeScript) |
 | `vitest` | 4.1.10 | MIT | [vitest-dev/vitest](https://github.com/vitest-dev/vitest) |
 
 ## Project graphics checked for this boundary
 
-`app/icon.svg`, the marker SVGs, and category SVGs contain project-local vector
-paths and only the SVG namespace URL. `app/apple-icon.png`, `app/favicon.ico`,
-and `app/opengraph-image.png` are generated from `app/icon.svg` by the retained
-project-local asset generator. No third-party graphic is asserted by this list;
-an unclassified copied asset fails the private public-eligibility check.
+`app/icon.svg`, the marker SVGs, category SVGs, and generated application icons
+are project-local assets. No third-party graphic is asserted by this list.

@@ -1,40 +1,3 @@
-.filterRail {
-  box-sizing: border-box;
-  border: 0;
-  display: flex;
-  gap: var(--hm-space-2);
-  max-inline-size: 100%;
-  min-inline-size: 0;
-  inline-size: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior-inline: contain;
-  scroll-snap-type: inline mandatory;
-  padding: var(--hm-space-1);
-  scrollbar-color: var(--hm-border-strong) transparent;
-  scrollbar-width: thin;
-}
-
-.visuallyHidden {
-  block-size: var(--hm-visually-hidden-size);
-  clip: rect(0 0 0 0);
-  clip-path: inset(50%);
-  inline-size: var(--hm-visually-hidden-size);
-  overflow: hidden;
-  position: absolute;
-  white-space: nowrap;
-}
-
-.filterRail::-webkit-scrollbar {
-  block-size: var(--hm-space-1);
-}
-
-.filterRail::-webkit-scrollbar-thumb {
-  background: var(--hm-border-strong);
-  border-radius: var(--hm-radius-control);
-}
-
-.filterButton,
 .actionButton {
   appearance: none;
   border: 0;
@@ -43,66 +6,18 @@
   touch-action: manipulation;
 }
 
-.filterButton {
-  align-items: center;
-  background: var(--hm-surface);
-  border: var(--hm-border-width) solid var(--hm-border);
-  border-radius: var(--hm-radius-control);
-  color: var(--hm-ink-muted);
-  display: inline-flex;
-  flex: 0 0 auto;
-  font-size: var(--hm-type-label);
-  font-weight: var(--hm-weight-label);
-  gap: var(--hm-space-2);
-  justify-content: center;
-  letter-spacing: 0;
-  line-height: var(--hm-leading-tight);
-  min-block-size: var(--hm-control-min);
-  padding: var(--hm-space-2) var(--hm-space-4);
-  scroll-snap-align: start;
-  transition:
-    background-color var(--hm-motion-micro) var(--hm-ease-standard),
-    border-color var(--hm-motion-micro) var(--hm-ease-standard),
-    color var(--hm-motion-micro) var(--hm-ease-standard),
-    transform var(--hm-motion-press) var(--hm-ease-out);
-  white-space: nowrap;
-}
-
-.filterButton:hover:not(:disabled) {
-  background: var(--hm-green-100);
-  border-color: var(--hm-green-300);
-  color: var(--hm-green-950);
-}
-
-.filterButton[aria-pressed="true"] {
-  background: var(--hm-green-800);
-  border-color: var(--hm-green-800);
-  color: var(--hm-surface);
-}
-
-.filterButton:active:not(:disabled) {
-  transform: translateY(var(--hm-press-offset));
-}
-
 .actionButton:active:not(:disabled) {
   filter: brightness(var(--hm-active-brightness));
 }
 
-.filterButton:disabled,
 .actionButton:disabled {
   cursor: not-allowed;
   opacity: var(--hm-disabled-opacity);
 }
 
-.filterButton:focus-visible,
 .actionButton:focus-visible {
   outline: var(--hm-focus-ring) solid var(--hm-blue);
   outline-offset: var(--hm-focus-ring);
-}
-
-.inlineIcon {
-  block-size: var(--hm-icon-sm);
-  inline-size: var(--hm-icon-sm);
 }
 
 .actionButton {
@@ -180,13 +95,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .filterButton,
   .actionButton {
     transition: none;
-  }
-
-  .filterButton:active:not(:disabled) {
-    transform: none;
   }
 
   .actionButton:active:not(:disabled) {
@@ -198,48 +108,7 @@
   }
 }
 
-@media (max-width: 480px) {
-  .filterRail {
-    display: grid;
-    gap: var(--hm-space-1);
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    overflow-x: auto;
-    overflow-y: hidden;
-    scroll-snap-type: none;
-  }
-
-  .filterButton {
-    flex-direction: column;
-    gap: var(--hm-space-1);
-    inline-size: auto;
-    min-block-size: calc(var(--hm-control-min) + var(--hm-space-3));
-    min-inline-size: 0;
-    padding: var(--hm-space-1);
-    white-space: normal;
-  }
-}
-
-@media (max-width: 240px) {
-  .filterRail {
-    display: flex;
-    scroll-snap-type: inline mandatory;
-  }
-
-  .filterButton {
-    flex: 0 0 auto;
-    min-inline-size: var(--hm-control-min);
-    padding-inline: var(--hm-space-2);
-    white-space: nowrap;
-  }
-}
-
 @media (forced-colors: active) {
-  .filterButton[aria-pressed="true"] {
-    outline: var(--hm-border-width) solid Highlight;
-    outline-offset: var(--hm-border-width);
-  }
-
-  .filterButton:focus-visible,
   .actionButton:focus-visible {
     outline-color: Highlight;
   }

@@ -8,7 +8,6 @@ import {
 import {
   ActionButton,
   EmptyState,
-  FilterRail,
   SkeletonDetail,
   StatusAlert,
 } from "../../components/ui/health-map-primitives"
@@ -29,7 +28,7 @@ export function ShowcaseClient() {
         <div className={styles["sectionHeading"]}>
           <div>
             <span className={styles["stateLabel"]}>INTERACTION STATES</span>
-            <h2 id="control-states-heading">필터와 버튼</h2>
+            <h2 id="control-states-heading">버튼 상태</h2>
           </div>
           <span>크기는 유지하고 상태만 바뀝니다.</span>
         </div>
@@ -60,10 +59,6 @@ export function ShowcaseClient() {
               길찾기
             </ActionButton>
           </article>
-        </div>
-        <div className={galleryStyles["filterExamples"]}>
-          <FilterRail selected="vegetables" />
-          <FilterRail disabled selected="all" />
         </div>
       </section>
 

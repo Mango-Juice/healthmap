@@ -38,10 +38,11 @@ TypeScript, Zod, NAVER Maps, Supabase, PostHog Lite, Tailwind, and CSS Modules.
 ```sh
 pnpm exec biome ci .
 pnpm typecheck
+pnpm deploy:validate
 pnpm test
 pnpm test:integration
+pnpm test:integration:local
 pnpm test:deployment
-pnpm docs:check
 pnpm test:e2e
 pnpm build
 ```

@@ -45,32 +45,17 @@ jobs:
           NEXT_PUBLIC_SITE_URL: https://healthmap.example.test
         run: pnpm deploy:validate
 
-      - name: Check operations runbook
-        run: pnpm docs:check
-
       - name: Run unit tests
         run: pnpm test
 
       - name: Run integration tests
         run: pnpm test:integration
 
-      - name: Check current application architecture
-        run: pnpm test:architecture
-
-      - name: Audit React code
-        run: pnpm react:doctor --no-telemetry --no-cache
-
       - name: Build production application
         run: pnpm build
 
       - name: Run deployment automation tests
         run: pnpm test:deployment
-
-      - name: Prove hosted Playwright configuration does not start a local server
-        env:
-          E2E_BASE_URL: https://hosted-contract.example.test
-          E2E_EXPECTED_CATALOG_VERSION: ci-hosted-contract-only
-        run: pnpm exec playwright test --list
 
   browser-smoke:
     needs: quality

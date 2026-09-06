@@ -283,6 +283,3 @@ export const resetNaverMapsLoad = (): void => {
 export class MapSdkLoadError extends Error {
   readonly name = "MapSdkLoadError"
 }
-
-export const viewLabel = (view: MapView): string =>
-  `${view.latitude.toFixed(4)}, ${view.longitude.toFixed(4)} · 확대 ${view.zoom}`

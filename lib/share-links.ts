@@ -2,8 +2,6 @@ import {
   parsePlaywrightPublicEnvironment,
   parsePublicEnvironment,
 } from "../app/public-environment.ts"
-import type { PlaceSlug } from "./domain/contracts.ts"
-import { type MapShareQuery, serializeMapShareQuery } from "./domain/share-query.ts"
 
 type SiteEnvironment = Readonly<Record<string, string | undefined>>
 
@@ -32,16 +30,6 @@ export const buildAbsoluteSiteUrl = (
   if (siteUrl === null) return null
   return new URL(pathname.replace(/^[/]/u, ""), siteUrl).toString()
 }
-
-export const buildAbsolutePlaceShareUrl = (
-  slug: PlaceSlug,
-  environment: SiteEnvironment,
-): string | null => buildAbsoluteSiteUrl(`places/${encodeURIComponent(slug)}`, environment)
-
-export const buildAbsoluteMapShareUrl = (
-  state: MapShareQuery,
-  environment: SiteEnvironment,
-): string | null => buildAbsoluteSiteUrl(`?${serializeMapShareQuery(state)}`, environment)
 
 export const getRuntimeSiteEnvironment = (): SiteEnvironment => ({
   NEXT_PUBLIC_PLAYWRIGHT_TEST: process.env["NEXT_PUBLIC_PLAYWRIGHT_TEST"],

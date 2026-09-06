@@ -11,7 +11,7 @@ for (const viewport of [
     await page.goto("/showcase")
 
     await expect(page.getByRole("heading", { level: 1, name: "프리미티브 쇼케이스" })).toBeVisible()
-    await expect(page.getByRole("heading", { name: "필터와 버튼" })).toBeVisible()
+    await expect(page.getByRole("heading", { name: "버튼 상태" })).toBeVisible()
     await expect(page.getByRole("heading", { name: "알림, 로딩, 오류, 빈 상태" })).toBeVisible()
     await expect(page.getByTestId("map-shell")).toHaveCount(0)
     await expect(page.getByRole("heading", { name: "대표 태그 마커" })).toHaveCount(0)
@@ -24,14 +24,8 @@ for (const viewport of [
   })
 }
 
-test("keeps filter and action controls keyboard operable", async ({ page }) => {
+test("keeps action controls keyboard operable", async ({ page }) => {
   await page.goto("/showcase")
-  const filter = page.getByRole("button", { name: "채소 필터" }).first()
-  await filter.focus()
-  await expect(filter).toBeFocused()
-  await filter.press("Enter")
-  await expect(filter).toHaveAttribute("aria-pressed", "true")
-
   const action = page.getByRole("button", { name: "길찾기" }).first()
   await action.focus()
   await expect(action).toBeFocused()
@@ -69,7 +63,7 @@ for (const viewport of [
       .map(({ top }) => top)
     expect(new Set(suffixTops).size).toBe(1)
 
-    const headerCopy = page.getByText("필터, 버튼, 상태 피드백을 실제 상호작용으로 검증합니다.")
+    const headerCopy = page.getByText("버튼과 상태 피드백을 실제 상호작용으로 검증합니다.")
     const headerLineTops = await headerCopy.evaluate((element) => {
       const text = element.textContent ?? ""
       const suffixStart = text.indexOf("검증합니다.")

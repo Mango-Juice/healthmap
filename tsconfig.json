@@ -37,8 +37,12 @@
     "**/*.mts",
     "**/*.cts",
     ".next/dev/types/**/*.ts",
-    ".next-entry-preview/types/**/*.ts",
-    ".next-entry-preview/dev/types/**/*.ts"
+    ".next-playwright-3835/types/**/*.ts",
+    ".next-playwright-3835/dev/types/**/*.ts",
+    ".next-playwright-3836/types/**/*.ts",
+    ".next-playwright-3836/dev/types/**/*.ts",
+    ".next-playwright-3837/types/**/*.ts",
+    ".next-playwright-3837/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules", "tests/fixtures/task7-app/**", ".next-*", ".omo", ".local-work"]
+  "exclude": ["node_modules", ".next-*"]
 }

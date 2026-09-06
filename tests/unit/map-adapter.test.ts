@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest"
-import { DEFAULT_VIEW } from "../../lib/domain/geo"
 import {
   createNaverMapAdapter,
   createSdkLoader,
   type NaverMapsApi,
   type SdkScript,
-  viewLabel,
 } from "../../lib/map/adapter"
+
+const TEST_VIEW = { latitude: 37.5007, longitude: 127.0328, zoom: 15 } as const
 
 class FakeLatLng {
   constructor(
@@ -153,17 +153,16 @@ describe("NAVER map adapter", () => {
       Map: FakeMap,
       Marker: FakeNativeMarker,
     } satisfies NaverMapsApi
-    const adapter = createNaverMapAdapter(container, DEFAULT_VIEW, maps)
+    const adapter = createNaverMapAdapter(container, TEST_VIEW, maps)
     adapter.recenter({ latitude: 37.5, longitude: 127.03 }, 15)
     adapter.destroy()
-    expect(viewLabel(DEFAULT_VIEW)).toBe("37.5007, 127.0328 · 확대 15")
     expect(events).toEqual(["construct", "center", "zoom", "destroy"])
     expect(container.dataset["mapConstructed"]).toBeUndefined()
   })
 
   it("removes normal native listeners and detaches markers during teardown", () => {
     const fixture = createTeardownFixture()
-    const adapter = createNaverMapAdapter({ dataset: {} }, DEFAULT_VIEW, fixture.maps)
+    const adapter = createNaverMapAdapter({ dataset: {} }, TEST_VIEW, fixture.maps)
 
     adapter.syncMarkers([
       {
@@ -185,7 +184,7 @@ describe("NAVER map adapter", () => {
     const fixture = createTeardownFixture(() => {
       throw new TypeError("Cannot read properties of null (reading 'isArray')")
     })
-    const adapter = createNaverMapAdapter({ dataset: {} }, DEFAULT_VIEW, fixture.maps)
+    const adapter = createNaverMapAdapter({ dataset: {} }, TEST_VIEW, fixture.maps)
 
     adapter.syncMarkers([
       {
@@ -237,7 +236,7 @@ describe("NAVER map adapter", () => {
       Map: FakeMap,
       Marker: FakeMarker,
     } satisfies NaverMapsApi
-    const adapter = createNaverMapAdapter({ dataset: {} }, DEFAULT_VIEW, maps)
+    const adapter = createNaverMapAdapter({ dataset: {} }, TEST_VIEW, maps)
     let selected = ""
 
     adapter.syncMarkers([
@@ -279,7 +278,7 @@ describe("NAVER map adapter", () => {
       Map: BrokenMap,
       Marker: FakeNativeMarker,
     } satisfies NaverMapsApi
-    expect(() => createNaverMapAdapter(container, DEFAULT_VIEW, maps)).toThrow("provider failed")
+    expect(() => createNaverMapAdapter(container, TEST_VIEW, maps)).toThrow("provider failed")
     expect(container.dataset["mapConstructed"]).toBeUndefined()
   })
 })

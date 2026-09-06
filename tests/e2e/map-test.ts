@@ -1,6 +1,4 @@
 import { type BrowserContext, test as base, expect } from "@playwright/test"
-import { e2eCatalog } from "../fixtures/e2e-catalog"
-import { installCatalogQueryRoutes } from "./catalog-query-fixture"
 
 const NAVER_MAP_TEST_SDK = `(() => {
   const markerPosition = (map, point) => {
@@ -75,10 +73,6 @@ export const installMapSdkTestRoutes = async (context: BrowserContext): Promise<
 
 export const installMapTestRoutes = async (context: BrowserContext): Promise<void> => {
   await installMapSdkTestRoutes(context)
-  await installCatalogQueryRoutes(context)
-  await context.route("**/api/map-catalog", async (route) => {
-    await route.fulfill({ contentType: "application/json", json: e2eCatalog })
-  })
 }
 
 export const test = base.extend({

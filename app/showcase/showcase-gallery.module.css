@@ -41,16 +41,6 @@
   filter: brightness(var(--hm-active-brightness));
 }
 
-.filterExamples {
-  background: var(--hm-surface-subtle);
-  border: var(--hm-border-width) solid var(--hm-border);
-  border-radius: var(--hm-radius-card);
-  display: grid;
-  gap: var(--hm-space-3);
-  min-inline-size: 0;
-  padding: var(--hm-space-4);
-}
-
 .feedbackGrid {
   display: grid;
   gap: var(--hm-space-4);

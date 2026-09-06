@@ -1,42 +1,7 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react"
 import feedbackStyles from "./health-map-feedback.module.css"
-import {
-  AlertTriangleIcon,
-  LeafIcon,
-  LoaderIcon,
-  MapPinIcon,
-  RotateCcwIcon,
-} from "./health-map-icons"
-import { FILTER_OPTIONS, type FilterValue } from "./health-map-options"
+import { AlertTriangleIcon, LoaderIcon, MapPinIcon, RotateCcwIcon } from "./health-map-icons"
 import styles from "./health-map-primitives.module.css"
-
-type FilterRailProperties = {
-  readonly disabled?: boolean
-  readonly onSelect?: (value: FilterValue) => void
-  readonly selected: FilterValue
-}
-
-export function FilterRail({ disabled = false, onSelect, selected }: FilterRailProperties) {
-  return (
-    <fieldset className={styles["filterRail"]}>
-      <legend className={styles["visuallyHidden"]}>건강식 유형</legend>
-      {FILTER_OPTIONS.map((option) => (
-        <button
-          aria-label={`${option.label} 필터`}
-          aria-pressed={selected === option.value}
-          className={styles["filterButton"]}
-          disabled={disabled}
-          key={option.value}
-          onClick={onSelect ? () => onSelect(option.value) : undefined}
-          type="button"
-        >
-          <LeafIcon className={styles["inlineIcon"]} />
-          <span>{option.label}</span>
-        </button>
-      ))}
-    </fieldset>
-  )
-}
 
 type ActionButtonProperties = ButtonHTMLAttributes<HTMLButtonElement> & {
   readonly children: ReactNode

@@ -357,7 +357,7 @@ Loading, search, list, pagination, and detail requests show concise Korean statu
 - Motion communicates cause and state. No decoration-only entrance, shimmer travel, bounce, parallax, or hover on noninteractive content.
 - Only `transform`, `opacity`, and `filter` animate. Layout dimensions remain stable.
 - Press uses a tokenized brightness change without changing control geometry.
-- The Discovery drawer has two transform-only stops: a 48px collapsed peek and a 72% expanded workspace, with selected-place previews capped at `min(264px, 42dvb)`. Its existing labelled button remains the keyboard control and the only drag start area. After vertical intent exceeds 8px it captures the primary pointer, follows the clamped measured range without a transition, and releases to the nearest or qualified-velocity stop. Cancel, lost capture, second pointer, selection, resize, and breakpoint changes restore the committed stop. The frame stays at the expanded height; a ResizeObserver measures the visible content-sized preview and moves the sheet/dock stack together. The map does not resize. No decorative grip is shown. Fixture-only map surfaces retain their own behavior.
+- The Discovery drawer has two transform-only stops: a 48px collapsed peek and a 72% expanded workspace, with selected-place previews capped at `min(264px, 42dvb)`. Its existing labelled button remains the keyboard control and the only drag start area. After vertical intent exceeds 8px it captures the primary pointer, follows the clamped measured range without a transition, and releases to the nearest or qualified-velocity stop. Cancel, lost capture, second pointer, selection, resize, and breakpoint changes restore the committed stop. The frame stays at the expanded height; a ResizeObserver measures the visible content-sized preview and moves the sheet/dock stack together. The map does not resize. No decorative grip is shown.
 - `prefers-reduced-motion: reduce` sets durations to `0.01ms`, removes transforms, and makes skeletons static. State changes remain visually distinct.
 
 ## 7. Depth & Surface
@@ -373,7 +373,7 @@ Loading, search, list, pagination, and detail requests show concise Korean statu
 - Shadows are reserved for elements that actually float over the map. Cards never nest inside shadowed cards.
 - No gradients, glass, blur, texture overlay, or decorative glow.
 
-## 8. Accessibility Constraints & Accepted Debt
+## 8. Accessibility constraints
 
 ### Constraints
 
@@ -388,15 +388,6 @@ Loading, search, list, pagination, and detail requests show concise Korean statu
 - Korean copy must not clip glyphs or orphan one-syllable endings due to fixed heights; long unbroken strings wrap anywhere.
 - Loading, error, and empty regions reserve useful stable dimensions so state changes do not shift critical actions.
 
-### Accepted debt
+### Current boundary
 
-- No accessibility blocker is accepted. Any Critical or Major accessibility finding blocks release.
-- The internal Discovery desktop detail currently replaces the result list inside the 352px pane. Preserving
-  list/filter comparison context with a map-side detail card is accepted MVP usability debt and remains the
-  next desktop interaction task.
-
-### Current boundary and roadmap
-
-The current experience uses public categories and search without fabricating nutrition tags or surfacing internal material. Public results and detail show the matching menu; availability remains a user decision. Future catalog changes must preserve these consumer, accessibility, and data-boundary rules.
-
-- Place heading navigation: restaurant titles own a full row. Desktop uses a separate toolbar above them; mobile uses a labelled chevron toggle and close icon in the drawer toolbar. Keep content-sized previews and 44px actions.
+The current experience uses public categories and search without fabricating nutrition tags or surfacing internal material. Public results and detail show the matching menu; availability remains a user decision.

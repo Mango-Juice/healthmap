@@ -12,27 +12,16 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "deploy:smoke": "node --experimental-strip-types scripts/deploy/production-smoke.mjs",
+    "deploy:smoke": "node scripts/deploy/production-smoke.mjs",
     "deploy:validate": "node --experimental-strip-types scripts/deploy/validate-environment.mjs",
-    "deploy:validate:hosted": "node --experimental-strip-types scripts/deploy/validate-environment.mjs --hosted",
-    "deploy:validate:evidence": "node scripts/deploy/validate-release-evidence.mjs",
-    "docs:check": "node scripts/docs/check-operations.mjs",
     "start": "next start",
-    "test:deployment": "node --experimental-strip-types --test tests/deployment/*.test.mjs",
     "format": "biome check --write .",
     "typecheck": "tsc --noEmit",
-    "test": "pnpm test:config && vitest run --sequence.shuffle --sequence.seed=20260813",
-    "test:architecture": "node --test tests/architecture/*.test.mjs",
-    "test:config": "node scripts/check-vercel-config.mjs",
+    "test": "vitest run --sequence.shuffle --sequence.seed=20260813",
     "test:integration": "vitest run --config vitest.integration.config.ts",
-    "test:integration:local": "bash scripts/data/verify-local-supabase.sh",
+    "test:integration:local": "bash scripts/data/verify-local-db.sh --local",
     "test:e2e": "playwright test",
-    "verify:domain": "node --no-warnings --experimental-strip-types scripts/domain-contract-driver.ts",
-    "react:doctor": "react-doctor .",
-    "supabase:start": "supabase start",
-    "supabase:stop": "supabase stop",
-    "supabase:status": "supabase status",
-    "supabase:reset": "supabase db reset"
+    "test:deployment": "node --experimental-strip-types --test tests/deployment/*.test.mjs"
   },
   "dependencies": {
     "next": "16.3.0",
@@ -48,10 +37,6 @@
     "@types/node": "22.20.1",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
-    "react-doctor": "0.9.12",
-    "react-grab": "0.1.50",
-    "react-scan": "0.5.7",
-    "supabase": "2.114.0",
     "tailwindcss": "4.3.3",
     "typescript": "5.9.3",
     "vitest": "4.1.10"
@@ -59,8 +44,7 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild",
-      "sharp",
-      "supabase"
+      "sharp"
     ]
   }
 }

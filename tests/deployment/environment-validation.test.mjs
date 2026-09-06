@@ -1,10 +1,7 @@
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { test } from "node:test"
-import {
-  parseBaseUrl,
-  parseExpectedCatalogVersion,
-} from "../../scripts/deploy/production-smoke.mjs"
+import { parseBaseUrl } from "../../scripts/deploy/production-smoke.mjs"
 import {
   formatValidationFailure,
   validatePublicEnvironment,
@@ -103,16 +100,13 @@ test("smoke command rejects malformed origins without echoing their value", () =
   )
 })
 
-test("smoke command requires a non-hostile expected catalog version without echoing it", () => {
+test("smoke command requires exactly one safe origin without echoing credentials", () => {
+  assert.throws(() => parseBaseUrl(["--base-url"]), /--base-url is required/)
   assert.throws(
-    () => parseExpectedCatalogVersion(["--base-url", "https://healthmap.example.test"]),
-    /--expected-catalog-version is required/,
-  )
-  assert.throws(
-    () => parseExpectedCatalogVersion(["--expected-catalog-version", "catalog\nsecret"]),
+    () => parseBaseUrl(["--base-url", "https://user:secret@healthmap.example.test"]),
     (error) =>
       error instanceof Error &&
-      error.message.includes("--expected-catalog-version") &&
+      error.message.includes("Smoke configuration invalid") &&
       !error.message.includes("secret"),
   )
 })

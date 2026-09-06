@@ -14,7 +14,7 @@ export default function ShowcasePage() {
       <header className={styles["pageHeader"]}>
         <span className={styles["eyebrow"]}>DESIGN SYSTEM</span>
         <h1>프리미티브 쇼케이스</h1>
-        <p>필터, 버튼, 상태 피드백을 실제 상호작용으로 검증합니다.</p>
+        <p>버튼과 상태 피드백을 실제 상호작용으로 검증합니다.</p>
       </header>
       <ShowcaseClient />
     </main>

@@ -33,7 +33,6 @@ const localWebServers = hostedBaseUrl
         env: {
           ...process.env,
           LOCAL_TLS_ROOT: localTlsRoot,
-          NEXT_PUBLIC_DISABLE_REACT_DEVTOOLS: "1",
           NEXT_PUBLIC_NAVER_MAP_CLIENT_ID:
             process.env["NEXT_PUBLIC_NAVER_MAP_CLIENT_ID"] ?? "test-client",
           NEXT_PUBLIC_POSTHOG_HOST:

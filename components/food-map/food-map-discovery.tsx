@@ -12,7 +12,6 @@ import {
   markerIconForMenus,
   markerZIndex,
 } from "../../lib/discovery/menu-selection"
-import { useNaverMapAdapter } from "../map/use-naver-map-adapter"
 import { ApplicationMasthead } from "../ui/application-masthead"
 import { PlusIcon } from "../ui/health-map-icons"
 import { FoodMapAreaRecovery } from "./food-map-area-recovery"
@@ -30,6 +29,7 @@ import { useFoodMapLocation } from "./use-food-map-location"
 import { useFoodMapQuery } from "./use-food-map-query"
 import { useFoodMapSheetMotion } from "./use-food-map-sheet-motion"
 import { useFoodMapViewport } from "./use-food-map-viewport"
+import { useNaverMapAdapter } from "./use-naver-map-adapter"
 
 type Properties = {
   readonly clientId?: string | undefined

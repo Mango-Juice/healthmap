@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
-import { DEFAULT_VIEW } from "../../lib/domain/geo"
 import { createNaverMapAdapter, type NaverMapsApi } from "../../lib/map/adapter"
+
+const TEST_VIEW = { latitude: 37.5007, longitude: 127.0328, zoom: 15 } as const
 
 describe("native marker identity", () => {
   it("keeps pins and click listeners while selection, order, and place details change", () => {
@@ -34,7 +35,7 @@ describe("native marker identity", () => {
         removeListener,
       },
     } satisfies NaverMapsApi
-    const adapter = createNaverMapAdapter({ dataset: {} }, DEFAULT_VIEW, maps)
+    const adapter = createNaverMapAdapter({ dataset: {} }, TEST_VIEW, maps)
     const initialClick = vi.fn()
     const nextClick = vi.fn()
     const a = {

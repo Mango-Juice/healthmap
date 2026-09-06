@@ -2,7 +2,6 @@ import { vi } from "vitest"
 import type { DiscoveryResultCache, MonotonicClock } from "../../lib/discovery/cache"
 import type { DiscoveryRpcClient, DiscoveryState } from "../../lib/discovery/contracts"
 import { DiscoveryDetailResponseSchema } from "../../lib/discovery/dto"
-import { syntheticDiscoveryCatalog } from "../fixtures/discovery-catalog"
 
 export const releaseId = "synthetic-release-a"
 export const eligibleEpoch = "a".repeat(64)
@@ -29,41 +28,41 @@ export const detail = (catalogVersion: string = releaseId) =>
   DiscoveryDetailResponseSchema.parse({
     catalogVersion,
     place: {
-      id: syntheticDiscoveryCatalog.places[0]?.id,
-      slug: syntheticDiscoveryCatalog.places[0]?.slug,
-      name: syntheticDiscoveryCatalog.places[0]?.name,
-      brandId: syntheticDiscoveryCatalog.places[0]?.brandId,
-      address: syntheticDiscoveryCatalog.places[0]?.address,
-      latitude: syntheticDiscoveryCatalog.places[0]?.latitude,
-      longitude: syntheticDiscoveryCatalog.places[0]?.longitude,
+      id: "6dd657be-fc3b-4bb8-8e67-fabbee0f2e01",
+      slug: "cache-test-place",
+      name: "캐시 테스트 식당",
+      brandId: null,
+      address: "서울 강남구 테스트로 1",
+      latitude: 37.5,
+      longitude: 127.03,
       region: "서울 강남구",
-      phone: syntheticDiscoveryCatalog.places[0]?.phone,
-      naverPlaceUrl: syntheticDiscoveryCatalog.places[0]?.naverPlaceUrl,
-      media: syntheticDiscoveryCatalog.places[0]?.media,
+      phone: null,
+      naverPlaceUrl: "https://map.naver.com/p/entry/place/1",
+      media: [],
       listingKind: "menu_evidence",
       storeDescription: null,
       officialStoreUrl: null,
     },
-    menus: syntheticDiscoveryCatalog.menus
-      .filter((menu) => menu.placeId === syntheticDiscoveryCatalog.places[0]?.id)
-      .map((menu) => ({
-        id: menu.id,
-        placeId: menu.placeId,
-        name: menu.name,
+    menus: [
+      {
+        id: "bc6b1050-539e-4d28-8493-5920eae54201",
+        placeId: "6dd657be-fc3b-4bb8-8e67-fabbee0f2e01",
+        name: "캐시 테스트 메뉴",
         facts: {
-          base_is_option: menu.facts.base_is_option,
-          cooking: menu.facts.cooking,
-          dietary: menu.facts.dietary,
-          form: menu.facts.form,
-          ingredients: menu.facts.ingredients,
-          ordering_note: menu.facts.ordering_note,
-          rice_base: menu.facts.rice_base,
-          scope: menu.facts.scope,
-          selection_reasons: menu.facts.selection_reasons,
+          base_is_option: false,
+          cooking: [],
+          dietary: "unknown",
+          form: "salad_poke",
+          ingredients: [],
+          ordering_note: null,
+          rice_base: "unknown",
+          scope: "meal",
+          selection_reasons: [{ basis: "menu_name", kind: "salad_poke", text: "캐시 테스트 메뉴" }],
         },
-        branchApplicability: menu.branchApplicability,
+        branchApplicability: "branch_confirmed",
         applicabilityNotice: null,
-      })),
+      },
+    ],
   })
 
 export class TestClock implements MonotonicClock {

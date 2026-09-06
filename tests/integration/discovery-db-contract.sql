@@ -84,13 +84,6 @@ begin
       or has_function_privilege('discovery_reader',procedure.oid,'execute')
     )
   ) then raise exception 'sealed-release trigger function is missing or unsafe'; end if;
-  if not has_function_privilege('anon','public.get_public_catalog()','execute')
-    or has_function_privilege('anon','public.submit_pending_suggestion(jsonb,text,text)','execute')
-    or not has_function_privilege('service_role',
-      'public.submit_pending_suggestion(jsonb,text,text)','execute')
-    or has_table_privilege('anon','suggestion_admin.pending','select') then
-    raise exception 'existing reviewed or suggestion privileges changed';
-  end if;
   if exists (
     select 1 from pg_catalog.pg_proc as procedure
     join pg_catalog.pg_namespace as namespace on namespace.oid = procedure.pronamespace

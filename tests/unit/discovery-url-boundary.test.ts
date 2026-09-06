@@ -1,36 +1,34 @@
 import { describe, expect, it } from "vitest"
-import { DiscoveryPlaceSchema } from "../../lib/discovery/catalog"
+import { DiscoveryPlaceDtoSchema } from "../../lib/discovery/dto"
 import { DiscoveryMediaSchema } from "../../lib/discovery/facts"
 import { buildDiscoveryPlaceInfoUrl } from "../../lib/discovery/place-links"
 import { parseDiscoveryQuery } from "../../lib/discovery/query-contract"
 import { ExactSubwayStoreUrlSchema } from "../../lib/discovery/subway-url"
-import { syntheticDiscoveryCatalog } from "../fixtures/discovery-catalog"
 
-const place = syntheticDiscoveryCatalog.places[0]
+const place = DiscoveryPlaceDtoSchema.parse({
+  id: "11111111-1111-4111-8111-111111111111",
+  slug: "test-link-place",
+  name: "테스트 링크 장소",
+  brandId: null,
+  address: "경기 수원시 테스트로 1",
+  latitude: 37.26,
+  longitude: 127.02,
+  region: "경기 수원시",
+  phone: null,
+  naverPlaceUrl: null,
+  media: [],
+  listingKind: "menu_evidence",
+  storeDescription: null,
+  officialStoreUrl: null,
+})
 describe("Discovery link and coordinate trust boundaries", () => {
   it("builds a clean search destination when a synthetic place has no exact URL", () => {
-    const syntheticPlace = DiscoveryPlaceSchema.parse(
-      syntheticDiscoveryCatalog.places.find((entry) => entry.slug === "synthetic-link-place"),
-    )
-    expect(buildDiscoveryPlaceInfoUrl(syntheticPlace)).toBe(
+    expect(buildDiscoveryPlaceInfoUrl(place)).toBe(
       `https://map.naver.com/p/search/${encodeURIComponent("경기 수원시 테스트 링크 장소")}`,
     )
-    const exact = "https://map.naver.com/p/entry/place/123"
-    expect(buildDiscoveryPlaceInfoUrl({ ...syntheticPlace, naverPlaceUrl: exact })).toBe(exact)
-  })
-  it("accepts only exact clean NAVER place destinations", () => {
-    for (const naverPlaceUrl of [
-      "https://map.naver.com/p/entry/place/123",
-      "https://m.place.naver.com/restaurant/123/home",
-    ])
-      expect(DiscoveryPlaceSchema.safeParse({ ...place, naverPlaceUrl }).success).toBe(true)
-    for (const naverPlaceUrl of [
-      "https://user:password@map.naver.com/p/entry/place/123",
-      "https://map.naver.com/p/entry/place/123#fragment",
-      "https://map.naver.com/p/search/anything",
-      "https://map.naver.com:444/p/entry/place/123",
-    ])
-      expect(DiscoveryPlaceSchema.safeParse({ ...place, naverPlaceUrl }).success).toBe(false)
+    const stored = "https://naver.me/current-place-link"
+    const withStoredLink = DiscoveryPlaceDtoSchema.parse({ ...place, naverPlaceUrl: stored })
+    expect(buildDiscoveryPlaceInfoUrl(withStoredLink)).toBe(stored)
   })
   it("accepts only exact clean Subway listing and store destinations", () => {
     for (const url of [

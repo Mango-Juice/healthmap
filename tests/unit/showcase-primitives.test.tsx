@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 
-import { ActionButton, FilterRail, StatusAlert } from "../../components/ui/health-map-primitives"
+import { ActionButton, StatusAlert } from "../../components/ui/health-map-primitives"
 
 describe("health map primitives", () => {
   it("Given a loading action, When rendered, Then busy and disabled semantics preserve its label", () => {
@@ -16,15 +16,6 @@ describe("health map primitives", () => {
     expect(markup).toContain('aria-busy="true"')
     expect(markup).toContain("disabled")
     expect(markup).toContain("길찾기")
-  })
-
-  it("Given a selected filter, When rendered, Then exactly one filter is pressed", () => {
-    // Given / When
-    const markup = renderToStaticMarkup(<FilterRail selected="protein" />)
-
-    // Then
-    expect(markup.match(/aria-pressed="true"/g)).toHaveLength(1)
-    expect(markup).toContain("단백질")
   })
 
   it("Given an error alert, When rendered, Then assistive technology receives an alert", () => {

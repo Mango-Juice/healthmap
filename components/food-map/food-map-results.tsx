@@ -8,7 +8,6 @@ import {
   type DiscoveryIngredientFilter,
   presentDiscoveryMenuName,
 } from "../../lib/discovery/menu-selection"
-import type { DiscoverySortBasis } from "../../lib/discovery/ordering"
 import { haversineDistanceMeters } from "../../lib/domain/distance"
 import type { GeoPoint } from "../../lib/domain/geo"
 import { ChevronRightIcon } from "../ui/health-map-icons"
@@ -19,7 +18,7 @@ import { FoodMapLoadingStatus } from "./food-map-loading-status"
 import { FoodMapThumbnail } from "./food-map-thumbnail"
 
 type Properties = {
-  readonly sortBasis: DiscoverySortBasis | undefined
+  readonly sortBasis: "map_center" | "region_center" | "catalog_center" | undefined
   readonly sortOrigin: GeoPoint | null | undefined
   readonly total: number
   readonly loading: boolean

@@ -9,3 +9,10 @@ test("Given the application is running, When the root page opens, Then the healt
   await expect(page.getByRole("link", { name: "선정 기준" })).toHaveCount(0)
   await expect(page.getByRole("link", { name: "개인정보" })).toHaveCount(0)
 })
+
+test("retired catalog and place routes are absent", async ({ request }) => {
+  for (const pathname of ["/api/map-catalog", "/api/map-catalog/query", "/places/retired-place"]) {
+    const response = await request.get(pathname)
+    expect(response.status()).toBe(404)
+  }
+})

@@ -23,7 +23,6 @@ export const MenuFactsObjectSchema = z.strictObject({
     .readonly(),
 })
 export const MenuFactsSchema = MenuFactsObjectSchema.readonly()
-export type MenuFacts = z.infer<typeof MenuFactsSchema>
 export const PublicMediaSchema = z
   .strictObject({
     url: ApprovedMediaUrlSchema,

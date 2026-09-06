@@ -1,6 +1,4 @@
-import { normalizeDiscoveryQuery } from "../domain/discovery"
-import { isInsideViewportBounds, type ViewportBounds } from "../domain/viewport"
-import type { DiscoveryCatalog, DiscoveryMenu, DiscoveryPlace } from "./catalog"
+import type { DiscoveryMenuDto } from "./dto"
 
 export const DISCOVERY_FILTERS = [
   { label: "전체", value: "all" },
@@ -10,14 +8,8 @@ export const DISCOVERY_FILTERS = [
   { label: "채식 메뉴", value: "plant_based" },
   { label: "밥·도시락", value: "rice" },
 ] as const
-export const DISCOVERY_INGREDIENT_FILTERS = [
-  { label: "재료 전체", value: "all" },
-  { label: "닭", value: "chicken" },
-  { label: "생선", value: "fish" },
-  { label: "두부·콩", value: "tofu_soy" },
-] as const
 export type DiscoveryFilter = (typeof DISCOVERY_FILTERS)[number]["value"]
-export type DiscoveryIngredientFilter = (typeof DISCOVERY_INGREDIENT_FILTERS)[number]["value"]
+export type DiscoveryIngredientFilter = "all" | "chicken" | "fish" | "tofu_soy"
 export type DiscoveryTag = Exclude<DiscoveryFilter, "all">
 export const DISCOVERY_LABELS = {
   salad_poke: "샐러드·포케",
@@ -35,7 +27,7 @@ const DISCOVERY_MARKER_CATEGORY_PRIORITY: readonly DiscoveryTag[] = [
 ]
 
 export const discoveryTagsForMenu = (menu: {
-  readonly facts: Omit<DiscoveryMenu["facts"], "status">
+  readonly facts: DiscoveryMenuDto["facts"]
 }): readonly DiscoveryTag[] => {
   const tags: DiscoveryTag[] = []
   if (menu.facts.form === "salad_poke") tags.push("salad_poke")
@@ -53,7 +45,7 @@ export const discoveryTagsForMenu = (menu: {
 const INGREDIENT_LABELS = { chicken: "닭", fish: "생선", tofu_soy: "두부·콩" } as const
 const COOKING_LABELS = { grilled: "구이", steamed: "찜", roasted: "로스트" } as const
 export const discoveryMenuFactLabel = (menu: {
-  readonly facts: Omit<DiscoveryMenu["facts"], "status">
+  readonly facts: DiscoveryMenuDto["facts"]
 }): string =>
   [
     menu.facts.ingredients.map((ingredient) => INGREDIENT_LABELS[ingredient]).join("·"),
@@ -61,29 +53,12 @@ export const discoveryMenuFactLabel = (menu: {
   ]
     .filter(Boolean)
     .join(" · ")
-export const hasDiscoveryMealSelectionBasis = (menu: {
-  readonly facts: Omit<DiscoveryMenu["facts"], "status">
-}): boolean =>
-  menu.facts.scope === "meal" &&
-  menu.facts.selection_reasons.length > 0 &&
-  ((menu.facts.form === "salad_poke" &&
-    menu.facts.selection_reasons.some((reason) => reason.kind === "salad_poke")) ||
-    (menu.facts.rice_base !== "unknown" &&
-      menu.facts.selection_reasons.some((reason) => reason.kind === "whole_grain")) ||
-    (menu.facts.dietary !== "unknown" &&
-      menu.facts.selection_reasons.some((reason) => reason.kind === "dietary_meal")) ||
-    (menu.facts.ingredients.length > 0 &&
-      menu.facts.cooking.length > 0 &&
-      menu.facts.selection_reasons.some((reason) => reason.kind === "ingredient_cooking")))
-
-export const menusForDiscoveryPlace = (catalog: DiscoveryCatalog, placeId: DiscoveryPlace["id"]) =>
-  catalog.menus.filter((menu) => menu.placeId === placeId && hasDiscoveryMealSelectionBasis(menu))
 export const presentDiscoveryMenuName = (name: string): string => {
   const label = name.replace(/^\[비건\]/u, "")
   return /옵[션셥]/u.test(label) ? (label.split(/\s+\/\s+/u)[0] ?? label) : label
 }
 export const discoveryMenuDietaryNote = (
-  dietary: DiscoveryMenu["facts"]["dietary"],
+  dietary: DiscoveryMenuDto["facts"]["dietary"],
 ): string | undefined => {
   if (dietary === "source_vegan_label")
     return "출처에서 비건 메뉴로 소개하고 있어요. 재료와 조리 방식은 주문할 때 확인해 주세요."
@@ -91,57 +66,8 @@ export const discoveryMenuDietaryNote = (
     return "비건으로 주문하려면 옵션 선택이나 변경이 필요해요. 재료와 조리 방식은 주문할 때 확인해 주세요."
   return undefined
 }
-export type DiscoveryResult = {
-  readonly place: DiscoveryPlace
-  readonly matchingMenuIds: readonly DiscoveryMenu["id"][]
-}
-type FilterDiscoveryPlacesInput = {
-  readonly appliedBounds?: ViewportBounds | undefined
-  readonly catalog: DiscoveryCatalog
-  readonly filter: DiscoveryFilter
-  readonly ingredient?: DiscoveryIngredientFilter
-  readonly query: string
-}
-export const filterDiscoveryPlaces = ({
-  appliedBounds,
-  catalog,
-  filter,
-  ingredient = "all",
-  query,
-}: FilterDiscoveryPlacesInput): readonly DiscoveryResult[] => {
-  const tokens = normalizeDiscoveryQuery(query).split(" ").filter(Boolean)
-  return catalog.places.flatMap((place) => {
-    if (appliedBounds !== undefined && !isInsideViewportBounds(place, appliedBounds)) return []
-    const matchingMenuIds = menusForDiscoveryPlace(catalog, place.id)
-      .filter((menu) => {
-        if (filter !== "all" && !discoveryTagsForMenu(menu).includes(filter)) return false
-        if (ingredient !== "all" && !menu.facts.ingredients.includes(ingredient)) return false
-        const ingredientNames = DISCOVERY_INGREDIENT_FILTERS.filter(
-          (option) => option.value !== "all" && menu.facts.ingredients.includes(option.value),
-        ).map((option) => option.label)
-        const searchable = normalizeDiscoveryQuery(
-          [
-            place.name,
-            place.address,
-            menu.name,
-            menu.facts.ordering_note ?? "",
-            ...ingredientNames,
-          ].join(" "),
-        )
-        return tokens.every((token) => searchable.includes(token))
-      })
-      .map((menu) => menu.id)
-    return matchingMenuIds.length > 0 ? [{ place, matchingMenuIds }] : []
-  })
-}
-export const orderedResultMenus = (catalog: DiscoveryCatalog, result: DiscoveryResult) => {
-  const matching = new Set(result.matchingMenuIds)
-  return menusForDiscoveryPlace(catalog, result.place.id).sort(
-    (a, b) => Number(matching.has(b.id)) - Number(matching.has(a.id)),
-  )
-}
 export const markerCategoryForMenus = (
-  menus: readonly { readonly facts: Omit<DiscoveryMenu["facts"], "status"> }[],
+  menus: readonly { readonly facts: DiscoveryMenuDto["facts"] }[],
   filter: DiscoveryFilter = "all",
   brandId?: string | null,
 ): DiscoveryTag | "neutral" => {
@@ -167,7 +93,7 @@ export const markerCategoryForMenus = (
 export const discoveryCategoryIcon = (category: DiscoveryTag | "neutral", selected = false) =>
   `/markers/food-map-${category}${selected ? "-selected" : ""}.svg`
 export const markerIconForMenus = (
-  menus: readonly { readonly facts: Omit<DiscoveryMenu["facts"], "status"> }[],
+  menus: readonly { readonly facts: DiscoveryMenuDto["facts"] }[],
   selected: boolean,
   filter: DiscoveryFilter = "all",
   brandId?: string | null,

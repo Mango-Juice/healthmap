@@ -1,12 +1,6 @@
-import type { Place } from "./catalog"
-
-export type DirectionsTarget =
-  | { readonly kind: "route"; readonly latitude: number; readonly longitude: number }
-  | { readonly kind: "place" }
-
 export type ProductionDirections = {
-  readonly kind: DirectionsTarget["kind"]
-  readonly source: "naver_route" | "naver_place"
+  readonly kind: "route"
+  readonly source: "naver_route"
   readonly url: string
 }
 
@@ -35,23 +29,4 @@ export const buildNaverRouteDirections = ({
     source: "naver_route",
     url: `https://map.naver.com/index.nhn?${query.toString()}`,
   }
-}
-
-export const buildProductionDirections = (
-  place: Place,
-  target: DirectionsTarget = {
-    kind: "route",
-    latitude: place.latitude,
-    longitude: place.longitude,
-  },
-): ProductionDirections | undefined => {
-  if (target.kind === "route") {
-    const route = buildNaverRouteDirections({
-      latitude: target.latitude,
-      longitude: target.longitude,
-      name: place.name,
-    })
-    if (route !== undefined) return route
-  }
-  return { kind: "place", source: "naver_place", url: place.naverPlaceUrl }
 }
