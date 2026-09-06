@@ -134,8 +134,8 @@ begin
     (release_id,'bc6b1050-539e-4d28-8493-5920eae54248','alpha','Alpha',null,'Synthetic A',
       37.123456789012345,127.123456789012345,'Region A',null,
       null,'[]','menu_evidence',null,null,'alpha',0,repeat('6',64)),
-    (release_id,'bede62e8-6e4d-4d3b-8227-34b73451b3a4','store','Synthetic Store','synthetic-brand','Synthetic B',36,126,'Region B',null,
-      null,'[]','store_only','Synthetic store only','https://example.invalid/store','synthetic store sandwich salad',0,repeat('7',64)),
+    (release_id,'bede62e8-6e4d-4d3b-8227-34b73451b3a4','store','서브웨이 Synthetic Store','subway','Synthetic B',36,126,'Region B',null,
+      null,'[]','store_only','Synthetic store only','https://example.invalid/store','subway 서브웨이 synthetic store sandwich salad',0,repeat('7',64)),
     (release_id,'c4e1cffb-2658-4ad4-8e38-c8c12a11c627','future','Future Place',null,'Synthetic C',38,128,'Region A',null,
       null,'[]','menu_evidence',null,null,'future place synthetic c',1,repeat('8',64)),
     (release_id,'75708968-2839-4eba-8b44-f613de821d6c','split','Alpha Split',null,'Synthetic D',37.1,127.1,'Region A',null,
@@ -254,6 +254,11 @@ begin
       'synthetic-release-1',before_time,'store','all','all',null,false,null,null,null,null
     ) where id='bede62e8-6e4d-4d3b-8227-34b73451b3a4') <> 1 then
     raise exception 'store name substring did not receive name-substring relevance';
+  end if;
+  if (select relevance from discovery_admin.matching_at(
+      'synthetic-release-1',before_time,'서브웨이 synthetic store','all','all',null,false,null,null,null,null
+    ) where id='bede62e8-6e4d-4d3b-8227-34b73451b3a4') <> 3 then
+    raise exception 'displayed store prefix incorrectly changed legacy raw-name relevance';
   end if;
   if (select relevance from discovery_admin.matching_at(
       'synthetic-release-1',before_time,'sandwich','all','all',null,false,null,null,null,null
