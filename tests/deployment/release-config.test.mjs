@@ -55,9 +55,10 @@ test("Vercel and CI pin frozen installs, quality gates, and deployment commands"
 test("the public template names match the runtime validator", async () => {
   const envExample = await readFile(".env.example", "utf8")
   for (const name of PUBLIC_ENVIRONMENT_NAMES) {
-    assert.match(envExample, new RegExp(`^${name}=`, "m"))
+    assert.match(envExample, new RegExp(`^${name}=$`, "m"))
   }
   assert.doesNotMatch(envExample, /SUPABASE_SERVICE_ROLE_KEY=/)
+  assert.match(envExample, /^HEALTHMAP_ALLOW_LOCAL_DISCOVERY=$/m)
 })
 
 test("Vercel source uploads exclude local evidence and nonstandard build outputs", async () => {

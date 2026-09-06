@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   getMissingPublicEnvironmentNames,
   PUBLIC_ENVIRONMENT_NAMES,
+  parseDevelopmentPublicEnvironment,
   parsePlaywrightPublicEnvironment,
   parsePublicEnvironment,
 } from "../../app/public-environment"
@@ -49,5 +50,38 @@ describe("public environment bootstrap", () => {
     const parsed = parsePlaywrightPublicEnvironment(environment)
 
     expect(parsed.analytics).toEqual({ key: "test-key", url: "http://127.0.0.1:3498" })
+  })
+
+  it("Given an explicit development-local Supabase configuration, when loopback is used, then only that catalog endpoint is accepted", () => {
+    const parsed = parseDevelopmentPublicEnvironment({
+      HEALTHMAP_ALLOW_LOCAL_DISCOVERY: "1",
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "test-key",
+      NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321",
+      NODE_ENV: "development",
+    })
+
+    expect(parsed.catalog).toEqual({ key: "test-key", url: "http://127.0.0.1:54321" })
+  })
+
+  it("Given a production or non-loopback endpoint, when local discovery is requested, then the public HTTPS boundary remains enforced", () => {
+    const base = {
+      HEALTHMAP_ALLOW_LOCAL_DISCOVERY: "1",
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "test-key",
+    }
+
+    expect(
+      parseDevelopmentPublicEnvironment({
+        ...base,
+        NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321",
+        NODE_ENV: "production",
+      }).catalog,
+    ).toBeNull()
+    expect(
+      parseDevelopmentPublicEnvironment({
+        ...base,
+        NEXT_PUBLIC_SUPABASE_URL: "http://catalog.example.test",
+        NODE_ENV: "development",
+      }).catalog,
+    ).toBeNull()
   })
 })

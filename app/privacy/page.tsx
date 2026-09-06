@@ -25,7 +25,7 @@ export default function PrivacyPage() {
       <header className="privacy-heading">
         <p>건강식 지도</p>
         <h1>개인정보 및 분석 안내</h1>
-        <p>장소와 메뉴 정보는 공개된 운영 데이터만 표시하며, 현재 상태는 제공처 기준입니다.</p>
+        <p>지도 정보와 제안 접수, 선택적 분석이 각각 다루는 범위를 안내합니다.</p>
       </header>
 
       <PrivacyPreference />
@@ -40,10 +40,19 @@ export default function PrivacyPage() {
       </section>
 
       <section aria-labelledby="privacy-excluded-heading" className="privacy-section">
-        <h2 id="privacy-excluded-heading">수집하지 않는 정보</h2>
+        <h2 id="privacy-excluded-heading">분석에서 수집하지 않는 정보</h2>
         <p>
-          정확한 위치와 지도 중심, 주소, 장소명, 메뉴명, 검색어와 자유 입력, 전체 URL과 쿼리, 참조
-          URL, 세션 녹화, 자동 클릭 수집, 설문, 도구 모음, 쿠키는 수집하지 않습니다.
+          분석에는 정확한 위치와 지도 중심, 주소, 장소명, 메뉴명, 검색어와 자유 입력, 전체 URL과
+          쿼리, 참조 URL, 세션 녹화, 자동 클릭 수집, 설문, 도구 모음, 쿠키를 보내지 않습니다.
+        </p>
+      </section>
+
+      <section aria-labelledby="privacy-suggestion-heading" className="privacy-section">
+        <h2 id="privacy-suggestion-heading">제안을 보낼 때</h2>
+        <p>
+          장소 또는 메뉴 제안을 직접 보내면 입력한 내용과 장소 링크, 확인 링크가 검토를 위해
+          접수됩니다. 이 값은 분석 이벤트에 포함되지 않으며 자동으로 지도에 공개되지 않습니다. 개인
+          연락처는 입력하지 마세요.
         </p>
       </section>
 
@@ -55,11 +64,6 @@ export default function PrivacyPage() {
           꺼진 동안 완료된 조회는 다시 켜도 나중에 전송하지 않습니다. 브라우저 사이트 데이터 삭제로
           익명 식별자와 선택값을 초기화할 수 있습니다.
         </p>
-      </section>
-
-      <section aria-labelledby="privacy-contact-heading" className="privacy-section">
-        <h2 id="privacy-contact-heading">문의</h2>
-        <p>개인정보 및 분석 관련 문의 담당자: 추후 지정 예정</p>
       </section>
     </main>
   )

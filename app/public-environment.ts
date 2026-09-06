@@ -27,6 +27,7 @@ export type ParsedPublicEnvironment = Readonly<{
 }>
 
 const NonEmptyStringSchema = z.string().trim().min(1)
+const DevelopmentLocalDiscoveryFlagSchema = z.literal("1")
 const PlaywrightLoopbackFlagSchema = z.literal("1")
 
 const readValue = (
@@ -112,6 +113,16 @@ const parseEnvironment = (
 export const parsePublicEnvironment = (
   environment: PublicEnvironmentInput,
 ): ParsedPublicEnvironment => parseEnvironment(environment, false)
+
+export const parseDevelopmentPublicEnvironment = (
+  environment: PublicEnvironmentInput,
+): ParsedPublicEnvironment =>
+  parseEnvironment(
+    environment,
+    environment["NODE_ENV"] === "development" &&
+      DevelopmentLocalDiscoveryFlagSchema.safeParse(environment["HEALTHMAP_ALLOW_LOCAL_DISCOVERY"])
+        .success,
+  )
 
 export const parsePlaywrightPublicEnvironment = (
   environment: PublicEnvironmentInput,
