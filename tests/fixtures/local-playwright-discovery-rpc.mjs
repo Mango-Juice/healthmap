@@ -13,36 +13,36 @@ const places = [
     "6dd657be-fc3b-4bb8-8e67-fabbee0f2ea0",
     "test-sprout-square",
     "새싹 네모식당",
-    37.5007,
-    127.0328,
+    37.5707,
+    126.9788,
   ],
   [
     "970347d1-7b9f-4b7d-8cd9-3674148c0e83",
     "test-rainbow-bowl",
     "무지개 한그릇 연구소",
-    37.4978,
-    127.0275,
+    37.5678,
+    126.9775,
   ],
   [
     "17d03b81-1376-42ad-8031-14b559f3c075",
     "test-balance-lab",
     "균형 실험실 식탁",
-    37.5041,
-    127.0362,
+    37.5741,
+    126.9812,
   ],
   [
     "55005f59-f094-4b30-8e8a-447b1607da3f",
     "test-leaf-table",
     "잎사귀 가상 테이블",
-    37.4935,
-    127.041,
+    37.5635,
+    126.9841,
   ],
   [
     "d5e59fb4-ca69-4958-866e-5930163aad0d",
     "test-cloud-canteen",
     "구름 도시락 공방",
-    37.5079,
-    127.0224,
+    37.5779,
+    126.9724,
   ],
 ].map(([id, slug, name, latitude, longitude], index) => ({
   address: `서울 강남구 테스트로 ${index + 1}`,
@@ -255,8 +255,8 @@ const queryCatalog = (query) => {
                 label: "서울 강남구",
                 count: results.length,
                 bounds: {
-                  southWest: { latitude: 37.4935, longitude: 127.0224 },
-                  northEast: { latitude: 37.5079, longitude: 127.041 },
+                  southWest: { latitude: 37.5635, longitude: 126.9724 },
+                  northEast: { latitude: 37.5779, longitude: 126.9841 },
                 },
               },
             ],
@@ -273,7 +273,7 @@ const queryCatalog = (query) => {
         : query.region !== undefined
           ? "region_center"
           : "map_center",
-    sortOrigin: results.length === 0 ? null : { latitude: 37.5007, longitude: 127.0328 },
+    sortOrigin: results.length === 0 ? null : { latitude: 37.5707, longitude: 126.979 },
     total: results.length,
   }
 }
