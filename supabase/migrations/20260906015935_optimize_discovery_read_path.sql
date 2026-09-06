@@ -192,6 +192,9 @@ begin
         v_cursor_offset_valid := false;
         v_offset := 0;
       end;
+      if v_cursor_offset_valid and v_offset < 0 then
+        raise exception using errcode = 'PT409', message = '{"error":"stale_cursor","retry":true}';
+      end if;
     exception
       when sqlstate 'PT409' then raise;
       when others then

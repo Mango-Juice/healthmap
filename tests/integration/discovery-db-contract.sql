@@ -195,6 +195,15 @@ returns jsonb language sql as $$
   ) from (select discovery_admin.state_at(p_now) as state) as current_state
 $$;
 
+create function pg_temp.cursor_with_offset(p_cursor text,p_offset jsonb)
+returns text language sql immutable as $$
+  select rtrim(translate(replace(encode(convert_to(jsonb_set(
+    convert_from(decode(translate(p_cursor,'-_','+/') ||
+      repeat('=', (4 - char_length(p_cursor) % 4) % 4), 'base64'), 'UTF8')::jsonb,
+    '{offset}', p_offset
+  )::text,'UTF8'),'base64'), E'\n', ''),'+/','-_'), '=')
+$$;
+
 do $$
 declare
   before_time timestamptz := '2026-01-10 11:59:59.999Z';
@@ -255,6 +264,38 @@ begin
   if response#>>'{data,results,0,place,id}' <> 'bc6b1050-539e-4d28-8493-5920eae54248'
     or response#>>'{data,nextCursor}' is null then raise exception 'relevance or pagination mismatch'; end if;
   cursor := response#>>'{data,nextCursor}';
+  rejected := false;
+  begin perform pg_temp.request_at(jsonb_build_object(
+    'mode','places','query','alpha','filter','all','ingredient','all','limit',1,
+    'cursor',pg_temp.cursor_with_offset(cursor,'-1'::jsonb)),before_time);
+  exception when sqlstate 'PT409' then rejected := true; end;
+  if not rejected then raise exception 'negative cursor offset was accepted'; end if;
+  response := pg_temp.request_at(jsonb_build_object(
+    'mode','places','query','alpha','filter','all','ingredient','all','limit',1,
+    'cursor',pg_temp.cursor_with_offset(cursor,'2'::jsonb)),before_time);
+  if jsonb_array_length(response#>'{data,results}') <> 0
+    or response#>'{data,nextCursor}' <> 'null'::jsonb then
+    raise exception 'cursor offset equal to total did not return the empty terminal page';
+  end if;
+  rejected := false;
+  begin perform pg_temp.request_at(jsonb_build_object(
+    'mode','places','query','alpha','filter','all','ingredient','all','limit',1,
+    'cursor',pg_temp.cursor_with_offset(cursor,'3'::jsonb)),before_time);
+  exception when sqlstate 'PT409' then rejected := true; end;
+  if not rejected then raise exception 'cursor offset beyond total was accepted'; end if;
+  response := pg_temp.request_at(jsonb_build_object(
+    'mode','places','query','alpha','filter','all','ingredient','all','limit',1,
+    'cursor',pg_temp.cursor_with_offset(cursor,'null'::jsonb)),before_time);
+  if response#>>'{data,results,0,place,id}' <> 'bc6b1050-539e-4d28-8493-5920eae54248'
+    or response#>'{data,nextCursor}' = 'null'::jsonb then
+    raise exception 'null cursor offset compatibility changed';
+  end if;
+  rejected := false;
+  begin perform pg_temp.request_at(jsonb_build_object(
+    'mode','places','query','alpha','filter','all','ingredient','all','limit',1,
+    'cursor',pg_temp.cursor_with_offset(cursor,'"bad"'::jsonb)),before_time);
+  exception when sqlstate 'PT400' then rejected := true; end;
+  if not rejected then raise exception 'non-integer cursor offset was accepted'; end if;
   response := pg_temp.request_at('{"mode":"places","query":"chicken","filter":"all","ingredient":"all","limit":100}',before_time);
   if response#>>'{data,results,0,place,id}' <> 'bc6b1050-539e-4d28-8493-5920eae54248' then
     raise exception 'menu-name relevance was not ranked above other searchable menu fields';
