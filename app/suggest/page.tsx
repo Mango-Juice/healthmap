@@ -3,10 +3,10 @@ import Link from "next/link"
 import { SuggestionForm } from "../../components/suggestions/suggestion-form"
 import styles from "../../components/suggestions/suggestion-form.module.css"
 import { ArrowLeftIcon } from "../../components/ui/health-map-icons"
+import type { DiscoveryPlaceDto } from "../../lib/discovery/dto"
+import { buildDiscoveryPlaceInfoUrl } from "../../lib/discovery/place-links"
 import { DiscoveryReadError, getDiscoveryPlace } from "../../lib/discovery/server"
 import { PlaceIdSchema } from "../../lib/domain/contracts"
-import type { PilotPlaceDto } from "../../lib/pilot/dto"
-import { buildPilotPlaceInfoUrl } from "../../lib/pilot/place-links"
 import { SuggestionUrlSchema } from "../../lib/suggestions/contracts"
 
 export const metadata: Metadata = {
@@ -22,7 +22,7 @@ export default async function SuggestPage({
 }) {
   const query = await searchParams
   const id = PlaceIdSchema.safeParse(query["placeId"])
-  let selected: PilotPlaceDto | undefined
+  let selected: DiscoveryPlaceDto | undefined
   if (id.success) {
     try {
       const detail = await getDiscoveryPlace(id.data)
@@ -33,7 +33,7 @@ export default async function SuggestPage({
   }
   const legacyUrl = SuggestionUrlSchema.safeParse(query["place"])
   const placeUrl = selected
-    ? buildPilotPlaceInfoUrl(selected)
+    ? buildDiscoveryPlaceInfoUrl(selected)
     : legacyUrl.success
       ? legacyUrl.data
       : ""

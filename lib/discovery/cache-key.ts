@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto"
 import { normalizeDiscoveryQuery } from "../domain/discovery"
-import type { PilotQuery } from "../pilot/query-contract"
 import {
   DISCOVERY_SCHEMA_VERSION,
   DiscoveryPlacesEnvelopeSchema,
@@ -9,6 +8,7 @@ import {
   DiscoveryRegionsEnvelopeSchema,
   type DiscoveryState,
 } from "./contracts"
+import type { DiscoveryQuery } from "./query-contract"
 
 const assertNever = (value: never): never => value
 
@@ -20,7 +20,7 @@ export const getDiscoveryProviderIdentity = (url: string, key: string): string =
 
 export const createDiscoveryQueryRequest = (
   state: DiscoveryState,
-  query: PilotQuery,
+  query: DiscoveryQuery,
 ): DiscoveryQueryRequest => ({
   expectedRelease: state.releaseId,
   expectedEpoch: state.eligibleEpoch,

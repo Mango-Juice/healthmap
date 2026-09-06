@@ -79,13 +79,13 @@
   --hm-copy-measure: 62ch;
   --hm-empty-copy-measure: 30ch;
   --hm-sheet-max: 52%;
-  --hm-pilot-sheet-peek: var(--hm-space-12);
-  --hm-pilot-sheet-expanded: 72%;
-  --hm-pilot-sheet-offset: calc(
-    min(var(--hm-pilot-sheet-expanded), calc(100% - var(--hm-space-6))) -
-    var(--hm-pilot-sheet-peek)
+  --hm-food-map-sheet-peek: var(--hm-space-12);
+  --hm-food-map-sheet-expanded: 72%;
+  --hm-food-map-sheet-offset: calc(
+    min(var(--hm-food-map-sheet-expanded), calc(100% - var(--hm-space-6))) -
+    var(--hm-food-map-sheet-peek)
   );
-  --hm-pilot-place-preview: 264px;
+  --hm-food-map-place-preview: 264px;
   --hm-search-text-scale: 0.875;
   --hm-skeleton-line-short: 65%;
   --hm-layer-map: 0;

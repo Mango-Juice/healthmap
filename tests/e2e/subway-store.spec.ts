@@ -1,14 +1,17 @@
 import type { APIRequestContext, Page } from "@playwright/test"
-import { PilotDetailResponseSchema, PilotPlacesResponseSchema } from "../../lib/pilot/dto"
+import {
+  DiscoveryDetailResponseSchema,
+  DiscoveryPlacesResponseSchema,
+} from "../../lib/discovery/dto"
 import { expect, serverTest as test } from "./map-test"
 
 const installSubwayScenario = async (page: Page, request: APIRequestContext): Promise<void> => {
-  const source = PilotPlacesResponseSchema.parse(
+  const source = DiscoveryPlacesResponseSchema.parse(
     await (await request.get("/api/places?mode=places&limit=1")).json(),
   )
   const original = source.results[0]
   if (original === undefined) throw new TypeError("Test source place is unavailable")
-  const places = PilotPlacesResponseSchema.parse({
+  const places = DiscoveryPlacesResponseSchema.parse({
     ...source,
     nextCursor: null,
     results: [
@@ -32,7 +35,7 @@ const installSubwayScenario = async (page: Page, request: APIRequestContext): Pr
   })
   const result = places.results[0]
   if (result === undefined) throw new TypeError("Test Subway place is unavailable")
-  const detail = PilotDetailResponseSchema.parse({
+  const detail = DiscoveryDetailResponseSchema.parse({
     catalogVersion: places.catalogVersion,
     menus: result.menus,
     place: result.place,
@@ -70,7 +73,7 @@ for (const viewport of [
     await expect(marker).toBeVisible()
     await expect(marker.locator("img[data-test-marker-icon]")).toHaveAttribute(
       "src",
-      "/markers/pilot-salad_poke.svg",
+      "/markers/food-map-salad_poke.svg",
     )
     await page.screenshot({
       path: testInfo.outputPath(`subway-marker-normal-${viewport.width}x${viewport.height}.png`),
@@ -79,7 +82,7 @@ for (const viewport of [
     await result.click()
     await expect(marker.locator("img[data-test-marker-icon]")).toHaveAttribute(
       "src",
-      "/markers/pilot-salad_poke-selected.svg",
+      "/markers/food-map-salad_poke-selected.svg",
     )
     // Then the detail exposes store facts and navigation without a menu or health claim.
     const storeSummary = page.locator("p").filter({ hasText: "서브웨이 · 샌드위치·샐러드 매장" })
@@ -104,7 +107,7 @@ for (const viewport of [
       })
       .click()
     await page.getByRole("button", { name: "샐러드·포케 필터" }).click()
-    const drawerToggle = page.getByTestId("pilot-drawer-handle").getByRole("button").first()
+    const drawerToggle = page.getByTestId("food-map-drawer-handle").getByRole("button").first()
     if (viewport.width < 900 && (await drawerToggle.getAttribute("aria-expanded")) === "false")
       await drawerToggle.click()
 
@@ -112,7 +115,7 @@ for (const viewport of [
     await expect(result).toBeVisible()
     await expect(marker.locator("img[data-test-marker-icon]")).toHaveAttribute(
       "src",
-      "/markers/pilot-salad_poke.svg",
+      "/markers/food-map-salad_poke.svg",
     )
     await page.screenshot({
       path: testInfo.outputPath(`subway-salad-results-${viewport.width}x${viewport.height}.png`),
@@ -120,7 +123,7 @@ for (const viewport of [
     await result.click()
     await expect(marker.locator("img[data-test-marker-icon]")).toHaveAttribute(
       "src",
-      "/markers/pilot-salad_poke-selected.svg",
+      "/markers/food-map-salad_poke-selected.svg",
     )
     await expect(storeSummary).toContainText("메뉴 정보는 아직 확인되지 않았어요.")
     await page.screenshot({

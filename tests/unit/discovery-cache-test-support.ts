@@ -1,8 +1,8 @@
 import { vi } from "vitest"
 import type { DiscoveryResultCache, MonotonicClock } from "../../lib/discovery/cache"
 import type { DiscoveryRpcClient, DiscoveryState } from "../../lib/discovery/contracts"
-import { PilotDetailResponseSchema } from "../../lib/pilot/dto"
-import { syntheticPilotCatalog } from "../fixtures/pilot-catalog"
+import { DiscoveryDetailResponseSchema } from "../../lib/discovery/dto"
+import { syntheticDiscoveryCatalog } from "../fixtures/discovery-catalog"
 
 export const releaseId = "synthetic-release-a"
 export const eligibleEpoch = "a".repeat(64)
@@ -26,26 +26,26 @@ export const emptyPlaces = (catalogVersion: string = releaseId) => ({
 })
 
 export const detail = (catalogVersion: string = releaseId) =>
-  PilotDetailResponseSchema.parse({
+  DiscoveryDetailResponseSchema.parse({
     catalogVersion,
     place: {
-      id: syntheticPilotCatalog.places[0]?.id,
-      slug: syntheticPilotCatalog.places[0]?.slug,
-      name: syntheticPilotCatalog.places[0]?.name,
-      brandId: syntheticPilotCatalog.places[0]?.brandId,
-      address: syntheticPilotCatalog.places[0]?.address,
-      latitude: syntheticPilotCatalog.places[0]?.latitude,
-      longitude: syntheticPilotCatalog.places[0]?.longitude,
+      id: syntheticDiscoveryCatalog.places[0]?.id,
+      slug: syntheticDiscoveryCatalog.places[0]?.slug,
+      name: syntheticDiscoveryCatalog.places[0]?.name,
+      brandId: syntheticDiscoveryCatalog.places[0]?.brandId,
+      address: syntheticDiscoveryCatalog.places[0]?.address,
+      latitude: syntheticDiscoveryCatalog.places[0]?.latitude,
+      longitude: syntheticDiscoveryCatalog.places[0]?.longitude,
       region: "서울 강남구",
-      phone: syntheticPilotCatalog.places[0]?.phone,
-      naverPlaceUrl: syntheticPilotCatalog.places[0]?.naverPlaceUrl,
-      media: syntheticPilotCatalog.places[0]?.media,
+      phone: syntheticDiscoveryCatalog.places[0]?.phone,
+      naverPlaceUrl: syntheticDiscoveryCatalog.places[0]?.naverPlaceUrl,
+      media: syntheticDiscoveryCatalog.places[0]?.media,
       listingKind: "menu_evidence",
       storeDescription: null,
       officialStoreUrl: null,
     },
-    menus: syntheticPilotCatalog.menus
-      .filter((menu) => menu.placeId === syntheticPilotCatalog.places[0]?.id)
+    menus: syntheticDiscoveryCatalog.menus
+      .filter((menu) => menu.placeId === syntheticDiscoveryCatalog.places[0]?.id)
       .map((menu) => ({
         id: menu.id,
         placeId: menu.placeId,

@@ -1,14 +1,14 @@
 import { z } from "zod"
 import type { PlaceIdSchema } from "../domain/contracts"
 import {
-  type PilotDetailResponse,
-  PilotDetailResponseSchema,
-  type PilotPlacesResponse,
-  PilotPlacesResponseSchema,
-  type PilotRegionsResponse,
-  PilotRegionsResponseSchema,
-} from "../pilot/dto"
-import type { PilotQuery } from "../pilot/query-contract"
+  type DiscoveryDetailResponse,
+  DiscoveryDetailResponseSchema,
+  type DiscoveryPlacesResponse,
+  DiscoveryPlacesResponseSchema,
+  type DiscoveryRegionsResponse,
+  DiscoveryRegionsResponseSchema,
+} from "./dto"
+import type { DiscoveryQuery } from "./query-contract"
 
 export const DISCOVERY_SCHEMA_VERSION = "discovery-serving-1" as const
 
@@ -23,13 +23,13 @@ const DiscoveryStateShape = {
 
 export const DiscoveryStateSchema = z.strictObject(DiscoveryStateShape).readonly()
 export const DiscoveryPlacesEnvelopeSchema = z
-  .strictObject({ ...DiscoveryStateShape, data: PilotPlacesResponseSchema })
+  .strictObject({ ...DiscoveryStateShape, data: DiscoveryPlacesResponseSchema })
   .readonly()
 export const DiscoveryRegionsEnvelopeSchema = z
-  .strictObject({ ...DiscoveryStateShape, data: PilotRegionsResponseSchema })
+  .strictObject({ ...DiscoveryStateShape, data: DiscoveryRegionsResponseSchema })
   .readonly()
 export const DiscoveryDetailEnvelopeSchema = z
-  .strictObject({ ...DiscoveryStateShape, data: PilotDetailResponseSchema.nullable() })
+  .strictObject({ ...DiscoveryStateShape, data: DiscoveryDetailResponseSchema.nullable() })
   .readonly()
 
 const RpcErrorMessageSchema = z
@@ -79,10 +79,10 @@ export class DiscoveryReadError extends Error {
 export type DiscoveryQueryRequest = Readonly<{
   readonly expectedRelease: string | null
   readonly expectedEpoch: string
-  readonly mode: PilotQuery["mode"]
+  readonly mode: DiscoveryQuery["mode"]
   readonly query: string
-  readonly filter: PilotQuery["filter"]
-  readonly ingredient: PilotQuery["ingredient"]
+  readonly filter: DiscoveryQuery["filter"]
+  readonly ingredient: DiscoveryQuery["ingredient"]
   readonly region?: string | undefined
   readonly south?: number | undefined
   readonly north?: number | undefined
@@ -106,11 +106,11 @@ export interface DiscoveryRpcClient {
 
 export interface DiscoveryReader {
   query(
-    query: PilotQuery,
+    query: DiscoveryQuery,
     signal?: AbortSignal,
-  ): Promise<PilotPlacesResponse | PilotRegionsResponse>
+  ): Promise<DiscoveryPlacesResponse | DiscoveryRegionsResponse>
   getPlace(
     id: z.infer<typeof PlaceIdSchema>,
     signal?: AbortSignal,
-  ): Promise<PilotDetailResponse | null>
+  ): Promise<DiscoveryDetailResponse | null>
 }

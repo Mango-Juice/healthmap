@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { FoodMap } from "../components/pilot/pilot-discovery"
+import { FoodMap } from "../components/food-map/food-map-discovery"
 import { buildAbsoluteSiteUrl, getRuntimeSiteEnvironment } from "../lib/share-links"
 
 export const dynamic = "force-dynamic"

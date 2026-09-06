@@ -26,7 +26,7 @@ privacy controls and design showcase. Reviewed-catalog endpoints remain separate
 - Root stays noindex with a root canonical URL; sitemap is empty. Metadata must not call the retired catalog provider.
 - `/suggest?placeId=...` resolves an eligible snapshot place on the server; all return links lead to `/`.
 - The current APIs are `/api/places` and `/api/places/[id]`, with unchanged DTO privacy and validity rules.
-- Legacy `scope=pilot` parameters are ignored; they neither grant privileges nor select a different storage path.
+- Obsolete scope parameters are ignored; they neither grant privileges nor select a different storage path.
 
 ## CONVENTIONS
 

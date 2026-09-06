@@ -4,7 +4,7 @@ const directory = new URL("../../public/category-icons/", import.meta.url)
 await fs.mkdir(directory, { recursive: true })
 for (const category of ["salad_poke", "grilled_steamed", "whole_grain", "plant_based", "rice"]) {
   const source = await fs.readFile(
-    new URL(`../../public/markers/pilot-${category}.svg`, import.meta.url),
+    new URL(`../../public/markers/food-map-${category}.svg`, import.meta.url),
     "utf8",
   )
   const cropped = source.replace(

@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test"
 
-export const installPilotStartGeolocation = async (page: Page): Promise<void> => {
+export const installDiscoveryStartGeolocation = async (page: Page): Promise<void> => {
   await page.addInitScript(() => {
     Object.defineProperty(navigator, "geolocation", {
       configurable: true,

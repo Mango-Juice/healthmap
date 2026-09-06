@@ -1,5 +1,4 @@
 import { unstable_cache } from "next/cache"
-import type { PilotQuery } from "../pilot/query-contract"
 import {
   assertDiscoveryEnvelopeState,
   createDiscoveryQueryRequest,
@@ -15,6 +14,7 @@ import {
   type DiscoveryState,
   DiscoveryStateSchema,
 } from "./contracts"
+import type { DiscoveryQuery } from "./query-contract"
 
 const STATE_TIMEOUT_MILLISECONDS = 1_500
 const DATA_TIMEOUT_MILLISECONDS = 2_500
@@ -137,7 +137,7 @@ export const createCachedDiscoveryReader = (
   }
 
   const queryAttempt = async (
-    query: PilotQuery,
+    query: DiscoveryQuery,
     { callerSignal, entry, totalSignal, useCache }: Attempt,
   ) => {
     if (clock.now() >= entry.deadline) throw new DiscoveryReadError("stale_state")

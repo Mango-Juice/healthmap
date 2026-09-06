@@ -51,10 +51,10 @@ for (const row of rows) {
     const resultCount = page.getByLabel("검색 결과 수")
     await expect(resultCount).toHaveText(/^\d+곳 중 \d+곳$/u)
     const reportedCounts = /^([0-9]+)곳 중 ([0-9]+)곳$/u.exec(await resultCount.innerText())
-    if (!reportedCounts) throw new TypeError("Visible Pilot result count is unavailable")
+    if (!reportedCounts) throw new TypeError("Visible Discovery result count is unavailable")
     const total = Number(reportedCounts[1])
     const visible = Number(reportedCounts[2])
-    const resultItems = page.locator("[data-pilot-place-id]")
+    const resultItems = page.locator("[data-food-map-place-id]")
     expect(total).toBeGreaterThanOrEqual(visible)
     expect(visible).toBeGreaterThan(0)
     await expect(resultItems).toHaveCount(visible)
@@ -62,12 +62,12 @@ for (const row of rows) {
     await expect(page.getByRole("application", { name: "NAVER 건강식 지도" })).toBeVisible()
     const observed = await page.evaluate(() => {
       const tray = document.querySelector<HTMLElement>("aside[aria-label='건강식 검색 결과']")
-      const map = document.querySelector<HTMLElement>("[data-testid='pilot-map-stage']")
+      const map = document.querySelector<HTMLElement>("[data-testid='food-map-stage']")
       const markers = document.querySelectorAll("[data-test-naver-marker='true']").length
-      const items = document.querySelectorAll("[data-pilot-place-id]").length
+      const items = document.querySelectorAll("[data-food-map-place-id]").length
       const controls = [...document.querySelectorAll<HTMLElement>("button")]
         .filter((element) => element.getClientRects().length > 0)
-        .filter((element) => element.closest("[data-testid='pilot-naver-map']") === null)
+        .filter((element) => element.closest("[data-testid='food-map-naver-map']") === null)
       if (tray === null || map === null) throw new TypeError("row surface missing")
       const trayRect = tray.getBoundingClientRect()
       const mapRect = map.getBoundingClientRect()

@@ -7,20 +7,20 @@ import ts from "typescript"
 const workspace = process.env["HEALTHMAP_ARCHITECTURE_ROOT"]
   ? resolve(process.env["HEALTHMAP_ARCHITECTURE_ROOT"])
   : resolve(import.meta.dirname, "../..")
-const pilotDirectory = join(workspace, "components/pilot")
-const architectureModules = readdirSync(pilotDirectory).filter(
+const foodMapDirectory = join(workspace, "components/food-map")
+const architectureModules = readdirSync(foodMapDirectory).filter(
   (fileName) => fileName.endsWith(".ts") || fileName.endsWith(".tsx"),
 )
 const responsibilityModules = [
-  "pilot-discovery.tsx",
-  "pilot-detail.tsx",
-  "pilot-results.tsx",
-  "use-pilot-location.ts",
-  "use-pilot-query.ts",
-  "use-pilot-viewport.ts",
+  "food-map-discovery.tsx",
+  "food-map-detail.tsx",
+  "food-map-results.tsx",
+  "use-food-map-location.ts",
+  "use-food-map-query.ts",
+  "use-food-map-viewport.ts",
 ]
 
-const sourceText = (fileName) => readFileSync(join(pilotDirectory, fileName), "utf8")
+const sourceText = (fileName) => readFileSync(join(foodMapDirectory, fileName), "utf8")
 const sourceFile = (fileName, source = sourceText(fileName)) =>
   ts.createSourceFile(
     fileName,
@@ -37,12 +37,12 @@ const localImports = (fileName) =>
     .map((specifier) => specifier.text)
     .filter((specifier) => specifier.startsWith("./"))
     .map((specifier) => {
-      const path = resolve(pilotDirectory, dirname(fileName), specifier)
+      const path = resolve(foodMapDirectory, dirname(fileName), specifier)
       const candidates = [path, `${path}.ts`, `${path}.tsx`]
       const target = candidates.find((candidate) =>
-        architectureModules.includes(relative(pilotDirectory, candidate)),
+        architectureModules.includes(relative(foodMapDirectory, candidate)),
       )
-      return target === undefined ? undefined : relative(pilotDirectory, target)
+      return target === undefined ? undefined : relative(foodMapDirectory, target)
     })
     .filter((target) => target !== undefined)
 
@@ -54,7 +54,7 @@ test("the root route enters the current FoodMap boundary", () => {
     .find(
       (statement) =>
         ts.isStringLiteral(statement.moduleSpecifier) &&
-        statement.moduleSpecifier.text === "../components/pilot/pilot-discovery",
+        statement.moduleSpecifier.text === "../components/food-map/food-map-discovery",
     )
 
   assert.ok(foodMapImport, "app/page.tsx must enter the FoodMap boundary")
@@ -84,17 +84,17 @@ test("FoodMap composes bounded current query, map, and detail responsibilities",
       `missing current responsibility module: ${fileName}`,
     )
 
-  const imports = sourceFile("pilot-discovery.tsx")
+  const imports = sourceFile("food-map-discovery.tsx")
     .statements.filter(ts.isImportDeclaration)
     .map((statement) => statement.moduleSpecifier)
     .filter(ts.isStringLiteral)
     .map((specifier) => specifier.text)
   for (const specifier of [
-    "./pilot-detail",
-    "./pilot-results",
-    "./use-pilot-query",
-    "./use-pilot-location",
-    "./use-pilot-viewport",
+    "./food-map-detail",
+    "./food-map-results",
+    "./use-food-map-query",
+    "./use-food-map-location",
+    "./use-food-map-viewport",
     "../map/use-naver-map-adapter",
   ])
     assert.ok(imports.includes(specifier), `FoodMap must delegate ${specifier}`)

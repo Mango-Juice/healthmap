@@ -1,7 +1,6 @@
 import type { z } from "zod"
 import { parseDevelopmentPublicEnvironment } from "../../app/public-environment"
 import type { PlaceIdSchema } from "../domain/contracts"
-import type { PilotQuery } from "../pilot/query-contract"
 import {
   createCachedDiscoveryReader,
   getDiscoveryProviderIdentity,
@@ -14,6 +13,7 @@ import {
   type DiscoveryRpcClient,
   DiscoveryRpcErrorResponseSchema,
 } from "./contracts"
+import type { DiscoveryQuery } from "./query-contract"
 
 const STATE_TIMEOUT_MILLISECONDS = 1_500
 const DATA_TIMEOUT_MILLISECONDS = 2_500
@@ -145,7 +145,7 @@ const runtimeReader = () => {
   return reader
 }
 
-export const queryDiscovery = (query: PilotQuery, signal?: AbortSignal) =>
+export const queryDiscovery = (query: DiscoveryQuery, signal?: AbortSignal) =>
   runtimeReader().query(query, signal)
 
 export const getDiscoveryPlace = (id: z.infer<typeof PlaceIdSchema>, signal?: AbortSignal) =>

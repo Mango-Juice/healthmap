@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 import { createCachedDiscoveryReader } from "../../lib/discovery/cache"
 import { DiscoveryReadError } from "../../lib/discovery/contracts"
-import { PilotQuerySchema } from "../../lib/pilot/query-contract"
+import { DiscoveryQuerySchema } from "../../lib/discovery/query-contract"
 import {
   deferred,
   discoveryState,
@@ -20,8 +20,8 @@ describe("discovery state singleflight", () => {
       clock: new TestClock(),
     })
 
-    const first = reader.query(PilotQuerySchema.parse({ query: "first" }))
-    const second = reader.query(PilotQuerySchema.parse({ query: "second" }))
+    const first = reader.query(DiscoveryQuerySchema.parse({ query: "first" }))
+    const second = reader.query(DiscoveryQuerySchema.parse({ query: "second" }))
     pending.resolve(discoveryState())
 
     await expect(Promise.all([first, second])).resolves.toHaveLength(2)
@@ -37,8 +37,11 @@ describe("discovery state singleflight", () => {
     })
     const controller = new AbortController()
 
-    const cancelled = reader.query(PilotQuerySchema.parse({ query: "cancel" }), controller.signal)
-    const survivor = reader.query(PilotQuerySchema.parse({ query: "survive" }))
+    const cancelled = reader.query(
+      DiscoveryQuerySchema.parse({ query: "cancel" }),
+      controller.signal,
+    )
+    const survivor = reader.query(DiscoveryQuerySchema.parse({ query: "survive" }))
     controller.abort()
     pending.resolve(discoveryState())
 
@@ -60,8 +63,8 @@ describe("discovery state singleflight", () => {
       clock: new TestClock(),
     })
 
-    const first = reader.query(PilotQuerySchema.parse({ query: "page one" }))
-    const second = reader.query(PilotQuerySchema.parse({ query: "page two" }))
+    const first = reader.query(DiscoveryQuerySchema.parse({ query: "page one" }))
+    const second = reader.query(DiscoveryQuerySchema.parse({ query: "page two" }))
 
     await expect(Promise.all([first, second])).resolves.toEqual([
       expect.objectContaining({ catalogVersion: "new-release" }),

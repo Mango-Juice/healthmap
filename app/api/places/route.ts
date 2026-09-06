@@ -1,10 +1,10 @@
+import { parseDiscoveryQuery } from "../../../lib/discovery/query-contract"
 import { DiscoveryReadError, queryDiscovery } from "../../../lib/discovery/server"
-import { parsePilotQuery } from "../../../lib/pilot/query-contract"
 
 export const dynamic = "force-dynamic"
 export async function GET(request: Request) {
   const headers = { "Cache-Control": "private, no-store" }
-  const query = parsePilotQuery(new URL(request.url).searchParams)
+  const query = parseDiscoveryQuery(new URL(request.url).searchParams)
   if (!query.success)
     return Response.json({ error: "invalid_request", retry: false }, { status: 400, headers })
   try {

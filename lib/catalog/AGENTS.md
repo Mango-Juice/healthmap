@@ -26,7 +26,7 @@
 - The Supabase client calls the public security-invoker catalog RPC with the publishable key in `apikey` and bearer headers; the RPC returns a validated public response.
 - `createPublicCatalogRepository` parses every unknown response via `parsePlaceRows`/`parseMenuRows`, then requires published rows, one data mode, existing menu parents, and matching parent/menu modes.
 - `createPublicCatalogCache` and `createNextPublicCatalogReader` share the five-minute policy; concurrent reads share one pending promise and failed loads remain retryable.
-- `loadPublicCatalog` validates the strict API shape, including catalog-wide production mode and catalog version consistency, before browser consumers receive data.
+- `loadPublicCatalogQuery` validates the bounded query response before retained fixture-only browser consumers receive data.
 - The API route returns `{}` with status `503` for configuration, fetch, parse, integrity, or mode failures; page and browser consumers handle that failure contract.
 
 ## ANTI-PATTERNS

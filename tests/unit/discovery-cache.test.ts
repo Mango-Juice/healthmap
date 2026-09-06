@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { createCachedDiscoveryReader } from "../../lib/discovery/cache"
 import { DiscoveryReadError } from "../../lib/discovery/contracts"
-import { PilotQuerySchema } from "../../lib/pilot/query-contract"
+import { DiscoveryQuerySchema } from "../../lib/discovery/query-contract"
 import {
   detail,
   discoveryState,
@@ -31,9 +31,9 @@ describe("bounded discovery cache freshness", () => {
       const client = rpcClient()
       const reader = createCachedDiscoveryReader(client, "provider-a", { cache, clock })
 
-      await reader.query(PilotQuerySchema.parse({}))
+      await reader.query(DiscoveryQuerySchema.parse({}))
       clock.milliseconds = time
-      await reader.query(PilotQuerySchema.parse({}))
+      await reader.query(DiscoveryQuerySchema.parse({}))
 
       expect(client.getState).toHaveBeenCalledTimes(expectedStateReads)
     },
@@ -57,9 +57,9 @@ describe("bounded discovery cache freshness", () => {
         clock,
       })
 
-      await reader.query(PilotQuerySchema.parse({}))
+      await reader.query(DiscoveryQuerySchema.parse({}))
       clock.milliseconds = time
-      await reader.query(PilotQuerySchema.parse({}))
+      await reader.query(DiscoveryQuerySchema.parse({}))
 
       expect(client.getState).toHaveBeenCalledTimes(expectedStateReads)
     },
@@ -85,9 +85,9 @@ describe("bounded discovery cache freshness", () => {
         { cache: new RecordingCache(), clock },
       )
 
-      await reader.query(PilotQuerySchema.parse({}))
+      await reader.query(DiscoveryQuerySchema.parse({}))
       clock.milliseconds = 10
-      await reader.query(PilotQuerySchema.parse({}))
+      await reader.query(DiscoveryQuerySchema.parse({}))
 
       expect(getState).toHaveBeenCalledTimes(2)
     },
@@ -101,7 +101,7 @@ describe("bounded discovery cache freshness", () => {
       { cache, clock: new TestClock() },
     )
 
-    await expect(reader.query(PilotQuerySchema.parse({}))).rejects.toMatchObject({
+    await expect(reader.query(DiscoveryQuerySchema.parse({}))).rejects.toMatchObject({
       kind: "invalid_response",
     })
     expect(cache.writes).toBe(0)
@@ -122,7 +122,7 @@ describe("bounded discovery cache freshness", () => {
       clock: new TestClock(),
     })
 
-    await expect(reader.query(PilotQuerySchema.parse({}))).rejects.toMatchObject({
+    await expect(reader.query(DiscoveryQuerySchema.parse({}))).rejects.toMatchObject({
       kind: "transport",
     })
   })
@@ -135,7 +135,13 @@ describe("bounded discovery cache freshness", () => {
     })
 
     await reader.query(
-      PilotQuerySchema.parse({ query: "비공개 검색", south: 37, north: 38, west: 126, east: 127 }),
+      DiscoveryQuerySchema.parse({
+        query: "비공개 검색",
+        south: 37,
+        north: 38,
+        west: 126,
+        east: 127,
+      }),
     )
 
     expect(cache.keys).toHaveLength(1)
@@ -174,7 +180,7 @@ describe("bounded discovery cache freshness", () => {
       { mode: "regions" },
     ] as const
 
-    for (const request of requests) await reader.query(PilotQuerySchema.parse(request))
+    for (const request of requests) await reader.query(DiscoveryQuerySchema.parse(request))
 
     expect(new Set(cache.keys).size).toBe(requests.length)
   })

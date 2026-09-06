@@ -7,7 +7,7 @@ import {
 import { VALID_PLACE_ROW } from "./fixtures"
 
 describe("production directions boundary", () => {
-  it("Given a validated pilot destination, when a route is built, then no stored provider response is required", () => {
+  it("Given a validated discovery destination, when a route is built, then no stored provider response is required", () => {
     const result = buildNaverRouteDirections({
       latitude: 37.501,
       longitude: 127.033,

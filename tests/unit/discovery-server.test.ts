@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { DiscoveryQuerySchema } from "../../lib/discovery/query-contract"
 import {
   createDiscoveryReader,
   createDiscoveryRuntimeReader,
@@ -6,7 +7,6 @@ import {
   DiscoveryReadError,
   type DiscoveryRpcClient,
 } from "../../lib/discovery/server"
-import { PilotQuerySchema } from "../../lib/pilot/query-contract"
 
 const releaseId = "pilot-test-release"
 const eligibleEpoch = "a".repeat(64)
@@ -45,7 +45,7 @@ describe("bounded discovery reader", () => {
       createSupabaseDiscoveryRpcClient({ key: "publishable-test-key", url: "https://db.test" }),
     )
 
-    await reader.query(PilotQuerySchema.parse({ query: "  Ａ  B  " }))
+    await reader.query(DiscoveryQuerySchema.parse({ query: "  Ａ  B  " }))
 
     const request = fetchSpy.mock.calls[1]
     expect(String(request?.[0])).toBe("https://db.test/rest/v1/rpc/query_discovery")
@@ -74,7 +74,7 @@ describe("bounded discovery reader", () => {
   it("Given a malformed successful payload, when read, then it fails as invalid response", async () => {
     const reader = createDiscoveryReader(client({ query: vi.fn().mockResolvedValue({ data: [] }) }))
 
-    await expect(reader.query(PilotQuerySchema.parse({}))).rejects.toMatchObject({
+    await expect(reader.query(DiscoveryQuerySchema.parse({}))).rejects.toMatchObject({
       kind: "invalid_response",
     })
   })
@@ -88,7 +88,7 @@ describe("bounded discovery reader", () => {
       }),
     )
 
-    await expect(reader.query(PilotQuerySchema.parse({}))).rejects.toMatchObject({
+    await expect(reader.query(DiscoveryQuerySchema.parse({}))).rejects.toMatchObject({
       kind: "invalid_response",
     })
   })
@@ -111,7 +111,7 @@ describe("bounded discovery reader", () => {
       }),
     )
 
-    await expect(reader.query(PilotQuerySchema.parse({}))).resolves.toMatchObject({
+    await expect(reader.query(DiscoveryQuerySchema.parse({}))).resolves.toMatchObject({
       catalogVersion: "empty",
       results: [],
       total: 0,
@@ -130,7 +130,7 @@ describe("bounded discovery reader", () => {
     const getState = vi.fn().mockResolvedValueOnce(state).mockResolvedValueOnce(freshState)
     const reader = createDiscoveryReader(client({ getState, query }))
 
-    await expect(reader.query(PilotQuerySchema.parse({}))).resolves.toMatchObject({
+    await expect(reader.query(DiscoveryQuerySchema.parse({}))).resolves.toMatchObject({
       catalogVersion: "pilot-fresh",
     })
     expect(getState).toHaveBeenCalledTimes(2)
@@ -143,7 +143,7 @@ describe("bounded discovery reader", () => {
     )
 
     await expect(
-      reader.query(PilotQuerySchema.parse({ cursor: "valid_cursor" })),
+      reader.query(DiscoveryQuerySchema.parse({ cursor: "valid_cursor" })),
     ).rejects.toMatchObject({ kind: "stale_cursor" })
   })
 
@@ -186,7 +186,7 @@ describe("bounded discovery reader", () => {
       createSupabaseDiscoveryRpcClient({ key: "publishable-test-key", url: "https://db.test" }),
     )
 
-    await expect(reader.query(PilotQuerySchema.parse({}))).rejects.toMatchObject({
+    await expect(reader.query(DiscoveryQuerySchema.parse({}))).rejects.toMatchObject({
       kind: "timeout",
     })
   })
@@ -196,10 +196,10 @@ describe("bounded discovery reader", () => {
     controller.abort()
     const reader = createDiscoveryReader(client())
 
-    await expect(reader.query(PilotQuerySchema.parse({}), controller.signal)).rejects.toMatchObject(
-      {
-        kind: "cancelled",
-      },
-    )
+    await expect(
+      reader.query(DiscoveryQuerySchema.parse({}), controller.signal),
+    ).rejects.toMatchObject({
+      kind: "cancelled",
+    })
   })
 })
