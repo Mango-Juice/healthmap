@@ -71,7 +71,9 @@ describe("Pilot menu-fact boundary", () => {
 
     expect(
       PilotCatalogSchema.safeParse(
-        withEvidenceUrl("https://www.api.bonif.co.kr/brand/v1/synthetic-0480c5d0ad?brdCd=TEST906&cmdtCateIdx=&orderBy=="),
+        withEvidenceUrl(
+          "https://api.bonif.co.kr/brand/v1/synthetic-0480c5d0ad?brdCd=TEST906&cmdtCateIdx=&orderBy==",
+        ),
       ).success,
     ).toBe(true)
     expect(

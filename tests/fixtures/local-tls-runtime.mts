@@ -22,7 +22,11 @@ export class LocalTlsSetupError extends Error {
   readonly stage: "generate" | "path"
 
   constructor(stage: "generate" | "path") {
-    super(`Local TLS ${stage} failed`)
+    super(
+      stage === "generate"
+        ? "Local TLS generation failed: install the OpenSSL CLI and ensure it can create a localhost certificate"
+        : "Local TLS path validation failed",
+    )
     this.name = "LocalTlsSetupError"
     this.stage = stage
   }

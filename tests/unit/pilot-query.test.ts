@@ -108,8 +108,8 @@ const syntheticCatalog = (
 
 const orderingCatalog = syntheticCatalog([
   {
-    id: "55005f59-f094-4b30-8e8a-447b1607da3f",
-    menuId: "75708968-2839-4eba-8b44-f613de821d6c",
+    id: "55005f59-f094-4b30-8e8a-447b1607da04",
+    menuId: "75708968-2839-4eba-8b44-f613de821d04",
     placeName: "토큰 분산 식당",
     menuName: "샐러드 메뉴",
     address: "서울 특별 거리",
@@ -117,24 +117,24 @@ const orderingCatalog = syntheticCatalog([
     longitude: 0.01,
   },
   {
-    id: "17d03b81-1376-42ad-8031-14b559f3c075",
-    menuId: "c4e1cffb-2658-4ad4-8e38-c8c12a11c627",
+    id: "17d03b81-1376-42ad-8031-14b559f3c003",
+    menuId: "c4e1cffb-2658-4ad4-8e38-c8c12a11c603",
     placeName: "메뉴 일치 식당",
     menuName: "오늘의 샐러드 특별",
     latitude: 0,
     longitude: 0.02,
   },
   {
-    id: "970347d1-7b9f-4b7d-8cd9-3674148c0e83",
-    menuId: "bede62e8-6e4d-4d3b-8227-34b73451b3a4",
+    id: "970347d1-7b9f-4b7d-8cd9-3674148c0e02",
+    menuId: "bede62e8-6e4d-4d3b-8227-34b73451b302",
     placeName: "우리 샐러드 특별 집",
     menuName: "한 끼",
     latitude: 0,
     longitude: 0.03,
   },
   {
-    id: "6dd657be-fc3b-4bb8-8e67-fabbee0f2ea0",
-    menuId: "bc6b1050-539e-4d28-8493-5920eae54248",
+    id: "6dd657be-fc3b-4bb8-8e67-fabbee0f2e01",
+    menuId: "bc6b1050-539e-4d28-8493-5920eae54201",
     placeName: "샐러드　특별",
     menuName: "한 끼",
     latitude: 0,
@@ -347,10 +347,10 @@ describe("server Pilot projection", () => {
 
     // Then full-phrase relevance wins even though distance prefers the reverse order.
     expect(response.results.map(({ place }) => place.id)).toEqual([
-      "6dd657be-fc3b-4bb8-8e67-fabbee0f2ea0",
-      "970347d1-7b9f-4b7d-8cd9-3674148c0e83",
-      "17d03b81-1376-42ad-8031-14b559f3c075",
-      "55005f59-f094-4b30-8e8a-447b1607da3f",
+      "6dd657be-fc3b-4bb8-8e67-fabbee0f2e01",
+      "970347d1-7b9f-4b7d-8cd9-3674148c0e02",
+      "17d03b81-1376-42ad-8031-14b559f3c003",
+      "55005f59-f094-4b30-8e8a-447b1607da04",
     ])
     expect(response.sortBasis).toBe("catalog_center")
     expect(response.sortOrigin).toEqual({ latitude: 0, longitude: 0.025 })

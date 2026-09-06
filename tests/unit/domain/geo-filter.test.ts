@@ -78,7 +78,7 @@ describe("health tag filtering", () => {
       VALID_PLACE_ROW,
       {
         ...VALID_PLACE_ROW,
-        id: "bede62e8-6e4d-4d3b-8227-34b73451b3a4",
+        id: "bede62e8-6e4d-4d3b-8227-34b73451b302",
         slug: "protein-kitchen",
         primary_tag: "protein",
         health_tags: ["protein"],

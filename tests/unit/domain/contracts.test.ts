@@ -5,8 +5,8 @@ describe("branded domain primitives", () => {
   it("Given boundary strings, when parsed, then IDs require UUIDs and slugs require canonical form", () => {
     // Given
     const inputs = {
-      placeId: "bc6b1050-539e-4d28-8493-5920eae54248",
-      menuId: "2a8039ba-6862-4bf5-882c-298892e7caf0",
+      placeId: "bc6b1050-539e-4d28-8493-5920eae54201",
+      menuId: "2a8039ba-6862-4bf5-882c-298892e7ca01",
       slug: "green-table-gangnam",
     }
 

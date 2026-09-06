@@ -9,11 +9,11 @@ import {
   type ViewportBounds,
 } from "../lib/domain/viewport.ts"
 
-const TOKEN_ID = "bc6b1050-539e-4d28-8493-5920eae54248"
-const LONG_ID = "bede62e8-6e4d-4d3b-8227-34b73451b3a4"
-const URL_ID = "c4e1cffb-2658-4ad4-8e38-c8c12a11c627"
-const EARLIER_TIE_ID = "75708968-2839-4eba-8b44-f613de821d6c"
-const LATER_TIE_ID = "4ebaeeac-274e-494f-84ad-6ce34a48b6f5"
+const TOKEN_ID = "bc6b1050-539e-4d28-8493-5920eae54201"
+const LONG_ID = "bede62e8-6e4d-4d3b-8227-34b73451b302"
+const URL_ID = "c4e1cffb-2658-4ad4-8e38-c8c12a11c603"
+const EARLIER_TIE_ID = "75708968-2839-4eba-8b44-f613de821d04"
+const LATER_TIE_ID = "4ebaeeac-274e-494f-84ad-6ce34a48b605"
 const fullWidthProtein = String.fromCodePoint(
   0xff30,
   0xff32,
@@ -69,7 +69,7 @@ const rows = parsePlaceRows([
 ])
 const menus = parseMenuRows([
   {
-    id: "2a8039ba-6862-4bf5-882c-298892e7caf0",
+    id: "2a8039ba-6862-4bf5-882c-298892e7ca01",
     place_id: TOKEN_ID,
     name: `${fullWidthProtein} Bowl`,
     health_tags: ["vegetables"],
@@ -82,7 +82,7 @@ const menus = parseMenuRows([
     data_mode: "production",
   },
   {
-    id: "f6a43353-4f04-4384-86ea-c145918e95c4",
+    id: "f6a43353-4f04-4384-86ea-c145918e9502",
     place_id: LONG_ID,
     name: longKoreanToken,
     health_tags: ["vegetables"],
@@ -153,7 +153,8 @@ const assertions = {
   urlShaped: urlShapedIds.join(",") === URL_ID,
   viewportCommit:
     observations.viewportPendingAfterMovement && observations.viewportAppliedAfterCommit,
-  stableDistanceTie: stableDistanceTieIds.join(",") === `${EARLIER_TIE_ID},${LATER_TIE_ID}`,
+  stableDistanceTie:
+    stableDistanceTieIds.join(",") === [EARLIER_TIE_ID, LATER_TIE_ID].sort().join(","),
 } as const
 const pass = Object.values(assertions).every(Boolean)
 

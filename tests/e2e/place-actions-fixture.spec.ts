@@ -111,7 +111,7 @@ test("Given the typed production fixture, when directions opens, then its redact
     {
       event: "directions_opened",
       properties: {
-        place_id: "2a8039ba-6862-4bf5-882c-298892e7caf0",
+        place_id: "2a8039ba-6862-4bf5-882c-298892e7ca01",
         source: "naver_route",
       },
     },

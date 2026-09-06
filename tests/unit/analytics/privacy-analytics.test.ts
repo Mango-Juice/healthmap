@@ -125,11 +125,11 @@ describe("privacy-safe product analytics", () => {
       { event: "filter_selected", properties: { tag: "all" } },
       {
         event: "place_opened",
-        properties: { place_id: "6dd657be-fc3b-4bb8-8e67-fabbee0f2ea0", source: "map" },
+        properties: { place_id: "6dd657be-fc3b-4bb8-8e67-fabbee0f2e01", source: "map" },
       },
       {
         event: "directions_opened",
-        properties: { place_id: "6dd657be-fc3b-4bb8-8e67-fabbee0f2ea0", source: "naver_route" },
+        properties: { place_id: "6dd657be-fc3b-4bb8-8e67-fabbee0f2e01", source: "naver_route" },
       },
       { event: "share_invoked", properties: { target: "map" } },
       { event: "share_completed", properties: { target: "place", outcome: "clipboard" } },
@@ -209,13 +209,13 @@ describe("privacy-safe product analytics", () => {
     // When
     const event = sanitizeAnalyticsTransportEvent("place_opened", {
       ...enrichedProperties,
-      place_id: "6dd657be-fc3b-4bb8-8e67-fabbee0f2ea0",
+      place_id: "6dd657be-fc3b-4bb8-8e67-fabbee0f2e01",
     })
 
     // Then
     expect(event).toEqual({
       event: "place_opened",
-      properties: { place_id: "6dd657be-fc3b-4bb8-8e67-fabbee0f2ea0", source: "map" },
+      properties: { place_id: "6dd657be-fc3b-4bb8-8e67-fabbee0f2e01", source: "map" },
     })
   })
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 import { parseMenuRows, parsePlaceRows } from "../../lib/domain/catalog"
 
 const VALID_PLACE_ROW = {
-  id: "bc6b1050-539e-4d28-8493-5920eae54248",
+  id: "bc6b1050-539e-4d28-8493-5920eae54201",
   slug: "sentinel-published-place",
   name: "통합 테스트 게시 장소",
   address: "서울특별시 강남구 테스트로 1",
@@ -66,7 +66,7 @@ describe("catalog row parser", () => {
   it("Given a menu row with an insecure evidence URL, when parsed, then parsing fails", () => {
     // Given: an otherwise-shaped menu row with an HTTP evidence URL.
     const malformedRow = {
-      id: "2a8039ba-6862-4bf5-882c-298892e7caf0",
+      id: "2a8039ba-6862-4bf5-882c-298892e7ca01",
       place_id: VALID_PLACE_ROW.id,
       name: "통합 테스트 메뉴",
       health_tags: ["balanced"],

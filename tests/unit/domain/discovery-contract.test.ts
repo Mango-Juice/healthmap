@@ -31,7 +31,7 @@ const places: readonly Place[] = parsePlaceRows([
   },
   {
     ...VALID_PLACE_ROW,
-    id: "bede62e8-6e4d-4d3b-8227-34b73451b3a4",
+    id: "bede62e8-6e4d-4d3b-8227-34b73451b302",
     slug: "vegetable-house",
     name: "채소 하우스",
     latitude: 37.503,
@@ -39,7 +39,7 @@ const places: readonly Place[] = parsePlaceRows([
   },
   {
     ...VALID_PLACE_ROW,
-    id: "c4e1cffb-2658-4ad4-8e38-c8c12a11c627",
+    id: "c4e1cffb-2658-4ad4-8e38-c8c12a11c603",
     slug: "protein-kitchen",
     name: "단백질 키친",
     primary_tag: "protein",
@@ -56,8 +56,8 @@ const menus: readonly Menu[] = parseMenuRows([
   },
   {
     ...VALID_MENU_ROW,
-    id: "f6a43353-4f04-4384-86ea-c145918e95c4",
-    place_id: "bede62e8-6e4d-4d3b-8227-34b73451b3a4",
+    id: "f6a43353-4f04-4384-86ea-c145918e9502",
+    place_id: "bede62e8-6e4d-4d3b-8227-34b73451b302",
     name: "Protein bowl",
   },
 ])
@@ -104,7 +104,7 @@ describe("discovery distance sorting", () => {
     const tiedPlaces: readonly Place[] = parsePlaceRows([
       {
         ...VALID_PLACE_ROW,
-        id: "c4e1cffb-2658-4ad4-8e38-c8c12a11c627",
+        id: "c4e1cffb-2658-4ad4-8e38-c8c12a11c603",
         slug: "same-name-later-id",
         name: "가게",
         latitude: 37.5,
@@ -112,7 +112,7 @@ describe("discovery distance sorting", () => {
       },
       {
         ...VALID_PLACE_ROW,
-        id: "bede62e8-6e4d-4d3b-8227-34b73451b3a4",
+        id: "bede62e8-6e4d-4d3b-8227-34b73451b302",
         slug: "same-name-earlier-id",
         name: "가게",
         latitude: 37.5,
@@ -120,7 +120,7 @@ describe("discovery distance sorting", () => {
       },
       {
         ...VALID_PLACE_ROW,
-        id: "75708968-2839-4eba-8b44-f613de821d6c",
+        id: "75708968-2839-4eba-8b44-f613de821d04",
         slug: "later-korean-name",
         name: "나무",
         latitude: 37.5,
@@ -144,7 +144,7 @@ describe("discovery distance sorting", () => {
     const distancePlaces: readonly Place[] = parsePlaceRows([
       {
         ...VALID_PLACE_ROW,
-        id: "4ebaeeac-274e-494f-84ad-6ce34a48b6f5",
+        id: "4ebaeeac-274e-494f-84ad-6ce34a48b605",
         slug: "near-user",
         name: "사용자 근처",
         latitude: 37.5,
@@ -152,7 +152,7 @@ describe("discovery distance sorting", () => {
       },
       {
         ...VALID_PLACE_ROW,
-        id: "e68ddcb7-30bb-4e00-811c-b47303a73957",
+        id: "e68ddcb7-30bb-4e00-811c-b47303a73906",
         slug: "near-center",
         name: "중심 근처",
         latitude: 37.5,

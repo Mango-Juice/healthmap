@@ -27,8 +27,8 @@ const place = (
   brandId,
   brandVariant: null,
   id,
-  latitude: 37 + Number.parseInt(id.slice(-1), 10) / 100,
-  longitude: 127 + Number.parseInt(id.slice(-1), 10) / 100,
+  latitude: 37 + (Number.parseInt(id.slice(-2), 16) % 100) / 1_000,
+  longitude: 127 + (Number.parseInt(id.slice(-2), 16) % 100) / 1_000,
   media: [],
   name,
   naverPlaceUrl: null,
@@ -79,38 +79,38 @@ const menu = (
 
 const places = [
   place(
-    "bc6b1050-539e-4d28-8493-5920eae54248",
+    "bc6b1050-539e-4d28-8493-5920eae54201",
     "synthetic-salad-place",
     "합성 샐러드 식당",
     "서울특별시 강남구 테스트로 1",
     "salady",
   ),
   place(
-    "bede62e8-6e4d-4d3b-8227-34b73451b3a4",
+    "bede62e8-6e4d-4d3b-8227-34b73451b302",
     "synthetic-grain-place",
     "합성 곡물 식당",
     "서울특별시 강남구 테스트로 2",
   ),
   place(
-    "c4e1cffb-2658-4ad4-8e38-c8c12a11c627",
+    "c4e1cffb-2658-4ad4-8e38-c8c12a11c603",
     "synthetic-plant-place",
     "합성 식물 식당",
     "서울특별시 강남구 테스트로 3",
   ),
   place(
-    "75708968-2839-4eba-8b44-f613de821d6c",
+    "75708968-2839-4eba-8b44-f613de821d04",
     "synthetic-grill-place",
     "합성 구이 식당",
     "서울특별시 강남구 테스트로 4",
   ),
   place(
-    "4ebaeeac-274e-494f-84ad-6ce34a48b6f5",
+    "4ebaeeac-274e-494f-84ad-6ce34a48b605",
     "synthetic-plain-place",
     "합성 일반 식당",
     "서울특별시 강남구 테스트로 5",
   ),
   place(
-    "e68ddcb7-30bb-4e00-811c-b47303a73957",
+    "e68ddcb7-30bb-4e00-811c-b47303a73906",
     "synthetic-link-place",
     "테스트 링크 장소",
     "경기 수원시 테스트로 6",
@@ -118,7 +118,7 @@ const places = [
 ] as const
 
 const menus = [
-  menu("2a8039ba-6862-4bf5-882c-298892e7caf0", places[0].id, "합성 생선 포케", {
+  menu("2a8039ba-6862-4bf5-882c-298892e7ca01", places[0].id, "합성 생선 포케", {
     cooking: [],
     dietary: "unknown",
     form: "salad_poke",
@@ -126,7 +126,7 @@ const menus = [
     rice_base: "unknown",
     selection_reasons: [{ basis: "menu_name", kind: "salad_poke", text: "합성 생선 포케" }],
   }),
-  menu("f6a43353-4f04-4384-86ea-c145918e95c4", places[0].id, "합성 두부 샐러드", {
+  menu("f6a43353-4f04-4384-86ea-c145918e9502", places[0].id, "합성 두부 샐러드", {
     cooking: [],
     dietary: "unknown",
     form: "salad_poke",
@@ -134,7 +134,7 @@ const menus = [
     rice_base: "unknown",
     selection_reasons: [{ basis: "menu_name", kind: "salad_poke", text: "합성 두부 샐러드" }],
   }),
-  menu("52eb446a-a1ec-445a-8769-b361006408b6", places[1].id, "합성 곡물 한상", {
+  menu("52eb446a-a1ec-445a-8769-b36100640803", places[1].id, "합성 곡물 한상", {
     cooking: [],
     dietary: "unknown",
     form: "main_dish",

@@ -10,35 +10,35 @@ const eligibleEpoch = "d".repeat(64)
 const catalogVersion = "e2e-playwright-current"
 const places = [
   [
-    "6dd657be-fc3b-4bb8-8e67-fabbee0f2ea0",
+    "6dd657be-fc3b-4bb8-8e67-fabbee0f2e01",
     "test-sprout-square",
     "새싹 네모식당",
     37.5707,
     126.9788,
   ],
   [
-    "970347d1-7b9f-4b7d-8cd9-3674148c0e83",
+    "970347d1-7b9f-4b7d-8cd9-3674148c0e02",
     "test-rainbow-bowl",
     "무지개 한그릇 연구소",
     37.5678,
     126.9775,
   ],
   [
-    "17d03b81-1376-42ad-8031-14b559f3c075",
+    "17d03b81-1376-42ad-8031-14b559f3c003",
     "test-balance-lab",
     "균형 실험실 식탁",
     37.5741,
     126.9812,
   ],
   [
-    "55005f59-f094-4b30-8e8a-447b1607da3f",
+    "55005f59-f094-4b30-8e8a-447b1607da04",
     "test-leaf-table",
     "잎사귀 가상 테이블",
     37.5635,
     126.9841,
   ],
   [
-    "d5e59fb4-ca69-4958-866e-5930163aad0d",
+    "d5e59fb4-ca69-4958-866e-5930163aad05",
     "test-cloud-canteen",
     "구름 도시락 공방",
     37.5779,
@@ -61,9 +61,9 @@ const places = [
   storeDescription: null,
 }))
 const menuData = [
-  ["bc6b1050-539e-4d28-8493-5920eae54248", 0, "초록 그릇", "salad_poke", "brown_rice", "unknown"],
+  ["bc6b1050-539e-4d28-8493-5920eae54201", 0, "초록 그릇", "salad_poke", "brown_rice", "unknown"],
   [
-    "bede62e8-6e4d-4d3b-8227-34b73451b3a4",
+    "bede62e8-6e4d-4d3b-8227-34b73451b302",
     0,
     "콩 곡물 접시",
     "salad_poke",
@@ -71,7 +71,7 @@ const menuData = [
     "source_vegan_label",
   ],
   [
-    "c4e1cffb-2658-4ad4-8e38-c8c12a11c627",
+    "c4e1cffb-2658-4ad4-8e38-c8c12a11c603",
     1,
     "구운콩 단백 그릇",
     "main_dish",
@@ -79,7 +79,7 @@ const menuData = [
     "unknown",
   ],
   [
-    "75708968-2839-4eba-8b44-f613de821d6c",
+    "75708968-2839-4eba-8b44-f613de821d04",
     1,
     "두부 곡물 그릇",
     "main_dish",
@@ -87,7 +87,7 @@ const menuData = [
     "source_vegan_label",
   ],
   [
-    "4ebaeeac-274e-494f-84ad-6ce34a48b6f5",
+    "4ebaeeac-274e-494f-84ad-6ce34a48b605",
     2,
     "세 가지 균형 접시",
     "salad_poke",
@@ -95,7 +95,7 @@ const menuData = [
     "unknown",
   ],
   [
-    "e68ddcb7-30bb-4e00-811c-b47303a73957",
+    "e68ddcb7-30bb-4e00-811c-b47303a73906",
     2,
     "현미 채소 컵",
     "salad_poke",
@@ -103,7 +103,7 @@ const menuData = [
     "unknown",
   ],
   [
-    "ec13e8ec-df3f-4fbc-83f3-fa2f93d31ccc",
+    "ec13e8ec-df3f-4fbc-83f3-fa2f93d31c07",
     3,
     "잎채소 콩밥",
     "salad_poke",
@@ -111,7 +111,7 @@ const menuData = [
     "source_vegan_label",
   ],
   [
-    "9b36dc90-c43e-47e8-89b3-d077ebc7fcd1",
+    "9b36dc90-c43e-47e8-89b3-d077ebc7fc08",
     3,
     "버섯 두부 접시",
     "main_dish",
@@ -119,7 +119,7 @@ const menuData = [
     "source_vegan_label",
   ],
   [
-    "f1fb182b-f9d3-4a81-81ba-edeb24514058",
+    "f1fb182b-f9d3-4a81-81ba-edeb24514009",
     4,
     "구름 채소 도시락",
     "salad_poke",
@@ -127,7 +127,7 @@ const menuData = [
     "unknown",
   ],
   [
-    "e240fdb1-ff22-42d6-8473-6f311846f943",
+    "e240fdb1-ff22-42d6-8473-6f311846f910",
     4,
     "단백 콩 도시락",
     "main_dish",
@@ -151,7 +151,7 @@ const menus = menuData.map(([id, placeIndex, name, form, riceBase, dietary]) => 
       cooking: [],
       dietary,
       form,
-      ingredients: id === "bc6b1050-539e-4d28-8493-5920eae54248" ? ["fish"] : [],
+      ingredients: id === "bc6b1050-539e-4d28-8493-5920eae54201" ? ["fish"] : [],
       ordering_note: riceBase === "unknown" ? null : "합성 곡물밥",
       rice_base: riceBase,
       scope: "meal",

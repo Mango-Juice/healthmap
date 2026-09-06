@@ -50,8 +50,9 @@ test("local TLS material serves a trusted loopback response and is removed on cl
 
 test("local TLS setup removes its owned directory when certificate generation fails", () => {
   const root = mkdtempSync(join(tmpdir(), "healthmap-local-tls-failure-"))
-  assert.throws(() =>
-    createLocalTlsMaterial({ opensslCommand: "/definitely-missing-openssl", root }),
+  assert.throws(
+    () => createLocalTlsMaterial({ opensslCommand: "/definitely-missing-openssl", root }),
+    /install the OpenSSL CLI/u,
   )
   assert.equal(existsSync(root), false)
 })

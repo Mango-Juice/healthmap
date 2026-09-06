@@ -103,7 +103,7 @@ describe("actual PostHog HTTP transport", () => {
       // When
       captureProductAnalytics({
         event: "place_opened",
-        properties: { place_id: "6dd657be-fc3b-4bb8-8e67-fabbee0f2ea0", source: "map" },
+        properties: { place_id: "6dd657be-fc3b-4bb8-8e67-fabbee0f2e01", source: "map" },
       })
       const client = globalThis.healthmapAnalyticsLifecycle?.client
       if (client === null || client === undefined) throw new Error("analytics client did not start")
@@ -122,7 +122,7 @@ describe("actual PostHog HTTP transport", () => {
           event: "place_opened",
           properties: {
             $geoip_disable: true,
-            place_id: "6dd657be-fc3b-4bb8-8e67-fabbee0f2ea0",
+            place_id: "6dd657be-fc3b-4bb8-8e67-fabbee0f2e01",
             source: "map",
           },
         }),

@@ -45,7 +45,7 @@ describe("analytics privacy boundary", () => {
       { event: "location_resolved", properties: { outcome: "unavailable" } },
       {
         event: "place_opened",
-        properties: { place_id: "6dd657be-fc3b-4bb8-8e67-fabbee0f2ea0", source: "shared_link" },
+        properties: { place_id: "6dd657be-fc3b-4bb8-8e67-fabbee0f2e01", source: "shared_link" },
       },
     ] as const
 
@@ -126,7 +126,7 @@ describe("analytics privacy boundary", () => {
       },
       {
         event: "place_opened",
-        properties: { place_id: "6dd657be-fc3b-4bb8-8e67-fabbee0f2ea0", source: "place_share" },
+        properties: { place_id: "6dd657be-fc3b-4bb8-8e67-fabbee0f2e01", source: "place_share" },
       },
     ]
 

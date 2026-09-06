@@ -83,7 +83,7 @@ it("Given fish grilled and chicken steamed on different menus, when combining fi
       V2_MENU,
       {
         ...V2_MENU,
-        id: "f6a43353-4f04-4384-86ea-c145918e95c4",
+        id: "f6a43353-4f04-4384-86ea-c145918e9502",
         facts: { ...V2_MENU.facts, ingredients: ["chicken"], cooking: ["steamed"] },
       },
     ],

@@ -143,18 +143,18 @@ begin
     ('menu','10000000-0000-4000-8000-000000000103'::uuid,repeat('3',64)),
     ('menu','10000000-0000-4000-8000-000000000104'::uuid,repeat('4',64)),
     ('menu','10000000-0000-4000-8000-000000000105'::uuid,repeat('5',64)),
-    ('place','bc6b1050-539e-4d28-8493-5920eae54248'::uuid,repeat('a',64)),
-    ('place','c4e1cffb-2658-4ad4-8e38-c8c12a11c627'::uuid,repeat('c',64)),
-    ('place','75708968-2839-4eba-8b44-f613de821d6c'::uuid,repeat('d',64)),
-    ('store','bede62e8-6e4d-4d3b-8227-34b73451b3a4'::uuid,repeat('b',64))
+    ('place','bc6b1050-539e-4d28-8493-5920eae54201'::uuid,repeat('a',64)),
+    ('place','c4e1cffb-2658-4ad4-8e38-c8c12a11c603'::uuid,repeat('c',64)),
+    ('place','75708968-2839-4eba-8b44-f613de821d04'::uuid,repeat('d',64)),
+    ('store','bede62e8-6e4d-4d3b-8227-34b73451b302'::uuid,repeat('b',64))
   ) select encode(extensions.digest(convert_to(string_agg(
       kind || ':' || id::text || ':' || sha, ',' order by kind,id),'UTF8'),'sha256'),'hex')
     into source_digest from records;
   with rows(id,sha) as (values
-    ('bc6b1050-539e-4d28-8493-5920eae54248'::uuid,repeat('6',64)),
-    ('bede62e8-6e4d-4d3b-8227-34b73451b3a4'::uuid,repeat('7',64)),
-    ('c4e1cffb-2658-4ad4-8e38-c8c12a11c627'::uuid,repeat('8',64)),
-    ('75708968-2839-4eba-8b44-f613de821d6c'::uuid,repeat('9',64))
+    ('bc6b1050-539e-4d28-8493-5920eae54201'::uuid,repeat('6',64)),
+    ('bede62e8-6e4d-4d3b-8227-34b73451b302'::uuid,repeat('7',64)),
+    ('c4e1cffb-2658-4ad4-8e38-c8c12a11c603'::uuid,repeat('8',64)),
+    ('75708968-2839-4eba-8b44-f613de821d04'::uuid,repeat('9',64))
   ) select encode(extensions.digest(convert_to(string_agg(
       'place:' || id::text || ':' || sha, ',' order by id),'UTF8'),'sha256'),'hex')
     into place_digest from rows;
@@ -175,11 +175,11 @@ begin
   insert into discovery_admin.source_records(
     release_id,record_kind,id,source_path,source_order,source_sha256,payload,valid_from,valid_until
   ) values
-    (release_id,'place','bc6b1050-539e-4d28-8493-5920eae54248','synthetic/places',0,repeat('a',64),
+    (release_id,'place','bc6b1050-539e-4d28-8493-5920eae54201','synthetic/places',0,repeat('a',64),
       '{"latitude":37.123456789012344,"longitude":127.12345678901235}',null,null),
-    (release_id,'store','bede62e8-6e4d-4d3b-8227-34b73451b3a4','synthetic/stores',0,repeat('b',64),'{}',null,null),
-    (release_id,'place','c4e1cffb-2658-4ad4-8e38-c8c12a11c627','synthetic/places',1,repeat('c',64),'{}',null,null),
-    (release_id,'place','75708968-2839-4eba-8b44-f613de821d6c','synthetic/places',2,repeat('d',64),'{}',null,null),
+    (release_id,'store','bede62e8-6e4d-4d3b-8227-34b73451b302','synthetic/stores',0,repeat('b',64),'{}',null,null),
+    (release_id,'place','c4e1cffb-2658-4ad4-8e38-c8c12a11c603','synthetic/places',1,repeat('c',64),'{}',null,null),
+    (release_id,'place','75708968-2839-4eba-8b44-f613de821d04','synthetic/places',2,repeat('d',64),'{}',null,null),
     (release_id,'menu','10000000-0000-4000-8000-000000000101','synthetic/menus',0,repeat('1',64),'{}','2026-01-01Z','2026-01-10 12:00Z'),
     (release_id,'menu','10000000-0000-4000-8000-000000000102','synthetic/menus',1,repeat('2',64),'{}','2026-01-01Z','2026-01-10 14:00Z'),
     (release_id,'menu','10000000-0000-4000-8000-000000000103','synthetic/menus',2,repeat('3',64),'{}','2026-01-10 13:00Z','2026-01-20Z'),
@@ -190,30 +190,30 @@ begin
     naver_place_url,media,listing_kind,store_description,official_store_url,
     searchable_text,source_order,row_sha256
   ) values
-    (release_id,'bc6b1050-539e-4d28-8493-5920eae54248','alpha','Alpha',null,'Synthetic A',
+    (release_id,'bc6b1050-539e-4d28-8493-5920eae54201','alpha','Alpha',null,'Synthetic A',
       37.123456789012345,127.123456789012345,'Region A',null,
       null,'[]','menu_evidence',null,null,'alpha',0,repeat('6',64)),
-    (release_id,'bede62e8-6e4d-4d3b-8227-34b73451b3a4','store','서브웨이 Synthetic Store','subway','Synthetic B',36,126,'Region B',null,
+    (release_id,'bede62e8-6e4d-4d3b-8227-34b73451b302','store','서브웨이 Synthetic Store','subway','Synthetic B',36,126,'Region B',null,
       null,'[]','store_only','Synthetic store only','https://example.invalid/store','subway 서브웨이 synthetic store sandwich salad',0,repeat('7',64)),
-    (release_id,'c4e1cffb-2658-4ad4-8e38-c8c12a11c627','future','Future Place',null,'Synthetic C',38,128,'Region A',null,
+    (release_id,'c4e1cffb-2658-4ad4-8e38-c8c12a11c603','future','Future Place',null,'Synthetic C',38,128,'Region A',null,
       null,'[]','menu_evidence',null,null,'future place synthetic c',1,repeat('8',64)),
-    (release_id,'75708968-2839-4eba-8b44-f613de821d6c','split','Alpha Split',null,'Synthetic D',37.1,127.1,'Region A',null,
+    (release_id,'75708968-2839-4eba-8b44-f613de821d04','split','Alpha Split',null,'Synthetic D',37.1,127.1,'Region A',null,
       null,'[]','menu_evidence',null,null,'alpha split synthetic d',2,repeat('9',64));
   insert into discovery_admin.menus(
     release_id,id,place_id,name,facts,branch_applicability,applicability_notice,
     selection_eligible,discovery_tags,ingredients,searchable_text,source_order,
     valid_from,valid_until,row_sha256
   ) values
-    (release_id,'10000000-0000-4000-8000-000000000101','bc6b1050-539e-4d28-8493-5920eae54248','Literal %_ Chicken',
+    (release_id,'10000000-0000-4000-8000-000000000101','bc6b1050-539e-4d28-8493-5920eae54201','Literal %_ Chicken',
       '{"scope":"meal","form":"rice","ingredients":["chicken"],"rice_base":"unknown","base_is_option":false,"dietary":"unknown","ordering_note":null,"cooking":[],"selection_reasons":[{"kind":"salad_poke","basis":"menu_name","text":"synthetic"}]}',
       'branch_confirmed',null,true,array['rice'],array['chicken'],'alpha synthetic a literal %_ chicken 닭',2,'2026-01-01Z','2026-01-10 12:00Z',repeat('e',64)),
-    (release_id,'10000000-0000-4000-8000-000000000102','bc6b1050-539e-4d28-8493-5920eae54248','Raw Ineligible',
+    (release_id,'10000000-0000-4000-8000-000000000102','bc6b1050-539e-4d28-8493-5920eae54201','Raw Ineligible',
       '{"scope":"meal"}','branch_confirmed',null,false,'{}','{}','alpha raw ineligible',1,'2026-01-01Z','2026-01-10 14:00Z',repeat('f',64)),
-    (release_id,'10000000-0000-4000-8000-000000000103','c4e1cffb-2658-4ad4-8e38-c8c12a11c627','Future Menu',
+    (release_id,'10000000-0000-4000-8000-000000000103','c4e1cffb-2658-4ad4-8e38-c8c12a11c603','Future Menu',
       '{"scope":"meal"}','brand_common_unverified','Synthetic availability notice',true,array['salad_poke'],array['fish'],'future menu fish',0,'2026-01-10 13:00Z','2026-01-20Z',repeat('0',64)),
-    (release_id,'10000000-0000-4000-8000-000000000104','75708968-2839-4eba-8b44-f613de821d6c','Rice Fish',
+    (release_id,'10000000-0000-4000-8000-000000000104','75708968-2839-4eba-8b44-f613de821d04','Rice Fish',
       '{"scope":"meal"}','branch_confirmed',null,true,array['rice'],array['fish'],'alpha split rice fish',0,'2026-01-01Z','2026-01-20Z',repeat('1',64)),
-    (release_id,'10000000-0000-4000-8000-000000000105','75708968-2839-4eba-8b44-f613de821d6c','  Ｓａｌａｄ   Plain ',
+    (release_id,'10000000-0000-4000-8000-000000000105','75708968-2839-4eba-8b44-f613de821d04','  Ｓａｌａｄ   Plain ',
       '{"scope":"meal"}','branch_confirmed',null,true,array['salad_poke'],array['chicken'],'alpha split salad plain chicken',1,'2026-01-01Z','2026-01-20Z',repeat('2',64));
 
   perform public.activate_discovery_release(release_id,9,4,5,source_digest,projection_digest);
@@ -333,7 +333,7 @@ begin
 
   response := pg_temp.request_at('{"mode":"places","query":"%_","filter":"all","ingredient":"all","limit":100}',before_time);
   if response#>>'{data,total}' <> '1'
-    or response#>>'{data,results,0,place,id}' <> 'bc6b1050-539e-4d28-8493-5920eae54248' then
+    or response#>>'{data,results,0,place,id}' <> 'bc6b1050-539e-4d28-8493-5920eae54201' then
     raise exception 'literal wildcard substring search changed';
   end if;
   response := pg_temp.request_at('{"mode":"places","query":"","filter":"rice","ingredient":"chicken","limit":100}',before_time);
@@ -354,7 +354,7 @@ begin
     raise exception 'region aggregation mismatch';
   end if;
   response := pg_temp.request_at('{"mode":"places","query":"alpha","filter":"all","ingredient":"all","limit":1}',before_time);
-  if response#>>'{data,results,0,place,id}' <> 'bc6b1050-539e-4d28-8493-5920eae54248'
+  if response#>>'{data,results,0,place,id}' <> 'bc6b1050-539e-4d28-8493-5920eae54201'
     or response#>>'{data,nextCursor}' is null then raise exception 'relevance or pagination mismatch'; end if;
   cursor := response#>>'{data,nextCursor}';
   rejected := false;
@@ -379,7 +379,7 @@ begin
   response := pg_temp.request_at(jsonb_build_object(
     'mode','places','query','alpha','filter','all','ingredient','all','limit',1,
     'cursor',pg_temp.cursor_with_offset(cursor,'null'::jsonb)),before_time);
-  if response#>>'{data,results,0,place,id}' <> 'bc6b1050-539e-4d28-8493-5920eae54248'
+  if response#>>'{data,results,0,place,id}' <> 'bc6b1050-539e-4d28-8493-5920eae54201'
     or response#>'{data,nextCursor}' = 'null'::jsonb then
     raise exception 'null cursor offset compatibility changed';
   end if;
@@ -390,41 +390,41 @@ begin
   exception when sqlstate 'PT400' then rejected := true; end;
   if not rejected then raise exception 'non-integer cursor offset was accepted'; end if;
   response := pg_temp.request_at('{"mode":"places","query":"chicken","filter":"all","ingredient":"all","limit":100}',before_time);
-  if response#>>'{data,results,0,place,id}' <> 'bc6b1050-539e-4d28-8493-5920eae54248' then
+  if response#>>'{data,results,0,place,id}' <> 'bc6b1050-539e-4d28-8493-5920eae54201' then
     raise exception 'menu-name relevance was not ranked above other searchable menu fields';
   end if;
   if (select relevance from discovery_admin.matching_at(
       'synthetic-release-1',before_time,'chicken','all','all',null,false,null,null,null,null
-    ) where id='75708968-2839-4eba-8b44-f613de821d6c') <> 3 then
+    ) where id='75708968-2839-4eba-8b44-f613de821d04') <> 3 then
     raise exception 'non-name menu search text incorrectly received menu-name relevance';
   end if;
   if (select relevance from discovery_admin.matching_at(
       'synthetic-release-1',before_time,'salad plain','all','all',null,false,null,null,null,null
-    ) where id='75708968-2839-4eba-8b44-f613de821d6c') <> 2 then
+    ) where id='75708968-2839-4eba-8b44-f613de821d04') <> 2 then
     raise exception 'NFKC and collapsed-whitespace menu name did not receive menu-name relevance';
   end if;
   if (select relevance from discovery_admin.matching_at(
       'synthetic-release-1',before_time,'synthetic store','all','all',null,false,null,null,null,null
-    ) where id='bede62e8-6e4d-4d3b-8227-34b73451b3a4') <> 0 then
+    ) where id='bede62e8-6e4d-4d3b-8227-34b73451b302') <> 0 then
     raise exception 'exact store name did not receive exact-name relevance';
   end if;
   if (select relevance from discovery_admin.matching_at(
       'synthetic-release-1',before_time,'store','all','all',null,false,null,null,null,null
-    ) where id='bede62e8-6e4d-4d3b-8227-34b73451b3a4') <> 1 then
+    ) where id='bede62e8-6e4d-4d3b-8227-34b73451b302') <> 1 then
     raise exception 'store name substring did not receive name-substring relevance';
   end if;
   if (select relevance from discovery_admin.matching_at(
       'synthetic-release-1',before_time,'서브웨이 synthetic store','all','all',null,false,null,null,null,null
-    ) where id='bede62e8-6e4d-4d3b-8227-34b73451b3a4') <> 3 then
+    ) where id='bede62e8-6e4d-4d3b-8227-34b73451b302') <> 3 then
     raise exception 'displayed store prefix incorrectly changed legacy raw-name relevance';
   end if;
   if (select relevance from discovery_admin.matching_at(
       'synthetic-release-1',before_time,'sandwich','all','all',null,false,null,null,null,null
-    ) where id='bede62e8-6e4d-4d3b-8227-34b73451b3a4') <> 3 then
+    ) where id='bede62e8-6e4d-4d3b-8227-34b73451b302') <> 3 then
     raise exception 'store address or category search text incorrectly received name relevance';
   end if;
   response := pg_temp.request_at(jsonb_build_object('mode','places','query','alpha','filter','all','ingredient','all','limit',1,'cursor',cursor),before_time);
-  if response#>>'{data,results,0,place,id}' <> '75708968-2839-4eba-8b44-f613de821d6c' then
+  if response#>>'{data,results,0,place,id}' <> '75708968-2839-4eba-8b44-f613de821d04' then
     raise exception 'cursor continuation mismatch';
   end if;
   if exists (
@@ -439,15 +439,15 @@ begin
   if response#>>'{data,results,0,place,latitude}' <>
       (select payload->>'latitude' from discovery_admin.source_records
        where source_records.release_id='synthetic-release-1'
-         and id='bc6b1050-539e-4d28-8493-5920eae54248')
+         and id='bc6b1050-539e-4d28-8493-5920eae54201')
     or response#>>'{data,results,0,place,longitude}' <>
       (select payload->>'longitude' from discovery_admin.source_records
        where source_records.release_id='synthetic-release-1'
-         and id='bc6b1050-539e-4d28-8493-5920eae54248') then
+         and id='bc6b1050-539e-4d28-8493-5920eae54201') then
     raise exception 'public RPC coordinate serialization lost source precision';
   end if;
   response := discovery_admin.detail_at(jsonb_build_object(
-    'id','75708968-2839-4eba-8b44-f613de821d6c','expectedRelease',before_state->'releaseId',
+    'id','75708968-2839-4eba-8b44-f613de821d04','expectedRelease',before_state->'releaseId',
     'expectedEpoch',before_state->>'eligibleEpoch'),before_time);
   if response#>>'{data,menus,0,id}' <> '10000000-0000-4000-8000-000000000104'
     or response#>>'{data,menus,1,id}' <> '10000000-0000-4000-8000-000000000105'
@@ -545,7 +545,7 @@ declare
   response jsonb;
 begin
   with records(kind,id,sha) as (
-    select 'place', '2a8039ba-6862-4bf5-882c-298892e7caf0'::uuid, repeat('a',64)
+    select 'place', '2a8039ba-6862-4bf5-882c-298892e7ca01'::uuid, repeat('a',64)
     union all
     select 'menu', ('20000000-0000-4000-8000-' ||
       lpad((100000 + item)::text,12,'0'))::uuid, repeat('b',64)
@@ -555,7 +555,7 @@ begin
     kind || ':' || id::text || ':' || sha, ',' order by kind,id
   ),'UTF8'),'sha256'),'hex') into source_digest from records;
   select encode(extensions.digest(convert_to(
-    'place:2a8039ba-6862-4bf5-882c-298892e7caf0:' || repeat('c',64),
+    'place:2a8039ba-6862-4bf5-882c-298892e7ca01:' || repeat('c',64),
     'UTF8'),'sha256'),'hex') into place_digest;
   with rows(id,sha) as (
     select ('20000000-0000-4000-8000-' ||
@@ -574,7 +574,7 @@ begin
     release_id,record_kind,id,source_path,source_order,source_sha256,payload,
     valid_from,valid_until
   ) values (
-    v_release_id,'place','2a8039ba-6862-4bf5-882c-298892e7caf0',
+    v_release_id,'place','2a8039ba-6862-4bf5-882c-298892e7ca01',
     'synthetic/diverse-place',0,repeat('a',64),'{}',null,null
   );
   insert into discovery_admin.source_records(
@@ -592,7 +592,7 @@ begin
     naver_place_url,media,listing_kind,store_description,official_store_url,
     searchable_text,source_order,row_sha256
   ) values (
-    v_release_id,'2a8039ba-6862-4bf5-882c-298892e7caf0','diverse','Diverse',null,
+    v_release_id,'2a8039ba-6862-4bf5-882c-298892e7ca01','diverse','Diverse',null,
     'Synthetic Diverse',37,127,'Region D',null,null,'[]','menu_evidence',null,null,
     'diverse',0,repeat('c',64)
   );
@@ -603,7 +603,7 @@ begin
   )
   select v_release_id,('20000000-0000-4000-8000-' ||
       lpad((100000 + item)::text,12,'0'))::uuid,
-    '2a8039ba-6862-4bf5-882c-298892e7caf0','Diverse ' || item,'{}',
+    '2a8039ba-6862-4bf5-882c-298892e7ca01','Diverse ' || item,'{}',
     'branch_confirmed',null,true,'{}','{}','diverse ' || item,item - 1,
     '2030-01-01Z'::timestamptz + item * interval '1 hour',
     '2030-04-01Z'::timestamptz + item * interval '1 hour',repeat('d',64)
@@ -728,7 +728,7 @@ select public.query_discovery(jsonb_build_object(
 select public.get_discovery_place(jsonb_build_object(
   'expectedRelease', public.get_discovery_state()->'releaseId',
   'expectedEpoch', public.get_discovery_state()->>'eligibleEpoch',
-  'id', 'bede62e8-6e4d-4d3b-8227-34b73451b3a4'
+  'id', 'bede62e8-6e4d-4d3b-8227-34b73451b302'
 ));
 reset role;
 

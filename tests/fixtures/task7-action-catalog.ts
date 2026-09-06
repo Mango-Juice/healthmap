@@ -3,7 +3,7 @@ import type { DirectionsTarget } from "../../lib/domain/directions"
 
 const places = parsePlaceRows([
   {
-    id: "2a8039ba-6862-4bf5-882c-298892e7caf0",
+    id: "2a8039ba-6862-4bf5-882c-298892e7ca01",
     slug: "task7-production-route",
     name: "테스트 생산 경로 식당",
     address: "서울 강남구 테스트로 7길 1",
@@ -16,7 +16,7 @@ const places = parsePlaceRows([
     data_mode: "production",
   },
   {
-    id: "52eb446a-a1ec-445a-8769-b361006408b6",
+    id: "52eb446a-a1ec-445a-8769-b36100640803",
     slug: "task7-production-fallback",
     name: "테스트 저장 장소 식당",
     address: "서울 강남구 테스트로 7길 3",
@@ -29,7 +29,7 @@ const places = parsePlaceRows([
     data_mode: "production",
   },
   {
-    id: "f6a43353-4f04-4384-86ea-c145918e95c4",
+    id: "f6a43353-4f04-4384-86ea-c145918e9502",
     slug: "task7-unpublished-place",
     name: "테스트 비공개 식당",
     address: "서울 강남구 테스트로 7길 2",
@@ -46,7 +46,7 @@ const places = parsePlaceRows([
 const menus = parseMenuRows([
   {
     id: "21000000-0000-4000-8000-000000000001",
-    place_id: "2a8039ba-6862-4bf5-882c-298892e7caf0",
+    place_id: "2a8039ba-6862-4bf5-882c-298892e7ca01",
     name: "테스트 생산 메뉴 하나",
     health_tags: ["balanced", "protein"],
     evidence_url: "https://example.com/evidence/task7-route-1",
@@ -59,7 +59,7 @@ const menus = parseMenuRows([
   },
   {
     id: "21000000-0000-4000-8000-000000000002",
-    place_id: "2a8039ba-6862-4bf5-882c-298892e7caf0",
+    place_id: "2a8039ba-6862-4bf5-882c-298892e7ca01",
     name: "테스트 생산 메뉴 둘",
     health_tags: ["balanced"],
     evidence_url: "https://example.com/evidence/task7-route-2",

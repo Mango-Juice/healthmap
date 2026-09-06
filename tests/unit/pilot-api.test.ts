@@ -11,7 +11,7 @@ import { GET as getList } from "../../app/api/places/route"
 import { getDiscoveryPlace, queryDiscovery } from "../../lib/discovery/server"
 
 const store = PilotPlaceDtoSchema.parse({
-  id: "bc6b1050-539e-4d28-8493-5920eae54248",
+  id: "bc6b1050-539e-4d28-8493-5920eae54201",
   slug: "synthetic-store",
   name: "합성 테스트 매장",
   brandId: "subway",

@@ -1,5 +1,5 @@
 export const VALID_PLACE_ROW = {
-  id: "bc6b1050-539e-4d28-8493-5920eae54248",
+  id: "bc6b1050-539e-4d28-8493-5920eae54201",
   slug: "green-table-gangnam",
   name: "그린테이블 강남점",
   address: "서울특별시 강남구 테헤란로 1",
@@ -13,7 +13,7 @@ export const VALID_PLACE_ROW = {
 }
 
 export const VALID_MENU_ROW = {
-  id: "2a8039ba-6862-4bf5-882c-298892e7caf0",
+  id: "2a8039ba-6862-4bf5-882c-298892e7ca01",
   place_id: VALID_PLACE_ROW.id,
   name: "두부 채소 한상",
   health_tags: ["balanced", "plant_based"],
