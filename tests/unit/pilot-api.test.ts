@@ -1,36 +1,53 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { currentPilotCatalog, PilotCatalogSchema } from "../../lib/pilot/catalog"
 import { PilotPlaceDtoSchema, PilotPlacesResponseSchema } from "../../lib/pilot/dto"
-import pilotCatalogJson from "../../lib/pilot/pilot-catalog.json"
-import { toPilotPlaceDto, toSubwayStoreDto } from "../../lib/pilot/projection"
-import { SubwayStoreSnapshotSchema } from "../../lib/pilot/subway"
-import subwayStoresJson from "../../lib/pilot/subway-stores.json"
 
-vi.mock("../../lib/pilot/server", () => ({
-  readPilotCatalog: vi.fn(),
-  readSubwayStoreCatalog: vi.fn(),
-}))
+vi.mock("../../lib/discovery/server", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../../lib/discovery/server")>()
+  return { ...original, getDiscoveryPlace: vi.fn(), queryDiscovery: vi.fn() }
+})
 
 import { GET as getDetail } from "../../app/api/places/[id]/route"
 import { GET as getList } from "../../app/api/places/route"
-import { readPilotCatalog, readSubwayStoreCatalog } from "../../lib/pilot/server"
-import { toSubwayStoreCatalog } from "../../lib/pilot/subway"
+import { getDiscoveryPlace, queryDiscovery } from "../../lib/discovery/server"
 
-const catalog = PilotCatalogSchema.parse(pilotCatalogJson)
-const subway = toSubwayStoreCatalog(SubwayStoreSnapshotSchema.parse(subwayStoresJson))
+const store = PilotPlaceDtoSchema.parse({
+  id: "bc6b1050-539e-4d28-8493-5920eae54248",
+  slug: "synthetic-store",
+  name: "합성 테스트 매장",
+  brandId: "subway",
+  address: "서울 테스트구 1",
+  latitude: 37.5,
+  longitude: 127,
+  region: "서울 테스트구",
+  phone: null,
+  naverPlaceUrl: null,
+  media: [],
+  listingKind: "store_only",
+  storeDescription: "테스트 전용 매장",
+  officialStoreUrl: "https://www.subway.co.kr/storeDetail?franchiseNo=1",
+})
+const placesResponse = PilotPlacesResponseSchema.parse({
+  catalogVersion: "pilot-synthetic",
+  sortBasis: "catalog_center",
+  sortOrigin: null,
+  total: 1,
+  results: [{ place: store, menus: [], matchingMenuIds: [] }],
+  nextCursor: null,
+})
 beforeEach(() => vi.clearAllMocks())
 afterEach(() => vi.unstubAllEnvs())
 describe("place HTTP handlers", () => {
   it("rejects store fields that contradict the listing kind", () => {
-    const place = catalog.places[0]
-    const store = subway.stores[0]
-    if (!place || !store) throw new Error("missing place DTO fixtures")
-    const menuDto = toPilotPlaceDto(place)
-    const storeDto = toSubwayStoreDto(store)
+    const menuDto = {
+      ...store,
+      listingKind: "menu_evidence",
+      storeDescription: null,
+      officialStoreUrl: null,
+    } as const
 
     expect(
       PilotPlaceDtoSchema.safeParse({
-        ...storeDto,
+        ...store,
         storeDescription: null,
         officialStoreUrl: null,
       }).success,
@@ -38,16 +55,15 @@ describe("place HTTP handlers", () => {
     expect(
       PilotPlaceDtoSchema.safeParse({
         ...menuDto,
-        storeDescription: storeDto.storeDescription,
-        officialStoreUrl: storeDto.officialStoreUrl,
+        storeDescription: store.storeDescription,
+        officialStoreUrl: store.officialStoreUrl,
       }).success,
     ).toBe(false)
   })
   it("serves the public DTO without a mode flag or internal evidence", async () => {
     vi.stubEnv("VERCEL_ENV", "production")
-    vi.mocked(readPilotCatalog).mockReturnValue(catalog)
-    vi.mocked(readSubwayStoreCatalog).mockReturnValue(subway)
-    const response = getList(new Request("http://localhost/api/places?query=subway&limit=1"))
+    vi.mocked(queryDiscovery).mockResolvedValue(placesResponse)
+    const response = await getList(new Request("http://localhost/api/places?query=subway&limit=1"))
     expect(response.status).toBe(200)
     const body = await response.text()
     expect(body).toContain('"listingKind":"store_only"')
@@ -56,8 +72,8 @@ describe("place HTTP handlers", () => {
     expect(body).not.toContain('"sourceSha256"')
   })
   it("rejects malformed queries and identifiers before reading data", async () => {
-    vi.mocked(readPilotCatalog).mockClear()
-    expect(getList(new Request("http://localhost/api/places?limit=1000")).status).toBe(400)
+    vi.mocked(queryDiscovery).mockClear()
+    expect((await getList(new Request("http://localhost/api/places?limit=1000"))).status).toBe(400)
     expect(
       (
         await getDetail(new Request("http://localhost"), {
@@ -65,16 +81,18 @@ describe("place HTTP handlers", () => {
         })
       ).status,
     ).toBe(400)
-    expect(readPilotCatalog).not.toHaveBeenCalled()
-    expect(readSubwayStoreCatalog).not.toHaveBeenCalled()
+    expect(queryDiscovery).not.toHaveBeenCalled()
+    expect(getDiscoveryPlace).not.toHaveBeenCalled()
   })
   it("serves store-only search and detail without menu evidence", async () => {
-    vi.mocked(readPilotCatalog).mockReturnValue(catalog)
-    vi.mocked(readSubwayStoreCatalog).mockReturnValue(subway)
-    const store = subway.stores[0]
-    if (!store) throw new Error("missing Subway fixture")
+    vi.mocked(queryDiscovery).mockResolvedValue(placesResponse)
+    vi.mocked(getDiscoveryPlace).mockResolvedValue({
+      catalogVersion: placesResponse.catalogVersion,
+      place: store,
+      menus: [],
+    })
 
-    const list = getList(
+    const list = await getList(
       new Request("http://localhost/api/places?filter=salad_poke&query=subway&limit=1"),
     )
     const detail = await getDetail(new Request("http://localhost"), {
@@ -94,32 +112,29 @@ describe("place HTTP handlers", () => {
     })
   })
   it("returns conflict when a cursor belongs to different ordering conditions", async () => {
-    vi.mocked(readPilotCatalog).mockReturnValue(catalog)
-    vi.mocked(readSubwayStoreCatalog).mockReturnValue(subway)
-    const first = getList(new Request("http://localhost/api/places?limit=1"))
-    const cursor = PilotPlacesResponseSchema.parse(await first.json()).nextCursor
+    const { DiscoveryReadError } = await import("../../lib/discovery/server")
+    vi.mocked(queryDiscovery).mockRejectedValue(new DiscoveryReadError("stale_cursor"))
 
-    const response = getList(
-      new Request(
-        `http://localhost/api/places?limit=1&query=changed&cursor=${encodeURIComponent(cursor ?? "")}`,
-      ),
+    const response = await getList(
+      new Request("http://localhost/api/places?limit=1&cursor=valid_cursor"),
     )
 
     expect(response.status).toBe(409)
   })
-  it("returns 404 for expired detail and 503 for unavailable snapshots", async () => {
+  it("returns 404 for absent detail and 503 for an unavailable reader", async () => {
     vi.stubEnv("VERCEL_ENV", "preview")
-    vi.mocked(readPilotCatalog).mockReturnValue(
-      currentPilotCatalog(catalog, Date.parse("2030-01-01")),
-    )
-    vi.mocked(readSubwayStoreCatalog).mockReturnValue(subway)
-    const id = catalog.places[0]?.id
-    if (!id) throw new Error("missing fixture")
+    vi.mocked(getDiscoveryPlace).mockResolvedValue(null)
     expect(
-      (await getDetail(new Request("http://localhost"), { params: Promise.resolve({ id }) }))
-        .status,
+      (
+        await getDetail(new Request("http://localhost"), {
+          params: Promise.resolve({ id: store.id }),
+        })
+      ).status,
     ).toBe(404)
-    vi.mocked(readPilotCatalog).mockReturnValue(null)
-    expect(getList(new Request("http://localhost/api/places")).status).toBe(503)
+    const { DiscoveryReadError } = await import("../../lib/discovery/server")
+    vi.mocked(queryDiscovery).mockRejectedValue(new DiscoveryReadError("timeout"))
+    const unavailable = await getList(new Request("http://localhost/api/places"))
+    expect(unavailable.status).toBe(503)
+    expect(unavailable.headers.get("Cache-Control")).toBe("private, no-store")
   })
 })

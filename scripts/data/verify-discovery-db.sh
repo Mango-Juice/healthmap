@@ -54,6 +54,7 @@ baseline_migrations=(
   "supabase/migrations/20260904165055_add_moderated_suggestions.sql"
 )
 discovery_migration="supabase/migrations/20260905215700_discovery_serving.sql"
+parity_migration="supabase/migrations/20260905234327_discovery_read_parity.sql"
 contract_file="tests/integration/discovery-db-contract.sql"
 
 sha256() {
@@ -106,7 +107,7 @@ require_file() {
   fi
 }
 
-for migration in "${baseline_migrations[@]}" "$discovery_migration" "$contract_file"; do
+for migration in "${baseline_migrations[@]}" "$discovery_migration" "$parity_migration" "$contract_file"; do
   require_file "$migration"
 done
 
@@ -247,6 +248,7 @@ docker exec "$container_id" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres \
   -c 'drop role discovery_reader' >/dev/null
 
 run_migration "$discovery_migration"
+run_migration "$parity_migration"
 
 privileges_after="$(docker exec "$container_id" psql -X -At -U postgres -d postgres -c "
   select jsonb_build_object(
@@ -284,11 +286,23 @@ public_rpc_hardening="$(docker exec "$container_id" psql -X -At -U postgres -d p
   join pg_catalog.pg_namespace as namespace on namespace.oid = procedure.pronamespace
   where namespace.nspname = 'public'
     and procedure.proname in ('get_discovery_state', 'query_discovery', 'get_discovery_place')")"
+reader_membership="$(docker exec "$container_id" psql -X -At -U postgres -d postgres -c "
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'member', member_role.rolname,
+    'admin', membership.admin_option,
+    'inherit', membership.inherit_option,
+    'set', membership.set_option
+  ) order by member_role.rolname), '[]'::jsonb)
+  from pg_catalog.pg_auth_members as membership
+  join pg_catalog.pg_roles as granted_role on granted_role.oid=membership.roleid
+  join pg_catalog.pg_roles as member_role on member_role.oid=membership.member
+  where granted_role.rolname='discovery_reader'")"
 if ! jq -e 'length == 3' >/dev/null <<< "$public_rpc_hardening"; then
   printf 'Expected three public discovery RPC hardening records\n' >&2
   exit 1
 fi
 printf 'DISCOVERY_RPC_HARDENING %s\n' "$public_rpc_hardening"
+printf 'DISCOVERY_READER_MEMBERSHIP %s\n' "$reader_membership"
 current_stage="discovery SQL contract"
 current_log="$contract_log"
 docker cp "$contract_file" "$container_id:$contract_target"
@@ -332,6 +346,8 @@ jq -n \
   --arg serverVersionNum "$server_version_num" \
   --arg discoveryMigration "$discovery_migration" \
   --arg discoveryMigrationSha256 "$(sha256 "$discovery_migration")" \
+  --arg parityMigration "$parity_migration" \
+  --arg parityMigrationSha256 "$(sha256 "$parity_migration")" \
   --arg contract "$contract_file" \
   --arg contractSha256 "$(sha256 "$contract_file")" \
   --arg contractOutputSha256 "$contract_log_sha256" \
@@ -365,6 +381,8 @@ jq -n \
       baselineMigrationHashes: $baselineMigrationHashes,
       discoveryMigration: $discoveryMigration,
       discoveryMigrationSha256: $discoveryMigrationSha256,
+      parityMigration: $parityMigration,
+      parityMigrationSha256: $parityMigrationSha256,
       preMigrationMissingRpc: {status: "PASS", expectedSqlState: "42883", classification: "undefined_function", outputSha256: $missingRpcOutputSha256},
       unsafePreexistingReader: {status: "PASS", expectedSqlState: "42501", schemaCreated: false, outputSha256: $unsafeRoleOutputSha256},
       discoveryContract: {status: "PASS", finalObservable: "ROLLBACK", file: $contract, fileSha256: $contractSha256, outputSha256: $contractOutputSha256},

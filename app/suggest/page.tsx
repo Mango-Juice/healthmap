@@ -3,8 +3,9 @@ import Link from "next/link"
 import { SuggestionForm } from "../../components/suggestions/suggestion-form"
 import styles from "../../components/suggestions/suggestion-form.module.css"
 import { ArrowLeftIcon } from "../../components/ui/health-map-icons"
+import { DiscoveryReadError, getDiscoveryPlace } from "../../lib/discovery/server"
 import { PlaceIdSchema } from "../../lib/domain/contracts"
-import { menusForPilotPlace } from "../../lib/pilot/discovery"
+import type { PilotPlaceDto } from "../../lib/pilot/dto"
 import { buildPilotPlaceInfoUrl } from "../../lib/pilot/place-links"
 import { SuggestionUrlSchema } from "../../lib/suggestions/contracts"
 
@@ -21,11 +22,15 @@ export default async function SuggestPage({
 }) {
   const query = await searchParams
   const id = PlaceIdSchema.safeParse(query["placeId"])
-  const catalog = id.success ? (await import("../../lib/pilot/server")).readPilotCatalog() : null
-  const selected =
-    catalog && id.success && menusForPilotPlace(catalog, id.data).length > 0
-      ? catalog.places.find((place) => place.id === id.data)
-      : undefined
+  let selected: PilotPlaceDto | undefined
+  if (id.success) {
+    try {
+      const detail = await getDiscoveryPlace(id.data)
+      selected = detail !== null && detail.menus.length > 0 ? detail.place : undefined
+    } catch (error) {
+      if (!(error instanceof DiscoveryReadError)) throw error
+    }
+  }
   const legacyUrl = SuggestionUrlSchema.safeParse(query["place"])
   const placeUrl = selected
     ? buildPilotPlaceInfoUrl(selected)

@@ -15,10 +15,11 @@ describe("suggestion navigation", () => {
     }
   })
 
-  it("does not load the 22 MB place snapshot for an unscoped suggestion", () => {
+  it("uses only the bounded detail reader for suggestion context", () => {
     const source = readFileSync(resolve("app/suggest/page.tsx"), "utf8")
-    expect(source).not.toContain('import { readPilotCatalog } from "../../lib/pilot/server"')
-    expect(source).toContain('await import("../../lib/pilot/server")')
+    expect(source).not.toContain("lib/pilot/server")
+    expect(source).not.toContain("pilot-catalog.json")
+    expect(source).toContain("getDiscoveryPlace")
   })
 
   it("provides an immediate, accessible route loading state", () => {

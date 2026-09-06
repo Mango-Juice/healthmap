@@ -116,7 +116,8 @@ begin
   insert into discovery_admin.source_records(
     release_id,record_kind,id,source_path,source_order,source_sha256,payload,valid_from,valid_until
   ) values
-    (release_id,'place','bc6b1050-539e-4d28-8493-5920eae54248','synthetic/places',0,repeat('a',64),'{}',null,null),
+    (release_id,'place','bc6b1050-539e-4d28-8493-5920eae54248','synthetic/places',0,repeat('a',64),
+      '{"latitude":37.123456789012344,"longitude":127.12345678901235}',null,null),
     (release_id,'store','bede62e8-6e4d-4d3b-8227-34b73451b3a4','synthetic/stores',0,repeat('b',64),'{}',null,null),
     (release_id,'place','c4e1cffb-2658-4ad4-8e38-c8c12a11c627','synthetic/places',1,repeat('c',64),'{}',null,null),
     (release_id,'place','75708968-2839-4eba-8b44-f613de821d6c','synthetic/places',2,repeat('d',64),'{}',null,null),
@@ -130,7 +131,8 @@ begin
     naver_place_url,media,listing_kind,store_description,official_store_url,
     searchable_text,source_order,row_sha256
   ) values
-    (release_id,'bc6b1050-539e-4d28-8493-5920eae54248','alpha','Alpha',null,'Synthetic A',37,127,'Region A',null,
+    (release_id,'bc6b1050-539e-4d28-8493-5920eae54248','alpha','Alpha',null,'Synthetic A',
+      37.123456789012345,127.123456789012345,'Region A',null,
       null,'[]','menu_evidence',null,null,'alpha',0,repeat('6',64)),
     (release_id,'bede62e8-6e4d-4d3b-8227-34b73451b3a4','store','Synthetic Store','synthetic-brand','Synthetic B',36,126,'Region B',null,
       null,'[]','store_only','Synthetic store only','https://example.invalid/store','synthetic store sandwich salad',0,repeat('7',64)),
@@ -152,8 +154,8 @@ begin
       '{"scope":"meal"}','brand_common_unverified','Synthetic availability notice',true,array['salad_poke'],array['fish'],'future menu fish',0,'2026-01-10 13:00Z','2026-01-20Z',repeat('0',64)),
     (release_id,'10000000-0000-4000-8000-000000000104','75708968-2839-4eba-8b44-f613de821d6c','Rice Fish',
       '{"scope":"meal"}','branch_confirmed',null,true,array['rice'],array['fish'],'alpha split rice fish',0,'2026-01-01Z','2026-01-20Z',repeat('1',64)),
-    (release_id,'10000000-0000-4000-8000-000000000105','75708968-2839-4eba-8b44-f613de821d6c','Salad Chicken',
-      '{"scope":"meal"}','branch_confirmed',null,true,array['salad_poke'],array['chicken'],'alpha split salad chicken',1,'2026-01-01Z','2026-01-20Z',repeat('2',64));
+    (release_id,'10000000-0000-4000-8000-000000000105','75708968-2839-4eba-8b44-f613de821d6c','  Ｓａｌａｄ   Plain ',
+      '{"scope":"meal"}','branch_confirmed',null,true,array['salad_poke'],array['chicken'],'alpha split salad plain chicken',1,'2026-01-01Z','2026-01-20Z',repeat('2',64));
 
   perform public.activate_discovery_release(release_id,9,4,5,source_digest,projection_digest);
   reset role;
@@ -229,9 +231,57 @@ begin
   if response#>>'{data,results,0,place,id}' <> 'bc6b1050-539e-4d28-8493-5920eae54248'
     or response#>>'{data,nextCursor}' is null then raise exception 'relevance or pagination mismatch'; end if;
   cursor := response#>>'{data,nextCursor}';
+  response := pg_temp.request_at('{"mode":"places","query":"chicken","filter":"all","ingredient":"all","limit":100}',before_time);
+  if response#>>'{data,results,0,place,id}' <> 'bc6b1050-539e-4d28-8493-5920eae54248' then
+    raise exception 'menu-name relevance was not ranked above other searchable menu fields';
+  end if;
+  if (select relevance from discovery_admin.matching_at(
+      'synthetic-release-1',before_time,'chicken','all','all',null,false,null,null,null,null
+    ) where id='75708968-2839-4eba-8b44-f613de821d6c') <> 3 then
+    raise exception 'non-name menu search text incorrectly received menu-name relevance';
+  end if;
+  if (select relevance from discovery_admin.matching_at(
+      'synthetic-release-1',before_time,'salad plain','all','all',null,false,null,null,null,null
+    ) where id='75708968-2839-4eba-8b44-f613de821d6c') <> 2 then
+    raise exception 'NFKC and collapsed-whitespace menu name did not receive menu-name relevance';
+  end if;
+  if (select relevance from discovery_admin.matching_at(
+      'synthetic-release-1',before_time,'synthetic store','all','all',null,false,null,null,null,null
+    ) where id='bede62e8-6e4d-4d3b-8227-34b73451b3a4') <> 0 then
+    raise exception 'exact store name did not receive exact-name relevance';
+  end if;
+  if (select relevance from discovery_admin.matching_at(
+      'synthetic-release-1',before_time,'store','all','all',null,false,null,null,null,null
+    ) where id='bede62e8-6e4d-4d3b-8227-34b73451b3a4') <> 1 then
+    raise exception 'store name substring did not receive name-substring relevance';
+  end if;
+  if (select relevance from discovery_admin.matching_at(
+      'synthetic-release-1',before_time,'sandwich','all','all',null,false,null,null,null,null
+    ) where id='bede62e8-6e4d-4d3b-8227-34b73451b3a4') <> 3 then
+    raise exception 'store address or category search text incorrectly received name relevance';
+  end if;
   response := pg_temp.request_at(jsonb_build_object('mode','places','query','alpha','filter','all','ingredient','all','limit',1,'cursor',cursor),before_time);
   if response#>>'{data,results,0,place,id}' <> '75708968-2839-4eba-8b44-f613de821d6c' then
     raise exception 'cursor continuation mismatch';
+  end if;
+  if exists (
+    select 1 from pg_catalog.pg_proc as procedure
+    join pg_catalog.pg_namespace as namespace on namespace.oid=procedure.pronamespace
+    where namespace.nspname='public'
+      and procedure.proname in ('get_discovery_state','query_discovery','get_discovery_place')
+      and not ('extra_float_digits=1'=any(procedure.proconfig))
+  ) then raise exception 'public discovery RPC is missing exact float serialization'; end if;
+  set local extra_float_digits = 1;
+  response := pg_temp.request_at('{"mode":"places","query":"alpha","filter":"all","ingredient":"all","limit":1}',before_time);
+  if response#>>'{data,results,0,place,latitude}' <>
+      (select payload->>'latitude' from discovery_admin.source_records
+       where source_records.release_id='synthetic-release-1'
+         and id='bc6b1050-539e-4d28-8493-5920eae54248')
+    or response#>>'{data,results,0,place,longitude}' <>
+      (select payload->>'longitude' from discovery_admin.source_records
+       where source_records.release_id='synthetic-release-1'
+         and id='bc6b1050-539e-4d28-8493-5920eae54248') then
+    raise exception 'public RPC coordinate serialization lost source precision';
   end if;
   response := discovery_admin.detail_at(jsonb_build_object(
     'id','75708968-2839-4eba-8b44-f613de821d6c','expectedRelease',before_state->'releaseId',
