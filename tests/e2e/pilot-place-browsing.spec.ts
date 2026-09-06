@@ -25,11 +25,12 @@ const installMenuScenario = async (
     name: `검증 메뉴 ${index + 1}`,
   }))
   const result = { ...original, matchingMenuIds: menus.map((entry) => entry.id), menus }
+  const results = [result, ...source.results.slice(1)]
   const places = PilotPlacesResponseSchema.parse({
     ...source,
     nextCursor: null,
-    results: [result],
-    total: 1,
+    results,
+    total: results.length,
   })
   const detail = PilotDetailResponseSchema.parse({
     catalogVersion: places.catalogVersion,
@@ -61,9 +62,10 @@ test("results restore their exact reading position and detail actions precede lo
   await listBody.evaluate((element) => {
     element.scrollTop = Math.min(40, element.scrollHeight - element.clientHeight)
   })
+  const result = page.locator("[data-pilot-place-id]").first()
+  await result.scrollIntoViewIfNeeded()
   const savedScroll = await listBody.evaluate((element) => element.scrollTop)
   expect(savedScroll).toBeGreaterThan(0)
-  const result = page.locator("[data-pilot-place-id]").first()
   const placeId = await result.getAttribute("data-pilot-place-id")
   if (placeId === null) throw new Error("place ID missing")
   await result.click()

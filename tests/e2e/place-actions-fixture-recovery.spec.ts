@@ -55,17 +55,15 @@ test("Given an actual unpublished production fixture, when the recovered map is 
 })
 
 test("Given the normal application runtime without Supabase, when the fixture suite completes, then no test records leak into the app", async ({
-  context,
   page,
 }) => {
   // Given / When
-  await context.unroute("**/api/map-catalog")
-  const catalogResponse = await page.request.get("/api/map-catalog")
+  const catalogResponse = await page.request.get("/api/places?mode=places&limit=50")
   await page.goto("/")
 
   // Then
   expect(catalogResponse.status()).toBe(200)
-  await expect(page.getByRole("button", { name: "새싹 네모식당 상세 보기" })).toBeVisible()
+  await expect(page.getByRole("button", { name: "새싹 네모식당 자세히 보기" })).toBeVisible()
   await expect(page.getByRole("button", { name: "테스트 생산 경로 식당" })).toHaveCount(0)
   await expect(page.getByRole("button", { name: "테스트 비공개 식당" })).toHaveCount(0)
 })

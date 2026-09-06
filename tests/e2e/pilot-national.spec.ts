@@ -134,7 +134,7 @@ test("common menu notice and directions survive media excluded for another menu"
   const card = page.locator("[data-pilot-place-id]").first()
   await expect(card).toBeVisible()
   await card.click()
-  await expect(page.getByRole("region", { name: "메뉴 둘러보기", exact: true })).toBeVisible()
+  await expect(page.getByRole("region", { name: "조건에 맞는 메뉴", exact: true })).toBeVisible()
   await expect(page.getByRole("img", { name: "다른 메뉴" })).toHaveCount(0)
   await expect(page.getByRole("link", { name: /길찾기/ })).toBeVisible()
   await page.keyboard.press("Escape")

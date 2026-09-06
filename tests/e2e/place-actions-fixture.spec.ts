@@ -45,10 +45,7 @@ test("Given the typed published production fixture, when directions is selected,
   // Given
   const server = getFixtureServer()
   await page.goto(server.baseUrl)
-  await page
-    .getByTestId("naver-map")
-    .getByRole("button", { name: "테스트 생산 경로 식당" })
-    .dispatchEvent("click")
+  await page.getByRole("button", { name: "테스트 생산 경로 식당 상세 보기" }).click()
 
   // When
   const popup = page.waitForEvent("popup")
@@ -68,10 +65,7 @@ test("Given a typed production fixture detail, when it is opened, then its publi
   // Given
   const server = getFixtureServer()
   await page.goto(server.baseUrl)
-  await page
-    .getByTestId("naver-map")
-    .getByRole("button", { name: "테스트 생산 경로 식당" })
-    .dispatchEvent("click")
+  await page.getByRole("button", { name: "테스트 생산 경로 식당 상세 보기" }).click()
 
   // When
   const detail = page.getByTestId("place-detail")
@@ -102,10 +96,7 @@ test("Given the typed production fixture, when directions opens, then its redact
   expect(await page.evaluate(() => localStorage.getItem("healthmap.analytics.opt-out.v1"))).toBe(
     "false",
   )
-  await page
-    .getByTestId("naver-map")
-    .getByRole("button", { name: "테스트 생산 경로 식당" })
-    .dispatchEvent("click")
+  await page.getByRole("button", { name: "테스트 생산 경로 식당 상세 보기" }).click()
 
   const popup = page.waitForEvent("popup")
   await page.getByRole("button", { name: "길찾기" }).click()
@@ -149,10 +140,7 @@ test("Given a typed route-incomplete production fixture, when directions is sele
   // Given
   const server = getFixtureServer()
   await page.goto(server.baseUrl)
-  await page
-    .getByTestId("naver-map")
-    .getByRole("button", { name: "테스트 저장 장소 식당" })
-    .dispatchEvent("click")
+  await page.getByTestId("naver-map").getByRole("button", { name: "테스트 저장 장소 식당" }).click()
 
   // When
   const popup = page.waitForEvent("popup")
