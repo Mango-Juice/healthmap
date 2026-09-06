@@ -22,6 +22,7 @@
     "format": "biome check --write .",
     "typecheck": "tsc --noEmit",
     "test": "pnpm test:config && vitest run --sequence.shuffle --sequence.seed=20260813",
+    "test:architecture": "node --test tests/architecture/*.test.mjs",
     "test:config": "node scripts/check-vercel-config.mjs",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:integration:local": "bash scripts/data/verify-local-supabase.sh",

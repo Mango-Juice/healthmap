@@ -28,6 +28,7 @@ pnpm dev
 pnpm exec biome ci .
 pnpm typecheck
 pnpm test
+pnpm test:architecture
 pnpm test:integration
 pnpm test:integration:local
 pnpm test:deployment

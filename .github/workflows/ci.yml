@@ -54,6 +54,9 @@ jobs:
       - name: Run integration tests
         run: pnpm test:integration
 
+      - name: Check current application architecture
+        run: pnpm test:architecture
+
       - name: Audit React code
         run: pnpm react:doctor --no-telemetry --no-cache
 

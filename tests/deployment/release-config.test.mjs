@@ -3,11 +3,12 @@ import { readFile } from "node:fs/promises"
 import { test } from "node:test"
 import { PUBLIC_ENVIRONMENT_NAMES } from "../../scripts/deploy/validate-environment.mjs"
 
-test("Vercel and CI pin frozen installs, quality gates, and deployment commands", async () => {
-  const [vercelConfig, ci, operations, packageJson] = await Promise.all([
+test("Vercel and CI pin frozen installs, current quality gates, and deployment commands", async () => {
+  const [vercelConfig, ci, development, architecture, packageJson] = await Promise.all([
     readFile("vercel.json", "utf8"),
     readFile(".github/workflows/ci.yml", "utf8"),
-    readFile("docs/operations.md", "utf8"),
+    readFile("docs/development.md", "utf8"),
+    readFile("docs/architecture.md", "utf8"),
     readFile("package.json", "utf8"),
   ])
 
@@ -33,23 +34,24 @@ test("Vercel and CI pin frozen installs, quality gates, and deployment commands"
   assert.match(vercelConfig, /pnpm deploy:validate:hosted && pnpm build/)
   assert.match(ci, /pnpm deploy:validate/)
   assert.match(ci, /pnpm docs:check/)
+  assert.match(ci, /pnpm test:architecture/)
   assert.match(ci, /pnpm test:integration/)
   assert.doesNotMatch(ci, /--data-mode/)
+  assert.match(development, /실제 카탈로그 행이나 서버 관리자 비밀값이[\s\S]+포함되지 않습니다/)
   assert.match(
-    operations,
-    /Before retrieving credentials or opening the network, the Python promotion client verifies[\s\S]+reviewApprovalSha256[\s\S]+locally/,
+    development,
+    /구성되지 않은 데이터베이스는 데이터 API가 사용할 수 없음을 명시적으로 알립니다[\s\S]+빈 결과를 반환합니다/,
   )
+  assert.match(architecture, /필요한 결과만 요청합니다[\s\S]+요청 크기·필터·페이지 크기를 제한/)
   assert.match(
-    operations,
-    /v2 16-argument RPC[\s\S]+review_approval_json[\s\S]+review_approval_sha256/,
+    architecture,
+    /원본 자료, 운영 메모, 비밀값, 검토 근거는 이 경계를 통과하지 않습니다/,
   )
-  assert.match(operations, /stored private artifact hash[\s\S]+exact replays/)
-  assert.match(operations, /14-argument overload accepts only genuine legacy v1 bundles/)
   assert.match(
     packageJson,
     /"deploy:smoke": "node --experimental-strip-types scripts\/deploy\/production-smoke\.mjs"/,
   )
-  assert.doesNotMatch(operations, /--data-mode/)
+  assert.match(packageJson, /"test:architecture": "node --test tests\/architecture\/\*\.test\.mjs"/)
 })
 
 test("the public template names match the runtime validator", async () => {

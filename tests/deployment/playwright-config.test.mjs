@@ -26,11 +26,12 @@ test("E2E_BASE_URL selects hosted mode without a local webServer", () => {
   assert.equal(config.webServer, null)
 })
 
-test("local mode isolates the Next dist directory by port", () => {
+test("local mode wires the bounded discovery fixture and isolates the Next dist directory by port", () => {
   const config = inspectConfig({ E2E_BASE_URL: "", PLAYWRIGHT_PORT: "4518" })
   assert.equal(config.baseURL, "http://127.0.0.1:4518")
   assert.equal(config.webServer.length, 2)
-  assert.match(config.webServer[0].command, /LOCAL_CATALOG_PORT=14518/)
+  assert.match(config.webServer[0].command, /LOCAL_DISCOVERY_PORT=14518/)
+  assert.match(config.webServer[0].command, /local-playwright-discovery-rpc\.mjs/)
   assert.equal(config.webServer[0].url, "https://127.0.0.1:14518/health")
   assert.equal(config.webServer[0].reuseExistingServer, false)
   assert.match(config.webServer[1].command, /\.next-playwright-4518/)
