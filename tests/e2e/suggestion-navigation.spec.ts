@@ -3,9 +3,7 @@ import { expect, test } from "./map-test"
 test("Given a synthetic menu-backed place, when its detail suggestion action is followed, then the proposal page keeps selected context", async ({
   page,
 }) => {
-  // Given the current root needs an explicit recovery from its initial map area.
   await page.goto("/")
-  await page.getByRole("button", { name: "현재 지도 밖 5곳 보기" }).click()
   const place = page.getByRole("button", { name: "새싹 네모식당 자세히 보기" })
   await expect(place).toBeVisible()
 

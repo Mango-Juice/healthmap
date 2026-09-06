@@ -27,7 +27,6 @@ const installFailure = async (context: BrowserContext, mode: Mode): Promise<void
 
 const openPlace = async (page: Page): Promise<void> => {
   await page.goto("/")
-  await page.getByRole("button", { name: "현재 지도 밖 5곳 보기" }).click()
   const place = page.getByRole("button", { name: "새싹 네모식당 자세히 보기" })
   await expect(place).toBeVisible()
   await place.click()
