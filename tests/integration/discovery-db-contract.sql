@@ -73,6 +73,30 @@ $$;
 
 do $$
 declare
+  helper pg_catalog.pg_proc%rowtype;
+begin
+  select procedure.* into helper
+  from pg_catalog.pg_proc as procedure
+  join pg_catalog.pg_namespace as namespace on namespace.oid = procedure.pronamespace
+  where namespace.nspname = 'discovery_admin'
+    and procedure.oid = pg_catalog.to_regprocedure(
+      'discovery_admin.matching_keys_at(text,timestamptz,text,text,text,text,boolean,' ||
+      'double precision,double precision,double precision,double precision)'
+    );
+  if not found
+    or helper.prosecdef
+    or not ('search_path=""' = any(helper.proconfig))
+    or not ('statement_timeout=1500ms' = any(helper.proconfig))
+    or not has_function_privilege('discovery_reader',helper.oid,'execute')
+    or has_function_privilege('anon',helper.oid,'execute')
+    or has_function_privilege('authenticated',helper.oid,'execute') then
+    raise exception 'lean discovery matcher is missing or unsafe';
+  end if;
+end
+$$;
+
+do $$
+declare
   release_id constant text := 'synthetic-release-1';
   source_digest text;
   place_digest text;
