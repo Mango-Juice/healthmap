@@ -147,6 +147,39 @@ describe("bounded discovery reader", () => {
     ).rejects.toMatchObject({ kind: "stale_cursor" })
   })
 
+  it.each([
+    { code: "PT400", error: "invalid_request", expected: "invalid_request", status: 400 },
+    { code: "PT409", error: "stale_state", expected: "stale_state", status: 409 },
+  ] as const)(
+    "Given a real $code response, when the RPC adapter reads it, then it returns $expected",
+    async ({ code, error, expected, status }) => {
+      const fetchImplementation = vi
+        .fn()
+        .mockResolvedValue(
+          Response.json(
+            { code, message: JSON.stringify({ error, retry: code === "PT409" }) },
+            { status },
+          ),
+        )
+      const rpc = createSupabaseDiscoveryRpcClient(
+        { key: "publishable-test-key", url: "https://db.test" },
+        fetchImplementation,
+      )
+
+      await expect(
+        rpc.query({
+          expectedRelease: releaseId,
+          expectedEpoch: eligibleEpoch,
+          mode: "places",
+          query: "",
+          filter: "all",
+          ingredient: "all",
+          limit: 50,
+        }),
+      ).rejects.toMatchObject({ kind: expected })
+    },
+  )
+
   it("Given the RPC times out, when reading state, then it reports a typed timeout", async () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new DOMException("timed out", "TimeoutError"))
     const reader = createDiscoveryReader(

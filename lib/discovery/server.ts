@@ -1,24 +1,22 @@
 import type { z } from "zod"
-import { parsePublicEnvironment } from "../../app/public-environment"
+import { parseDevelopmentPublicEnvironment } from "../../app/public-environment"
 import type { PlaceIdSchema } from "../domain/contracts"
-import { normalizeDiscoveryQuery } from "../domain/discovery"
 import type { PilotQuery } from "../pilot/query-contract"
 import {
-  DiscoveryDetailEnvelopeSchema,
-  DiscoveryPlacesEnvelopeSchema,
-  type DiscoveryQueryRequest,
+  createCachedDiscoveryReader,
+  getDiscoveryProviderIdentity,
+  nextDiscoveryResultCache,
+  passthroughDiscoveryResultCache,
+} from "./cache"
+import {
   DiscoveryReadError,
   type DiscoveryReader,
-  DiscoveryRegionsEnvelopeSchema,
   type DiscoveryRpcClient,
   DiscoveryRpcErrorResponseSchema,
-  type DiscoveryState,
-  DiscoveryStateSchema,
 } from "./contracts"
 
 const STATE_TIMEOUT_MILLISECONDS = 1_500
 const DATA_TIMEOUT_MILLISECONDS = 2_500
-const TOTAL_TIMEOUT_MILLISECONDS = 4_000
 
 export { DiscoveryReadError, type DiscoveryReader, type DiscoveryRpcClient } from "./contracts"
 
@@ -107,138 +105,45 @@ export const createSupabaseDiscoveryRpcClient = (
   }
 }
 
-const parseState = (value: unknown): DiscoveryState => {
-  const parsed = DiscoveryStateSchema.safeParse(value)
-  if (!parsed.success) throw new DiscoveryReadError("invalid_response")
-  return parsed.data
-}
-
-const canonicalRequest = (state: DiscoveryState, query: PilotQuery): DiscoveryQueryRequest => ({
-  expectedRelease: state.releaseId,
-  expectedEpoch: state.eligibleEpoch,
-  mode: query.mode,
-  query: normalizeDiscoveryQuery(query.query),
-  filter: query.filter,
-  ingredient: query.ingredient,
-  region: query.region,
-  south: query.south,
-  north: query.north,
-  west: query.west,
-  east: query.east,
-  limit: query.limit,
-  cursor: query.cursor,
-})
-
-const matchingState = (actual: DiscoveryState, expected: DiscoveryState): boolean =>
-  actual.schemaVersion === expected.schemaVersion &&
-  actual.releaseId === expected.releaseId &&
-  actual.eligibleEpoch === expected.eligibleEpoch
-
-const matchingCatalogVersion = (catalogVersion: string, state: DiscoveryState): boolean =>
-  catalogVersion === (state.releaseId ?? "empty")
-
-const totalBudgetSignal = (signal: AbortSignal | undefined) => {
-  const timeout = AbortSignal.timeout(TOTAL_TIMEOUT_MILLISECONDS)
-  return { signal: signal ? AbortSignal.any([signal, timeout]) : timeout, timeout }
-}
-
-const remapBudgetError = (
-  error: unknown,
-  callerSignal: AbortSignal | undefined,
-  timeoutSignal: AbortSignal,
-): never => {
-  if (callerSignal?.aborted) throw new DiscoveryReadError("cancelled")
-  if (timeoutSignal.aborted) throw new DiscoveryReadError("timeout")
-  throw error
-}
-
-export const createDiscoveryReader = (client: DiscoveryRpcClient): DiscoveryReader => ({
-  query: async (query, callerSignal) => {
-    if (callerSignal?.aborted) throw new DiscoveryReadError("cancelled")
-    const budget = totalBudgetSignal(callerSignal)
-    try {
-      let state = parseState(await client.getState(budget.signal))
-      for (let attempt = 0; attempt < 2; attempt += 1) {
-        try {
-          const raw = await client.query(canonicalRequest(state, query), budget.signal)
-          const schema =
-            query.mode === "regions"
-              ? DiscoveryRegionsEnvelopeSchema
-              : DiscoveryPlacesEnvelopeSchema
-          const parsed = schema.safeParse(raw)
-          if (
-            !parsed.success ||
-            !matchingState(parsed.data, state) ||
-            !matchingCatalogVersion(parsed.data.data.catalogVersion, state)
-          )
-            throw new DiscoveryReadError("invalid_response")
-          return parsed.data.data
-        } catch (error) {
-          if (
-            !(error instanceof DiscoveryReadError) ||
-            error.kind !== "stale_state" ||
-            attempt === 1
-          )
-            throw error
-          state = parseState(await client.getState(budget.signal))
-        }
-      }
-      throw new DiscoveryReadError("stale_state")
-    } catch (error) {
-      return remapBudgetError(error, callerSignal, budget.timeout)
-    }
-  },
-  getPlace: async (id, callerSignal) => {
-    if (callerSignal?.aborted) throw new DiscoveryReadError("cancelled")
-    const budget = totalBudgetSignal(callerSignal)
-    try {
-      let state = parseState(await client.getState(budget.signal))
-      for (let attempt = 0; attempt < 2; attempt += 1) {
-        try {
-          const raw = await client.getPlace(
-            { expectedRelease: state.releaseId, expectedEpoch: state.eligibleEpoch, id },
-            budget.signal,
-          )
-          const parsed = DiscoveryDetailEnvelopeSchema.safeParse(raw)
-          if (
-            !parsed.success ||
-            !matchingState(parsed.data, state) ||
-            (parsed.data.data !== null &&
-              !matchingCatalogVersion(parsed.data.data.catalogVersion, state))
-          )
-            throw new DiscoveryReadError("invalid_response")
-          return parsed.data.data
-        } catch (error) {
-          if (
-            !(error instanceof DiscoveryReadError) ||
-            error.kind !== "stale_state" ||
-            attempt === 1
-          )
-            throw error
-          state = parseState(await client.getState(budget.signal))
-        }
-      }
-      throw new DiscoveryReadError("stale_state")
-    } catch (error) {
-      return remapBudgetError(error, callerSignal, budget.timeout)
-    }
-  },
-})
+export const createDiscoveryReader = (client: DiscoveryRpcClient): DiscoveryReader =>
+  createCachedDiscoveryReader(client, "injected-reader", {
+    cache: passthroughDiscoveryResultCache,
+  })
 
 export const createDiscoveryRuntimeReader = (
   environment: PublicEnvironment,
   fetchImplementation: typeof fetch = globalThis.fetch,
 ): DiscoveryReader => {
-  const endpoint = parsePublicEnvironment(environment).catalog
+  const endpoint = parseDevelopmentPublicEnvironment(environment).catalog
   if (endpoint === null) throw new DiscoveryReadError("configuration")
-  return createDiscoveryReader(createSupabaseDiscoveryRpcClient(endpoint, fetchImplementation))
+  return createCachedDiscoveryReader(
+    createSupabaseDiscoveryRpcClient(endpoint, fetchImplementation),
+    getDiscoveryProviderIdentity(endpoint.url, endpoint.key),
+    { cache: nextDiscoveryResultCache },
+  )
 }
 
-const runtimeReader = () =>
-  createDiscoveryRuntimeReader({
+let configuredReader:
+  | Readonly<{ readonly identity: string; readonly reader: DiscoveryReader }>
+  | undefined
+
+const runtimeReader = () => {
+  const environment = {
+    HEALTHMAP_ALLOW_LOCAL_DISCOVERY: process.env["HEALTHMAP_ALLOW_LOCAL_DISCOVERY"],
+    NODE_ENV: process.env["NODE_ENV"],
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env["NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"],
     NEXT_PUBLIC_SUPABASE_URL: process.env["NEXT_PUBLIC_SUPABASE_URL"],
+  }
+  const endpoint = parseDevelopmentPublicEnvironment(environment).catalog
+  if (endpoint === null) throw new DiscoveryReadError("configuration")
+  const identity = getDiscoveryProviderIdentity(endpoint.url, endpoint.key)
+  if (configuredReader?.identity === identity) return configuredReader.reader
+  const reader = createCachedDiscoveryReader(createSupabaseDiscoveryRpcClient(endpoint), identity, {
+    cache: nextDiscoveryResultCache,
   })
+  configuredReader = { identity, reader }
+  return reader
+}
 
 export const queryDiscovery = (query: PilotQuery, signal?: AbortSignal) =>
   runtimeReader().query(query, signal)
