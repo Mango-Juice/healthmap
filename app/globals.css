@@ -11,6 +11,7 @@
   --hm-border: #d7d2c6;
   --hm-border-strong: #aba497;
   --hm-green-950: #0d3425;
+  --hm-green-900: #17231c;
   --hm-green-800: #18563b;
   --hm-green-700: #2b6048;
   --hm-green-600: #2f7651;
@@ -78,9 +79,14 @@
   --hm-copy-measure: 62ch;
   --hm-empty-copy-measure: 30ch;
   --hm-sheet-max: 52%;
-  --hm-pilot-sheet-peek: 76px;
+  --hm-pilot-sheet-peek: var(--hm-space-12);
   --hm-pilot-sheet-expanded: 72%;
+  --hm-pilot-sheet-offset: calc(
+    min(var(--hm-pilot-sheet-expanded), calc(100% - var(--hm-space-6))) -
+    var(--hm-pilot-sheet-peek)
+  );
   --hm-pilot-place-preview: 264px;
+  --hm-search-text-scale: 0.875;
   --hm-skeleton-line-short: 65%;
   --hm-layer-map: 0;
   --hm-layer-controls: 10;

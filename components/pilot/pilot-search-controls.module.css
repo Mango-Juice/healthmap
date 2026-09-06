@@ -21,7 +21,6 @@
 }
 
 .inputFrame input {
-  --hm-search-text-scale: 0.875;
   flex: none;
   inline-size: calc(100% / var(--hm-search-text-scale));
   block-size: calc(

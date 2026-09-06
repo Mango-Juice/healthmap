@@ -1,5 +1,4 @@
 .shell {
-  --hm-pilot-sheet-peek: var(--hm-space-12);
   block-size: 100dvb;
   background: var(--hm-canvas);
   color: var(--hm-ink);
@@ -1054,9 +1053,9 @@
     position: absolute;
     inset: var(--hm-space-1) 0;
     z-index: -1;
-    border: var(--hm-border-width) solid var(--hm-action-border, var(--hm-border-strong));
+    border: var(--hm-border-width) solid var(--hm-border-strong);
     border-radius: var(--hm-radius-card);
-    background: var(--hm-action-fill, var(--hm-surface));
+    background: var(--hm-surface);
   }
 
   .compactAction.locateControl::before {
@@ -1064,13 +1063,20 @@
   }
 
   .compactAction:is(:hover, [data-active="true"], [aria-expanded="true"])::before {
-    background: var(--hm-action-hover, var(--hm-green-100));
+    background: var(--hm-green-100);
   }
 
-  .compactAction[data-primary="true"] {
-    --hm-action-fill: var(--hm-green-800);
-    --hm-action-hover: var(--hm-green-600);
-    --hm-action-border: var(--hm-green-800);
+  .compactAction[data-primary="true"]::before {
+    border-color: var(--hm-green-800);
+    background: var(--hm-green-800);
+  }
+
+  .compactAction[data-primary="true"]:is(
+    :hover,
+    [data-active="true"],
+    [aria-expanded="true"]
+  )::before {
+    background: var(--hm-green-600);
   }
 
   .compactAction > svg {
@@ -1123,15 +1129,7 @@
     justify-content: flex-end;
     pointer-events: none;
     z-index: var(--hm-layer-detail);
-    transform: translateY(
-      var(
-        --hm-pilot-sheet-offset,
-        calc(
-          min(var(--hm-pilot-sheet-expanded), calc(100% - var(--hm-space-6))) -
-          var(--hm-pilot-sheet-peek)
-        )
-      )
-    );
+    transform: translateY(var(--hm-pilot-sheet-offset));
     transition: transform var(--hm-motion-standard) var(--hm-ease-out);
   }
 
