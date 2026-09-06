@@ -27,7 +27,9 @@ begin
     select 1 from pg_catalog.pg_class as relation
     join pg_catalog.pg_namespace as namespace on namespace.oid = relation.relnamespace
     where namespace.nspname = 'discovery_admin'
-      and relation.relname in ('releases','source_records','places','menus','state')
+      and relation.relname in (
+        'releases','source_records','places','menus','state','validity_segments'
+      )
       and not relation.relrowsecurity
   ) then raise exception 'discovery table without RLS'; end if;
   if has_schema_privilege('anon','discovery_admin','usage')
@@ -38,6 +40,13 @@ begin
   end if;
   if has_table_privilege('discovery_reader','discovery_admin.source_records','select')
     or has_table_privilege('discovery_reader','discovery_admin.places','insert')
+    or not has_column_privilege(
+      'discovery_reader','discovery_admin.validity_segments','eligible_epoch','select'
+    )
+    or has_table_privilege(
+      'discovery_reader','discovery_admin.validity_segments','insert'
+    )
+    or has_table_privilege('service_role','discovery_admin.validity_segments','insert')
     or has_column_privilege('discovery_reader','discovery_admin.places','row_sha256','select')
     or has_column_privilege('discovery_reader','discovery_admin.menus','row_sha256','select') then
     raise exception 'discovery_reader can access raw or mutable data';
@@ -49,6 +58,32 @@ begin
       'public.activate_discovery_release(text,integer,integer,integer,text,text)','execute') then
     raise exception 'RPC grants differ from contract';
   end if;
+  if not (
+    select procedure.prosecdef
+      and procedure.proowner = (select oid from pg_catalog.pg_roles where rolname='postgres')
+      and 'search_path=""' = any(procedure.proconfig)
+      and 'statement_timeout=1500ms' = any(procedure.proconfig)
+    from pg_catalog.pg_proc as procedure
+    where procedure.oid = pg_catalog.to_regprocedure(
+      'public.activate_discovery_release(text,integer,integer,integer,text,text)'
+    )
+  ) or has_function_privilege(
+      'authenticated',
+      'public.activate_discovery_release(text,integer,integer,integer,text,text)',
+      'execute'
+    ) then raise exception 'activation does not own trusted segment generation'; end if;
+  if exists (
+    select 1 from pg_catalog.pg_proc as procedure
+    where procedure.oid = pg_catalog.to_regprocedure(
+      'discovery_admin.reject_sealed_release_insert()'
+    ) and (
+      not procedure.prosecdef
+      or procedure.proowner <> (select oid from pg_catalog.pg_roles where rolname='postgres')
+      or not ('search_path=""' = any(procedure.proconfig))
+      or has_function_privilege('service_role',procedure.oid,'execute')
+      or has_function_privilege('discovery_reader',procedure.oid,'execute')
+    )
+  ) then raise exception 'sealed-release trigger function is missing or unsafe'; end if;
   if not has_function_privilege('anon','public.get_public_catalog()','execute')
     or has_function_privilege('anon','public.submit_pending_suggestion(jsonb,text,text)','execute')
     or not has_function_privilege('service_role',
@@ -195,6 +230,51 @@ returns jsonb language sql as $$
   ) from (select discovery_admin.state_at(p_now) as state) as current_state
 $$;
 
+create function pg_temp.dynamic_state_at(p_now timestamptz)
+returns jsonb language sql stable set search_path = '' as $$
+  with active as (
+    select state.release_id
+    from discovery_admin.state as state
+    where state.singleton
+  ), current_menus as (
+    select menu.id
+    from active
+    join discovery_admin.menus as menu on menu.release_id = active.release_id
+    where menu.valid_from <= p_now and menu.valid_until > p_now
+  ), boundary as (
+    select min(candidate) as next_boundary
+    from active
+    join discovery_admin.menus as menu on menu.release_id = active.release_id
+    cross join lateral (
+      values (case when menu.valid_from > p_now then menu.valid_from end),
+        (case when menu.valid_until > p_now then menu.valid_until end)
+    ) as boundaries(candidate)
+    where candidate is not null
+  )
+  select jsonb_build_object(
+    'schemaVersion', 'discovery-serving-1',
+    'releaseId', active.release_id,
+    'eligibleEpoch', encode(extensions.digest(convert_to(
+      active.release_id || ':' || coalesce((
+        select string_agg(current_menus.id::text, ',' order by current_menus.id)
+        from current_menus
+      ), ''), 'UTF8'), 'sha256'), 'hex'),
+    'evaluatedAt', to_char(p_now at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
+    'nextBoundary', case when boundary.next_boundary is null then null else
+      to_char(boundary.next_boundary at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') end
+  )
+  from active cross join boundary
+  union all
+  select jsonb_build_object(
+    'schemaVersion', 'discovery-serving-1', 'releaseId', null,
+    'eligibleEpoch', encode(extensions.digest(convert_to('empty', 'UTF8'), 'sha256'), 'hex'),
+    'evaluatedAt', to_char(p_now at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
+    'nextBoundary', null
+  )
+  where not exists (select 1 from active)
+  limit 1
+$$;
+
 create function pg_temp.cursor_with_offset(p_cursor text,p_offset jsonb)
 returns text language sql immutable as $$
   select rtrim(translate(replace(encode(convert_to(jsonb_set(
@@ -223,6 +303,19 @@ begin
   before_state := discovery_admin.state_at(before_time);
   at_state := discovery_admin.state_at(at_time);
   after_state := discovery_admin.state_at(after_time);
+  if before_state <> pg_temp.dynamic_state_at(before_time)
+    or at_state <> pg_temp.dynamic_state_at(at_time)
+    or after_state <> pg_temp.dynamic_state_at(after_time) then
+    raise exception 'precomputed state differs from the dynamic epoch oracle';
+  end if;
+  if (select count(*) from discovery_admin.validity_segments
+      where release_id = 'synthetic-release-1') <> 6
+    or (select min(starts_at) from discovery_admin.validity_segments
+      where release_id = 'synthetic-release-1') <> '-infinity'::timestamptz
+    or (select max(ends_at) from discovery_admin.validity_segments
+      where release_id = 'synthetic-release-1') <> 'infinity'::timestamptz then
+    raise exception 'synthetic release validity segments are incomplete';
+  end if;
   if before_state->>'nextBoundary' <> '2026-01-10T12:00:00.000000Z'
     or before_state->>'eligibleEpoch' = at_state->>'eligibleEpoch'
     or at_state->>'eligibleEpoch' <> after_state->>'eligibleEpoch' then
@@ -398,6 +491,31 @@ begin
     (select source_digest from discovery_admin.releases where release_id='synthetic-release-1'),
     (select projection_digest from discovery_admin.releases where release_id='synthetic-release-1'))
     ->>'status' <> 'already_active' then raise exception 'activation replay not idempotent'; end if;
+  insert into discovery_admin.source_records(
+    release_id,record_kind,id,source_path,source_order,source_sha256,payload,
+    valid_from,valid_until
+  )
+  select release_id,record_kind,id,source_path,source_order,source_sha256,payload,
+    valid_from,valid_until
+  from discovery_admin.source_records
+  where source_records.release_id='synthetic-release-1'
+    and id='10000000-0000-4000-8000-000000000101'
+  on conflict do nothing;
+  if (select count(*) from discovery_admin.source_records
+      where source_records.release_id='synthetic-release-1') <> 9 then
+    raise exception 'idempotent restage changed a sealed release';
+  end if;
+  rejected := false;
+  begin
+    insert into discovery_admin.source_records(
+      release_id,record_kind,id,source_path,source_order,source_sha256,payload,
+      valid_from,valid_until
+    ) values (
+      'synthetic-release-1','menu','10000000-0000-4000-8000-000000000199',
+      'synthetic/late-menu',99,repeat('9',64),'{}','2026-01-01Z','2026-01-20Z'
+    );
+  exception when sqlstate '55000' then rejected := true; end;
+  if not rejected then raise exception 'new row entered a sealed release'; end if;
   reset role;
   rejected := false;
   begin
@@ -410,6 +528,140 @@ begin
   if not rejected or (select source_digest from discovery_admin.releases
     where release_id='synthetic-release-1') = repeat('f',64) then
     raise exception 'conflicting same-version release was accepted';
+  end if;
+end
+$$;
+
+do $$
+declare
+  v_release_id constant text := 'synthetic-boundary-diversity';
+  v_empty_release_id constant text := 'synthetic-empty-release';
+  source_digest text;
+  place_digest text;
+  projection_digest text;
+  empty_source_digest text;
+  empty_place_digest text;
+  empty_projection_digest text;
+  response jsonb;
+begin
+  with records(kind,id,sha) as (
+    select 'place', '2a8039ba-6862-4bf5-882c-298892e7caf0'::uuid, repeat('a',64)
+    union all
+    select 'menu', ('20000000-0000-4000-8000-' ||
+      lpad((100000 + item)::text,12,'0'))::uuid, repeat('b',64)
+    from generate_series(1,32) as item
+  )
+  select encode(extensions.digest(convert_to(string_agg(
+    kind || ':' || id::text || ':' || sha, ',' order by kind,id
+  ),'UTF8'),'sha256'),'hex') into source_digest from records;
+  select encode(extensions.digest(convert_to(
+    'place:2a8039ba-6862-4bf5-882c-298892e7caf0:' || repeat('c',64),
+    'UTF8'),'sha256'),'hex') into place_digest;
+  with rows(id,sha) as (
+    select ('20000000-0000-4000-8000-' ||
+      lpad((100000 + item)::text,12,'0'))::uuid, repeat('d',64)
+    from generate_series(1,32) as item
+  )
+  select encode(extensions.digest(convert_to(place_digest || ':' || string_agg(
+    'menu:' || id::text || ':' || sha, ',' order by id
+  ),'UTF8'),'sha256'),'hex') into projection_digest from rows;
+
+  set local role service_role;
+  insert into discovery_admin.releases(
+    release_id,source_digest,projection_digest,source_record_count,place_count,menu_count
+  ) values (v_release_id,source_digest,projection_digest,33,1,32);
+  insert into discovery_admin.source_records(
+    release_id,record_kind,id,source_path,source_order,source_sha256,payload,
+    valid_from,valid_until
+  ) values (
+    v_release_id,'place','2a8039ba-6862-4bf5-882c-298892e7caf0',
+    'synthetic/diverse-place',0,repeat('a',64),'{}',null,null
+  );
+  insert into discovery_admin.source_records(
+    release_id,record_kind,id,source_path,source_order,source_sha256,payload,
+    valid_from,valid_until
+  )
+  select v_release_id,'menu',('20000000-0000-4000-8000-' ||
+      lpad((100000 + item)::text,12,'0'))::uuid,
+    'synthetic/diverse-menus',item - 1,repeat('b',64),'{}',
+    '2030-01-01Z'::timestamptz + item * interval '1 hour',
+    '2030-04-01Z'::timestamptz + item * interval '1 hour'
+  from generate_series(1,32) as item;
+  insert into discovery_admin.places(
+    release_id,id,slug,name,brand_id,address,latitude,longitude,region,phone,
+    naver_place_url,media,listing_kind,store_description,official_store_url,
+    searchable_text,source_order,row_sha256
+  ) values (
+    v_release_id,'2a8039ba-6862-4bf5-882c-298892e7caf0','diverse','Diverse',null,
+    'Synthetic Diverse',37,127,'Region D',null,null,'[]','menu_evidence',null,null,
+    'diverse',0,repeat('c',64)
+  );
+  insert into discovery_admin.menus(
+    release_id,id,place_id,name,facts,branch_applicability,applicability_notice,
+    selection_eligible,discovery_tags,ingredients,searchable_text,source_order,
+    valid_from,valid_until,row_sha256
+  )
+  select v_release_id,('20000000-0000-4000-8000-' ||
+      lpad((100000 + item)::text,12,'0'))::uuid,
+    '2a8039ba-6862-4bf5-882c-298892e7caf0','Diverse ' || item,'{}',
+    'branch_confirmed',null,true,'{}','{}','diverse ' || item,item - 1,
+    '2030-01-01Z'::timestamptz + item * interval '1 hour',
+    '2030-04-01Z'::timestamptz + item * interval '1 hour',repeat('d',64)
+  from generate_series(1,32) as item;
+  response := public.activate_discovery_release(
+    v_release_id,33,1,32,source_digest,projection_digest
+  );
+  reset role;
+  if response <> jsonb_build_object('status','activated','releaseId',v_release_id)
+    or (select count(*) from discovery_admin.validity_segments
+      where validity_segments.release_id = v_release_id) <> 65 then
+    raise exception 'higher-diversity release activation or segment count changed';
+  end if;
+  if exists (
+    with boundaries as (
+      select valid_from as boundary from discovery_admin.menus where menus.release_id = v_release_id
+      union
+      select valid_until from discovery_admin.menus where menus.release_id = v_release_id
+    ), probes as (
+      select boundary - interval '1 microsecond' as at_time from boundaries
+      union select boundary from boundaries
+      union select boundary + interval '1 microsecond' from boundaries
+      union select '2029-01-01Z'::timestamptz
+      union select '2031-01-01Z'::timestamptz
+    )
+    select 1 from probes
+    where discovery_admin.state_at(at_time) <> pg_temp.dynamic_state_at(at_time)
+  ) then raise exception 'higher-diversity segment differs from dynamic oracle'; end if;
+  set local role service_role;
+  if public.activate_discovery_release(
+    v_release_id,33,1,32,source_digest,projection_digest
+  )->>'status' <> 'already_active' then
+    raise exception 'higher-diversity activation replay is not idempotent';
+  end if;
+  reset role;
+
+  select encode(extensions.digest(convert_to('', 'UTF8'),'sha256'),'hex')
+    into empty_source_digest;
+  select encode(extensions.digest(convert_to('', 'UTF8'),'sha256'),'hex')
+    into empty_place_digest;
+  select encode(extensions.digest(convert_to(empty_place_digest || ':', 'UTF8'),'sha256'),'hex')
+    into empty_projection_digest;
+  set local role service_role;
+  insert into discovery_admin.releases(
+    release_id,source_digest,projection_digest,source_record_count,place_count,menu_count
+  ) values (
+    v_empty_release_id,empty_source_digest,empty_projection_digest,0,0,0
+  );
+  response := public.activate_discovery_release(
+    v_empty_release_id,0,0,0,empty_source_digest,empty_projection_digest
+  );
+  reset role;
+  if response <> jsonb_build_object('status','activated','releaseId',v_empty_release_id)
+    or (select count(*) from discovery_admin.validity_segments
+      where release_id = v_empty_release_id) <> 1
+    or discovery_admin.state_at('2035-01-01Z') <> pg_temp.dynamic_state_at('2035-01-01Z')
+    or discovery_admin.state_at('2035-01-01Z')->>'nextBoundary' is not null then
+    raise exception 'empty release segment or state changed';
   end if;
 end
 $$;
@@ -448,6 +700,15 @@ begin
   exception when insufficient_privilege then rejected := true; end;
   reset role;
   if not rejected then raise exception 'discovery_reader raw source read succeeded'; end if;
+  rejected := false;
+  begin
+    set local role service_role;
+    insert into discovery_admin.validity_segments(
+      release_id,starts_at,ends_at,eligible_epoch
+    ) values ('synthetic-empty-release','2000-01-01Z','2001-01-01Z',repeat('0',64));
+  exception when insufficient_privilege then rejected := true; end;
+  reset role;
+  if not rejected then raise exception 'service role wrote derived validity segments'; end if;
   rejected := false;
   begin
     update discovery_admin.menus set name='changed'

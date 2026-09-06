@@ -5,8 +5,8 @@ usage() {
   cat <<'USAGE'
 Usage: bash scripts/data/verify-discovery-db.sh --local
 
-Runs the explicitly enumerated compatible baseline migrations plus the
-discovery-serving migration against a task-owned disposable PostgreSQL 17
+Runs the explicitly enumerated compatible baseline and discovery migrations
+against a task-owned disposable PostgreSQL 17
 container. No host port is published and the container is removed on exit.
 
 Environment:
@@ -55,6 +55,8 @@ baseline_migrations=(
 )
 discovery_migration="supabase/migrations/20260905215700_discovery_serving.sql"
 parity_migration="supabase/migrations/20260905234327_discovery_read_parity.sql"
+optimization_migration="supabase/migrations/20260906015935_optimize_discovery_read_path.sql"
+segments_migration="supabase/migrations/20260906030541_precompute_discovery_validity_segments.sql"
 contract_file="tests/integration/discovery-db-contract.sql"
 
 sha256() {
@@ -107,7 +109,8 @@ require_file() {
   fi
 }
 
-for migration in "${baseline_migrations[@]}" "$discovery_migration" "$parity_migration" "$contract_file"; do
+for migration in "${baseline_migrations[@]}" "$discovery_migration" "$parity_migration" \
+  "$optimization_migration" "$segments_migration" "$contract_file"; do
   require_file "$migration"
 done
 
@@ -186,7 +189,7 @@ run_migration() {
   current_stage="migration $(basename "$migration")"
   current_log="$scratch_root/$(basename "$migration").log"
   docker cp "$migration" "$container_id:$target"
-  docker exec "$container_id" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres -f "$target" \
+  docker exec "$container_id" psql -X -1 -v ON_ERROR_STOP=1 -U postgres -d postgres -f "$target" \
     > "$current_log" 2>&1
 }
 
@@ -249,6 +252,8 @@ docker exec "$container_id" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres \
 
 run_migration "$discovery_migration"
 run_migration "$parity_migration"
+run_migration "$optimization_migration"
+run_migration "$segments_migration"
 
 privileges_after="$(docker exec "$container_id" psql -X -At -U postgres -d postgres -c "
   select jsonb_build_object(
@@ -348,6 +353,10 @@ jq -n \
   --arg discoveryMigrationSha256 "$(sha256 "$discovery_migration")" \
   --arg parityMigration "$parity_migration" \
   --arg parityMigrationSha256 "$(sha256 "$parity_migration")" \
+  --arg optimizationMigration "$optimization_migration" \
+  --arg optimizationMigrationSha256 "$(sha256 "$optimization_migration")" \
+  --arg segmentsMigration "$segments_migration" \
+  --arg segmentsMigrationSha256 "$(sha256 "$segments_migration")" \
   --arg contract "$contract_file" \
   --arg contractSha256 "$(sha256 "$contract_file")" \
   --arg contractOutputSha256 "$contract_log_sha256" \
@@ -383,6 +392,10 @@ jq -n \
       discoveryMigrationSha256: $discoveryMigrationSha256,
       parityMigration: $parityMigration,
       parityMigrationSha256: $parityMigrationSha256,
+      optimizationMigration: $optimizationMigration,
+      optimizationMigrationSha256: $optimizationMigrationSha256,
+      segmentsMigration: $segmentsMigration,
+      segmentsMigrationSha256: $segmentsMigrationSha256,
       preMigrationMissingRpc: {status: "PASS", expectedSqlState: "42883", classification: "undefined_function", outputSha256: $missingRpcOutputSha256},
       unsafePreexistingReader: {status: "PASS", expectedSqlState: "42501", schemaCreated: false, outputSha256: $unsafeRoleOutputSha256},
       discoveryContract: {status: "PASS", finalObservable: "ROLLBACK", file: $contract, fileSha256: $contractSha256, outputSha256: $contractOutputSha256},
