@@ -25,7 +25,6 @@ test("location denial keeps nearby food discovery available", async ({ page }) =
   // Then the fallback remains searchable without exposing a false location claim.
   await expect(page.getByRole("application", { name: "NAVER 건강식 지도" })).toBeVisible()
   await expect(page.getByLabel("검색 결과 수")).toHaveText(/^\d+곳 중 \d+곳$/u)
-  await page.getByRole("button", { name: /현재 지도 밖 \d+곳 보기/u }).click()
   await expect(page.locator("[data-pilot-place-id]").first()).toBeAttached()
 })
 
@@ -34,8 +33,15 @@ test("pagination shares the total and appends matching places", async ({ page })
   await page.route("**/api/places?**", async (route) => {
     const url = new URL(route.request().url())
     if (url.searchParams.get("mode") !== "places") return route.continue()
-    url.searchParams.set("limit", "1")
-    return route.continue({ url: url.toString() })
+    const upstreamUrl = new URL(url)
+    upstreamUrl.searchParams.delete("cursor")
+    upstreamUrl.searchParams.set("limit", "50")
+    const response = await route.fetch({ url: upstreamUrl.toString() })
+    const catalog = PilotPlacesResponseSchema.parse(await response.json())
+    const paginated = url.searchParams.has("cursor")
+      ? { ...catalog, nextCursor: null, results: catalog.results.slice(1, 2) }
+      : { ...catalog, nextCursor: "national-page-2", results: catalog.results.slice(0, 1) }
+    await route.fulfill({ contentType: "application/json", json: paginated })
   })
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.goto("/")

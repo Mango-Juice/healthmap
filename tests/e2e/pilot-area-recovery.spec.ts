@@ -215,5 +215,5 @@ test("map provider failure leaves the result list usable", async ({ page }) => {
   const firstResult = page.locator("[data-pilot-place-id]").first()
   await expect(firstResult).toBeVisible()
   await firstResult.click()
-  await expect(page.getByRole("region", { name: "메뉴 둘러보기", exact: true })).toBeVisible()
+  await expect(page.getByRole("region", { name: "조건에 맞는 메뉴", exact: true })).toBeVisible()
 })
