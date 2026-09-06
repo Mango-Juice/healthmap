@@ -9,7 +9,7 @@ const localWebServers = hostedBaseUrl
   ? undefined
   : [
       {
-        command: `exec env LOCAL_CATALOG_PORT=${catalogPort} node --experimental-strip-types tests/fixtures/local-catalog-rpc.mjs`,
+        command: `exec env LOCAL_DISCOVERY_PORT=${catalogPort} node --experimental-strip-types tests/fixtures/local-playwright-discovery-rpc.mjs`,
         ignoreHTTPSErrors: true,
         reuseExistingServer: false,
         timeout: 30_000,

@@ -93,7 +93,6 @@ for (const row of rows) {
     await page.screenshot({ path: png, fullPage: false })
     const metadata = {
       artifact: `${row.id}.png`,
-      buildId: process.env["F3_BUILD_ID"] ?? "S2m8_RnjLdQT5-_DHb3I2",
       consoleErrors,
       captureTimestamp: new Date().toISOString(),
       observed,
@@ -101,9 +100,6 @@ for (const row of rows) {
       screenshotSha256: await sha256(png),
       screenshotSha: await sha256(png),
       sourceSha256: await sha256(sourcePath),
-      sourceManifestReference:
-        ".omo/evidence/f3-final/surface-matrix.json#baseline.sourceManifestSha256",
-      sourceManifestSha256: "227f168eb3c1a35e66d9c4f85dbe29f9ff82270e46f07ac315df27d83492b107",
       testId: testInfo.testId,
       url: page.url(),
     }
