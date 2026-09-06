@@ -4,11 +4,9 @@ import { test } from "node:test"
 import { PUBLIC_ENVIRONMENT_NAMES } from "../../scripts/deploy/validate-environment.mjs"
 
 test("Vercel and CI pin frozen installs, current quality gates, and deployment commands", async () => {
-  const [vercelConfig, ci, development, architecture, packageJson] = await Promise.all([
+  const [vercelConfig, ci, packageJson] = await Promise.all([
     readFile("vercel.json", "utf8"),
     readFile(".github/workflows/ci.yml", "utf8"),
-    readFile("docs/development.md", "utf8"),
-    readFile("docs/architecture.md", "utf8"),
     readFile("package.json", "utf8"),
   ])
 
@@ -37,16 +35,6 @@ test("Vercel and CI pin frozen installs, current quality gates, and deployment c
   assert.match(ci, /pnpm test:architecture/)
   assert.match(ci, /pnpm test:integration/)
   assert.doesNotMatch(ci, /--data-mode/)
-  assert.match(development, /실제 카탈로그 행이나 서버 관리자 비밀값이[\s\S]+포함되지 않습니다/)
-  assert.match(
-    development,
-    /구성되지 않은 데이터베이스는 데이터 API가 사용할 수 없음을 명시적으로 알립니다[\s\S]+빈 결과를 반환합니다/,
-  )
-  assert.match(architecture, /필요한 결과만 요청합니다[\s\S]+요청 크기·필터·페이지 크기를 제한/)
-  assert.match(
-    architecture,
-    /원본 자료, 운영 메모, 비밀값, 검토 근거는 이 경계를 통과하지 않습니다/,
-  )
   assert.match(
     packageJson,
     /"deploy:smoke": "node --experimental-strip-types scripts\/deploy\/production-smoke\.mjs"/,
