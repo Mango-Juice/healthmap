@@ -157,12 +157,13 @@ test("marker-origin Escape keeps the result drawer collapsed and returns focus t
 }) => {
   await page.setViewportSize({ width: 375, height: 812 })
   await page.goto("/")
-  const marker = page.locator('[data-test-naver-marker="true"]').first()
+  const marker = page
+    .getByTestId("pilot-naver-map")
+    .getByRole("button", { name: "구름 도시락 공방" })
   await expect(marker).toBeAttached()
-  await marker.evaluate((element) => {
-    if (element instanceof HTMLButtonElement) element.focus()
-  })
-  await marker.dispatchEvent("click")
+  await marker.focus()
+  await expect(marker).toBeFocused()
+  await marker.click()
   await page.keyboard.press("Escape")
 
   await expect(page.getByRole("button", { name: "검색 결과 펼치기", exact: true })).toBeVisible()
