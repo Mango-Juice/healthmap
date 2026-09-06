@@ -1,5 +1,5 @@
-import { readFile } from "node:fs/promises"
 import { createServer } from "node:https"
+import { bindLocalTlsCleanup, createLocalTlsMaterial } from "./local-tls-runtime.mts"
 
 const portText = process.env["LOCAL_DISCOVERY_PORT"] ?? ""
 if (!/^[1-9]\d{0,4}$/u.test(portText)) throw new Error("LOCAL_DISCOVERY_PORT must be a TCP port")
@@ -278,10 +278,11 @@ const queryCatalog = (query) => {
   }
 }
 
+const tls = createLocalTlsMaterial({ root: process.env["LOCAL_TLS_ROOT"] })
 const server = createServer(
   {
-    cert: await readFile(new URL("./local-catalog-certificate.pem", import.meta.url)),
-    key: await readFile(new URL("./local-catalog-key.pem", import.meta.url)),
+    cert: tls.certificate,
+    key: tls.privateKey,
   },
   async (request, response) => {
     const url = new URL(request.url ?? "/", `https://127.0.0.1:${port}`)
@@ -336,7 +337,5 @@ const server = createServer(
   },
 )
 
-const shutdown = () => server.close(() => process.exit(0))
-process.on("SIGINT", shutdown)
-process.on("SIGTERM", shutdown)
+bindLocalTlsCleanup(server, tls)
 server.listen(port, "127.0.0.1")

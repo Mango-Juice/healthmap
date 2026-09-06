@@ -1,6 +1,6 @@
-import { readFile } from "node:fs/promises"
 import { createServer } from "node:https"
 import { V2_CATALOG, V2_MENU, V2_PLACE } from "../unit/domain/catalog-v2-fixture.ts"
+import { bindLocalTlsCleanup, createLocalTlsMaterial } from "./local-tls-runtime.mts"
 
 // Explicit synthetic QA fixture; never imported by production code.
 const catalog = {
@@ -17,10 +17,11 @@ const catalog = {
     placeId: `10000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
   })),
 }
-createServer(
+const tls = createLocalTlsMaterial()
+const server = createServer(
   {
-    cert: await readFile(new URL("./local-catalog-certificate.pem", import.meta.url)),
-    key: await readFile(new URL("./local-catalog-key.pem", import.meta.url)),
+    cert: tls.certificate,
+    key: tls.privateKey,
   },
   (request, response) => {
     if (request.url === "/rest/v1/rpc/get_public_catalog" && request.method === "POST") {
@@ -29,4 +30,6 @@ createServer(
     }
     response.writeHead(200).end("explicit-public-v2-test-fixture")
   },
-).listen(14529, "127.0.0.1")
+)
+bindLocalTlsCleanup(server, tls)
+server.listen(14529, "127.0.0.1")
