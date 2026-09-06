@@ -48,5 +48,5 @@ discovery·제안 SQL 계약을 확인합니다. 호스트 포트나 기존 데�
 현재 지도와 같은 `mode=places`, 기본 필터, 경계, 50개 제한 요청과 `limit=0`의 입력 오류 응답만 확인합니다.
 
 ```sh
-pnpm deploy:smoke -- --base-url https://your-origin.example
+pnpm deploy:smoke --base-url https://your-origin.example
 ```
