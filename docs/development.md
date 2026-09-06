@@ -6,7 +6,7 @@ Node.js 22와 `pnpm` 10을 사용합니다. 이 저장소에는 실제 카탈로
 포함되지 않습니다.
 
 ```sh
-pnpm install
+pnpm install --frozen-lockfile
 cp .env.example .env.local
 pnpm dev
 ```
@@ -16,8 +16,9 @@ pnpm dev
 파일, 브라우저 환경 변수, 테스트 출력에 넣지 마세요.
 
 구성되지 않은 데이터베이스는 데이터 API가 사용할 수 없음을 명시적으로 알립니다. 구성된 빈
-데이터베이스는 정상적인 빈 결과를 반환해야 합니다. 데이터 없는 새 복제본에서의 전체 빌드 검증은
-별도 준비 작업의 대상이므로, 아직 이 문서가 그 결과를 주장하지는 않습니다.
+데이터베이스는 정상적인 빈 결과를 반환합니다. 로컬 Supabase를 사용한다면 개발 환경에서만
+`HEALTHMAP_ALLOW_LOCAL_DISCOVERY=1`과 루프백 `NEXT_PUBLIC_SUPABASE_URL`을 함께 설정하세요.
+이 설정은 운영 환경의 HTTPS 구성 요구를 완화하지 않습니다.
 
 ## 검사
 
