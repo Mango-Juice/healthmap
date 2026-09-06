@@ -1,6 +1,7 @@
 import { PilotPlacesResponseSchema } from "../../lib/pilot/dto"
 
 import { expect, test } from "./map-test"
+import { installPilotStartGeolocation } from "./test-geolocation"
 
 test("location denial keeps nearby food discovery available", async ({ page }) => {
   // Given a browser that declines its initial location request.
@@ -24,10 +25,12 @@ test("location denial keeps nearby food discovery available", async ({ page }) =
   // Then the fallback remains searchable without exposing a false location claim.
   await expect(page.getByRole("application", { name: "NAVER 건강식 지도" })).toBeVisible()
   await expect(page.getByLabel("검색 결과 수")).toHaveText(/^\d+곳 중 \d+곳$/u)
+  await page.getByRole("button", { name: /현재 지도 밖 \d+곳 보기/u }).click()
   await expect(page.locator("[data-pilot-place-id]").first()).toBeAttached()
 })
 
 test("pagination shares the total and appends matching places", async ({ page }) => {
+  await installPilotStartGeolocation(page)
   await page.route("**/api/places?**", async (route) => {
     const url = new URL(route.request().url())
     if (url.searchParams.get("mode") !== "places") return route.continue()
@@ -40,12 +43,13 @@ test("pagination shares the total and appends matching places", async ({ page })
   const firstTotal = await page.getByLabel("검색 결과 수").innerText()
   const totalMatch = /^([0-9]+)곳 중 1곳$/u.exec(firstTotal)
   if (!totalMatch) throw new TypeError("Expected a one-item Pilot page")
-  await page.getByRole("button", { name: "메뉴 더 보기" }).click()
+  await page.getByRole("button", { name: "장소 더 보기" }).click()
   await expect(page.locator("[data-pilot-place-id]")).toHaveCount(2)
   await expect(page.getByLabel("검색 결과 수")).toHaveText(`${totalMatch[1]}곳 중 2곳`)
 })
 
 test("failed requests recover without dropping the search controls", async ({ page }) => {
+  await installPilotStartGeolocation(page)
   let fail = true
   await page.route("**/api/places?**", async (route) => {
     if (new URL(route.request().url()).searchParams.get("mode") === "places" && fail)
@@ -64,6 +68,7 @@ test("common menu notice and directions survive media excluded for another menu"
   page,
   request,
 }) => {
+  await installPilotStartGeolocation(page)
   const response = await request.get("/api/places?mode=places&limit=50")
   const data = PilotPlacesResponseSchema.parse(await response.json())
   const original = data.results.find((candidate) => candidate.menus.length > 1)

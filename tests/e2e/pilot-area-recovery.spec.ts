@@ -1,5 +1,6 @@
 import { PilotPlacesResponseSchema, PilotRegionsResponseSchema } from "../../lib/pilot/dto"
 import { expect, test } from "./map-test"
+import { installPilotStartGeolocation } from "./test-geolocation"
 
 test("a collapsed mobile result dock recovers one outside region and fits its result", async ({
   page,
@@ -192,28 +193,7 @@ test("global zero and aggregate failure remain distinct completed states", async
 })
 
 test("aggregate failure does not replace good local results", async ({ page }) => {
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator, "geolocation", {
-      configurable: true,
-      value: {
-        getCurrentPosition: (success: PositionCallback) =>
-          success({
-            coords: {
-              accuracy: 20,
-              altitude: null,
-              altitudeAccuracy: null,
-              heading: null,
-              latitude: 37.5007,
-              longitude: 127.0328,
-              speed: null,
-              toJSON: () => ({}),
-            },
-            timestamp: 0,
-            toJSON: () => ({}),
-          }),
-      },
-    })
-  })
+  await installPilotStartGeolocation(page)
   await page.route("**/api/places?**", async (route) => {
     if (new URL(route.request().url()).searchParams.get("mode") === "regions")
       return route.fulfill({ status: 503, json: { error: "unavailable" } })
@@ -226,6 +206,7 @@ test("aggregate failure does not replace good local results", async ({ page }) =
 })
 
 test("map provider failure leaves the result list usable", async ({ page }) => {
+  await installPilotStartGeolocation(page)
   await page.route("https://oapi.map.naver.com/**", (route) =>
     route.fulfill({ status: 503, contentType: "text/plain", body: "unavailable" }),
   )

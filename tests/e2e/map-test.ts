@@ -3,6 +3,11 @@ import { e2eCatalog } from "../fixtures/e2e-catalog"
 import { installCatalogQueryRoutes } from "./catalog-query-fixture"
 
 const NAVER_MAP_TEST_SDK = `(() => {
+  const markerPosition = (map, point) => {
+    const south = map.bounds.sw.latitude; const north = map.bounds.ne.latitude
+    const west = map.bounds.sw.longitude; const east = map.bounds.ne.longitude
+    return { left: 15 + ((point.longitude - west) / (east - west)) * 70, top: 25 + ((north - point.latitude) / (north - south)) * 50 }
+  }
   class LatLng {
     constructor(latitude, longitude) { this.latitude = latitude; this.longitude = longitude }
     lat() { return this.latitude }
@@ -11,7 +16,7 @@ const NAVER_MAP_TEST_SDK = `(() => {
   class Map {
     constructor(element, options) {
       this.element = element; this.center = options.center; this.zoom = options.zoom
-      this.bounds = { sw: new LatLng(37.492, 127.02), ne: new LatLng(37.5085, 127.0445) }
+      this.bounds = { sw: new LatLng(options.center.latitude - .018, options.center.longitude - .023), ne: new LatLng(options.center.latitude + .018, options.center.longitude + .023) }
       this.listeners = {}; element.style.position = "relative"
       element.innerHTML = '<canvas data-test-naver-map width="20" height="20"></canvas>'
       window.__healthMapTestMaps ??= []; window.__healthMapTestMaps.push(this)
@@ -37,18 +42,18 @@ const NAVER_MAP_TEST_SDK = `(() => {
       if (image) image.setAttribute("src", src)
     }
     constructor(options) {
-      this.element = document.createElement("button"); this.element.type = "button"
+      this.map = options.map; this.element = document.createElement("button"); this.element.type = "button"
       this.element.setAttribute("aria-label", options.title); this.element.dataset.testNaverMarker = "true"; this.setIcon(options.icon)
       if (options.zIndex !== undefined) { this.element.dataset.markerZIndex = String(options.zIndex); this.element.style.zIndex = String(options.zIndex) }
       this.element.dataset.latitude = String(options.position.latitude); this.element.dataset.longitude = String(options.position.longitude)
-      this.element.style.position = "absolute"; this.element.style.left = String(15 + ((options.position.longitude - 127.02) / .03) * 70) + "%"
-      this.element.style.top = String(25 + ((37.51 - options.position.latitude) / .02) * 50) + "%"; this.element.append("핀"); options.map.element.append(this.element)
+      const position = markerPosition(options.map, options.position); this.element.style.position = "absolute"; this.element.style.left = String(position.left) + "%"
+      this.element.style.top = String(position.top) + "%"; this.element.append("핀"); options.map.element.append(this.element)
     }
     setOptions(options) {
       if (options.title !== undefined) this.element.setAttribute("aria-label", options.title)
       if (options.icon !== undefined) this.setIcon(options.icon)
       if (options.zIndex !== undefined) { this.element.dataset.markerZIndex = String(options.zIndex); this.element.style.zIndex = String(options.zIndex) }
-      if (options.position) { this.element.dataset.latitude = String(options.position.latitude); this.element.dataset.longitude = String(options.position.longitude); this.element.style.left = String(15 + ((options.position.longitude - 127.02) / .03) * 70) + "%"; this.element.style.top = String(25 + ((37.51 - options.position.latitude) / .02) * 50) + "%" }
+      if (options.position) { this.element.dataset.latitude = String(options.position.latitude); this.element.dataset.longitude = String(options.position.longitude); const position = markerPosition(this.map, options.position); this.element.style.left = String(position.left) + "%"; this.element.style.top = String(position.top) + "%" }
     }
     setMap(map) { if (map === null) this.element.remove() }
   }
