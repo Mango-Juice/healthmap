@@ -1,8 +1,54 @@
+import type { APIRequestContext, Page } from "@playwright/test"
+import { PilotDetailResponseSchema, PilotPlacesResponseSchema } from "../../lib/pilot/dto"
 import { expect, test } from "./map-test"
+import { installPilotStartGeolocation } from "./test-geolocation"
+
+test.beforeEach(async ({ page }) => {
+  await installPilotStartGeolocation(page)
+})
+
+const installMenuScenario = async (
+  page: Page,
+  request: APIRequestContext,
+  menuCount: number,
+): Promise<void> => {
+  const source = PilotPlacesResponseSchema.parse(
+    await (await request.get("/api/places?mode=places&limit=50")).json(),
+  )
+  const original = source.results[0]
+  const menu = original?.menus[0]
+  if (original === undefined || menu === undefined)
+    throw new Error("Synthetic source menu is unavailable")
+  const menus = Array.from({ length: menuCount }, (_, index) => ({
+    ...menu,
+    id: `10000000-0000-4000-8000-${String(index + 20).padStart(12, "0")}`,
+    name: `검증 메뉴 ${index + 1}`,
+  }))
+  const result = { ...original, matchingMenuIds: menus.map((entry) => entry.id), menus }
+  const places = PilotPlacesResponseSchema.parse({
+    ...source,
+    nextCursor: null,
+    results: [result],
+    total: 1,
+  })
+  const detail = PilotDetailResponseSchema.parse({
+    catalogVersion: places.catalogVersion,
+    menus,
+    place: result.place,
+  })
+  await page.route("**/api/places?**", async (route) => {
+    if (new URL(route.request().url()).searchParams.get("mode") === "places")
+      await route.fulfill({ json: places })
+    else await route.continue()
+  })
+  await page.route("**/api/places/*", (route) => route.fulfill({ json: detail }))
+}
 
 test("results restore their exact reading position and detail actions precede long menus", async ({
   page,
+  request,
 }, testInfo) => {
+  await installMenuScenario(page, request, 5)
   await page.setViewportSize({ width: 375, height: 640 })
   await page.goto("/")
   await page.getByRole("button", { name: "검색 결과 펼치기", exact: true }).click()
@@ -70,7 +116,9 @@ test("results restore their exact reading position and detail actions precede lo
 
 test("one-menu detail at 200 percent keeps actions visible without an unnecessary expander or image", async ({
   page,
+  request,
 }, testInfo) => {
+  await installMenuScenario(page, request, 1)
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.goto("/")
   await expect(page.getByRole("heading", { level: 2, name: "검색 결과" })).toBeVisible()
