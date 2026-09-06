@@ -192,6 +192,28 @@ test("global zero and aggregate failure remain distinct completed states", async
 })
 
 test("aggregate failure does not replace good local results", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: {
+        getCurrentPosition: (success: PositionCallback) =>
+          success({
+            coords: {
+              accuracy: 20,
+              altitude: null,
+              altitudeAccuracy: null,
+              heading: null,
+              latitude: 37.5007,
+              longitude: 127.0328,
+              speed: null,
+              toJSON: () => ({}),
+            },
+            timestamp: 0,
+            toJSON: () => ({}),
+          }),
+      },
+    })
+  })
   await page.route("**/api/places?**", async (route) => {
     if (new URL(route.request().url()).searchParams.get("mode") === "regions")
       return route.fulfill({ status: 503, json: { error: "unavailable" } })
