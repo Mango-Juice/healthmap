@@ -21,10 +21,10 @@ before(async () => {
       return
     }
 
-    if (request.url === "/privacy") {
+    if (["/about", "/privacy", "/showcase"].includes(request.url)) {
       response
-        .writeHead(200, { "content-type": "text/html; charset=utf-8" })
-        .end("개인정보 및 분석 안내")
+        .writeHead(404, { "content-type": "text/html; charset=utf-8" })
+        .end('<meta name="robots" content="noindex">장소를 찾을 수 없어요')
       return
     }
 
@@ -72,6 +72,20 @@ after(async () => {
 test("current smoke accepts the public discovery route and malformed-input boundary", async () => {
   assert.equal(await runProductionSmoke(baseUrl), "Production smoke passed")
 })
+
+for (const path of ["/about", "/privacy", "/showcase"]) {
+  test(`smoke rejects an accidentally republished ${path}`, async () => {
+    const fetchWithPublishedPage = (url, options) =>
+      url.pathname === path
+        ? Promise.resolve(new Response("Unexpected public page", { status: 200 }))
+        : fetch(url, options)
+    await assert.rejects(
+      runProductionSmoke(baseUrl, fetchWithPublishedPage),
+      (error) =>
+        error.message === `Production smoke failed: ${path} must remain unpublished with HTTP 404`,
+    )
+  })
+}
 
 test("smoke CLI succeeds against current HTTP behavior and rejects invalid configuration", async () => {
   const success = await executeFile(process.execPath, [

@@ -58,9 +58,10 @@ export async function runProductionSmoke(baseUrl, fetchImplementation = fetch) {
   const home = await request(baseUrl, "/", fetchImplementation)
   if (home.response.status !== 200 || !home.body.includes("건강식 지도"))
     fail("/ did not return the application marker")
-  const privacy = await request(baseUrl, "/privacy", fetchImplementation)
-  if (privacy.response.status !== 200 || !privacy.body.includes("개인정보 및 분석 안내"))
-    fail("/privacy did not return the privacy marker")
+  for (const path of ["/about", "/privacy", "/showcase"]) {
+    const hidden = await request(baseUrl, path, fetchImplementation)
+    if (hidden.response.status !== 404) fail(`${path} must remain unpublished with HTTP 404`)
+  }
   const places = await request(
     baseUrl,
     `/api/places?${PUBLIC_DISCOVERY_QUERY}`,
