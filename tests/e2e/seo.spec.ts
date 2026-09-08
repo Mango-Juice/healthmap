@@ -1,5 +1,22 @@
 import { expect, test } from "@playwright/test"
 
+test("ownership verification tags are in the initial home head for search crawlers", async ({
+  request,
+}) => {
+  for (const userAgent of ["Googlebot", "Yeti"]) {
+    const response = await request.get("/", { headers: { "User-Agent": userAgent } })
+    expect(response.status()).toBe(200)
+    const html = await response.text()
+    const head = html.slice(html.indexOf("<head>"), html.indexOf("</head>"))
+    expect(head).toContain(
+      '<meta name="google-site-verification" content="YrP6a4GSewvHaif-9CGokegbtJMysU_bsVERahsg5GY"',
+    )
+    expect(head).toContain(
+      '<meta name="naver-site-verification" content="813b4ad69fdf623007de48959fe781048e6d3aec"',
+    )
+  }
+})
+
 for (const path of ["/about", "/privacy", "/showcase"]) {
   test(`${path} is unpublished and excluded from indexing`, async ({ page }) => {
     const response = await page.goto(path)

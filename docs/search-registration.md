@@ -9,6 +9,8 @@
 - `/about`, `/privacy`, `/showcase`는 404를 반환한다. 원래 소스는 각 폴더의
   `hidden-page.tsx`에 보존했다. 다시 공개하려면 `page.tsx`로 복원하고 색인 정책과 테스트도 갱신한다.
 - 검색 입력은 `search`, 검색 결과 패널은 이름 있는 `section`으로 표시한다.
+- Google·네이버 소유권 확인 메타태그는 홈의 `metadata.verification`에서 초기 HTML의
+  `<head>`에 출력한다. 태그 배포와 각 서비스의 소유권 확인 완료는 별개다.
 
 배포 후에는 홈의 HTTP 200·canonical·`index, follow`, robots.txt의 크롤링 허용,
 sitemap의 홈 URL 한 개, 숨긴 세 경로의 HTTP 404·noindex를 확인한다.
