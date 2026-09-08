@@ -9,6 +9,7 @@ import "./globals.css"
 const siteUrl = getValidatedSiteUrl(getRuntimeSiteEnvironment())
 
 export const metadata: Metadata = {
+  robots: { index: false, follow: false },
   title: "건강식 지도",
   description: "잘 먹고 싶은 날, 가까운 한 끼부터. 메뉴와 재료로 먹을 곳을 찾아보세요.",
   openGraph: {

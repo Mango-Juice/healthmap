@@ -32,6 +32,8 @@ export const buildAbsoluteSiteUrl = (
 }
 
 export const getRuntimeSiteEnvironment = (): SiteEnvironment => ({
+  NODE_ENV: process.env["NODE_ENV"],
+  VERCEL_ENV: process.env["VERCEL_ENV"],
   NEXT_PUBLIC_PLAYWRIGHT_TEST: process.env["NEXT_PUBLIC_PLAYWRIGHT_TEST"],
   NEXT_PUBLIC_SITE_URL: process.env["NEXT_PUBLIC_SITE_URL"],
   NEXT_PUBLIC_TEST_ALLOW_HTTP_LOOPBACK: process.env["NEXT_PUBLIC_TEST_ALLOW_HTTP_LOOPBACK"],

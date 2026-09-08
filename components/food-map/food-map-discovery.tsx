@@ -354,7 +354,7 @@ export function FoodMap({ clientId }: Properties) {
             outsideCount={canRecover ? outsideCount : undefined}
             onOutside={canRecover ? openOutsideResults : undefined}
           />
-          <aside
+          <section
             ref={sheet.panelRef}
             aria-label="건강식 검색 결과"
             className={styles["panel"]}
@@ -418,7 +418,7 @@ export function FoodMap({ clientId }: Properties) {
                 />
               )}
             </div>
-          </aside>
+          </section>
         </div>
         <div
           className={styles["map"]}

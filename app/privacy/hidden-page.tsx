@@ -1,3 +1,4 @@
+// Temporarily unpublished: this filename is not a Next.js route.
 import type { Metadata } from "next"
 
 import { buildAbsoluteSiteUrl, getRuntimeSiteEnvironment } from "../../lib/share-links"
@@ -19,6 +20,7 @@ export const metadata: Metadata =
         alternates: { canonical },
       }
 
+// biome-ignore lint/style/noDefaultExport: Preserved page for a future public route.
 export default function PrivacyPage() {
   return (
     <main className="privacy-page">

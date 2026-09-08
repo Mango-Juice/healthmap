@@ -1,3 +1,4 @@
+// Temporarily unpublished: this filename is not a Next.js route.
 import type { Metadata } from "next"
 import styles from "./showcase.module.css"
 import { ShowcaseClient } from "./showcase-client"
