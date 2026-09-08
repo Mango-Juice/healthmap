@@ -9,7 +9,7 @@ type Properties = {
 
 export function FoodMapSearchControls({ query, onQueryChange }: Properties) {
   return (
-    <div className={styles["controls"]}>
+    <search aria-label="가게와 메뉴" className={styles["controls"]}>
       <label className={shared["search"]}>
         <SearchIcon />
         <span className={shared["visuallyHidden"]}>가게나 메뉴 검색</span>
@@ -27,6 +27,6 @@ export function FoodMapSearchControls({ query, onQueryChange }: Properties) {
           />
         </span>
       </label>
-    </div>
+    </search>
   )
 }

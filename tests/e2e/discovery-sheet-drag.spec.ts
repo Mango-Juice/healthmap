@@ -19,7 +19,7 @@ test("Given the mobile drawer toggle, When it is tapped, keyed, and dragged betw
   await page.keyboard.press("Enter")
   await expect(collapsedToggle).toHaveAttribute("aria-expanded", "false")
   await handle.evaluate(async (element) => {
-    const stack = element.closest("aside")?.parentElement
+    const stack = element.closest("section[aria-label='건강식 검색 결과']")?.parentElement
     await Promise.all(stack?.getAnimations().map((animation) => animation.finished) ?? [])
   })
 
@@ -33,7 +33,9 @@ test("Given the mobile drawer toggle, When it is tapped, keyed, and dragged betw
   await page.mouse.move(x, y - 360, { steps: 4 })
 
   const intermediate = await handle.evaluate((element) => ({
-    dragging: element.closest("aside")?.parentElement?.getAttribute("data-dragging"),
+    dragging: element
+      .closest("section[aria-label='건강식 검색 결과']")
+      ?.parentElement?.getAttribute("data-dragging"),
     y: element.getBoundingClientRect().y,
   }))
   expect(intermediate.dragging).toBe("true")
@@ -43,13 +45,18 @@ test("Given the mobile drawer toggle, When it is tapped, keyed, and dragged betw
   await expect(expandedToggle).toHaveAttribute("aria-expanded", "true")
   await expect
     .poll(() =>
-      handle.evaluate((element) => element.closest("aside")?.parentElement?.dataset["dragging"]),
+      handle.evaluate(
+        (element) =>
+          element.closest("section[aria-label='건강식 검색 결과']")?.parentElement?.dataset[
+            "dragging"
+          ],
+      ),
     )
     .toBeUndefined()
 
   const geometry = await handle.evaluate((element, initialY) => {
-    const stack = element.closest("aside")?.parentElement
-    const panel = element.closest("aside")
+    const stack = element.closest("section[aria-label='건강식 검색 결과']")?.parentElement
+    const panel = element.closest("section[aria-label='건강식 검색 결과']")
     const body = panel?.querySelector<HTMLElement>("[class*='scrollBody']")
     return {
       bodyClientHeight: body?.clientHeight ?? 0,
@@ -84,7 +91,12 @@ test("Given a short mobile viewport and desktop pane, When the sheet surface is 
   await page.mouse.move(x, y - 360, { steps: 4 })
   await expect
     .poll(() =>
-      handle.evaluate((element) => element.closest("aside")?.parentElement?.dataset["dragging"]),
+      handle.evaluate(
+        (element) =>
+          element.closest("section[aria-label='건강식 검색 결과']")?.parentElement?.dataset[
+            "dragging"
+          ],
+      ),
     )
     .toBe("true")
   await page.mouse.up()
@@ -92,7 +104,9 @@ test("Given a short mobile viewport and desktop pane, When the sheet surface is 
   await page.locator("[data-food-map-place-id]").first().click()
   await page.getByRole("button", { name: "메뉴 펼치기", exact: true }).click()
   const scrollTarget = await handle.evaluate((element) => {
-    const body = element.closest("aside")?.querySelector<HTMLElement>("[class*='scrollBody']")
+    const body = element
+      .closest("section[aria-label='건강식 검색 결과']")
+      ?.querySelector<HTMLElement>("[class*='scrollBody']")
     if (body === null || body === undefined)
       throw new Error("short mobile sheet scroll body missing")
     const rect = body.getBoundingClientRect()
@@ -110,16 +124,22 @@ test("Given a short mobile viewport and desktop pane, When the sheet surface is 
     .poll(() =>
       handle.evaluate(
         (element) =>
-          element.closest("aside")?.querySelector<HTMLElement>("[class*='scrollBody']")
-            ?.scrollTop ?? 0,
+          element
+            .closest("section[aria-label='건강식 검색 결과']")
+            ?.querySelector<HTMLElement>("[class*='scrollBody']")?.scrollTop ?? 0,
       ),
     )
     .toBeGreaterThan(0)
   const compactGeometry = await handle.evaluate((element) => {
-    const body = element.closest("aside")?.querySelector<HTMLElement>("[class*='scrollBody']")
+    const body = element
+      .closest("section[aria-label='건강식 검색 결과']")
+      ?.querySelector<HTMLElement>("[class*='scrollBody']")
     return {
       contentScrollTop: body?.scrollTop ?? 0,
-      dragging: element.closest("aside")?.parentElement?.dataset["dragging"] ?? null,
+      dragging:
+        element.closest("section[aria-label='건강식 검색 결과']")?.parentElement?.dataset[
+          "dragging"
+        ] ?? null,
       height: element.getBoundingClientRect().height,
       y: element.getBoundingClientRect().y,
     }
@@ -161,7 +181,12 @@ test("Given an interrupted mobile drag, When pointer capture is cancelled, Then 
   await page.mouse.move(x, y - 120, { steps: 2 })
   await expect
     .poll(() =>
-      handle.evaluate((element) => element.closest("aside")?.parentElement?.dataset["dragging"]),
+      handle.evaluate(
+        (element) =>
+          element.closest("section[aria-label='건강식 검색 결과']")?.parentElement?.dataset[
+            "dragging"
+          ],
+      ),
     )
     .toBe("true")
   await toggle.dispatchEvent("pointercancel", { isPrimary: true, pointerId: 1 })
@@ -169,7 +194,10 @@ test("Given an interrupted mobile drag, When pointer capture is cancelled, Then 
     .poll(() => handle.evaluate((element) => element.getBoundingClientRect().y))
     .toBeCloseTo(initialY, 0)
   const cancellation = await handle.evaluate((element) => ({
-    dragging: element.closest("aside")?.parentElement?.dataset["dragging"] ?? null,
+    dragging:
+      element.closest("section[aria-label='건강식 검색 결과']")?.parentElement?.dataset[
+        "dragging"
+      ] ?? null,
     y: element.getBoundingClientRect().y,
   }))
   expect(cancellation.dragging).toBeNull()

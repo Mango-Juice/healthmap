@@ -218,7 +218,7 @@ test("Given the collapsed mobile drawer, When its buttons are activated, Then ta
     .poll(() => handle.evaluate((element) => element.getBoundingClientRect().y))
     .toBeLessThan(collapsedY - 50)
   await handle.evaluate(async (element) => {
-    const stack = element.closest("aside")?.parentElement
+    const stack = element.closest("section[aria-label='건강식 검색 결과']")?.parentElement
     await Promise.all(stack?.getAnimations().map((animation) => animation.finished) ?? [])
   })
   await expanded.focus()

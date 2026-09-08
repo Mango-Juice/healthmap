@@ -58,10 +58,10 @@ test("results restore their exact reading position and detail actions precede lo
   await page.getByRole("button", { name: "검색 결과 펼치기", exact: true }).click()
   const scrollFixture = await page.addStyleTag({
     content:
-      "aside[aria-label='건강식 검색 결과'] [class*='scrollBody'] { block-size: 120px !important; max-block-size: 120px !important; min-block-size: 0 !important; overflow-y: auto !important; }",
+      "section[aria-label='건강식 검색 결과'] [class*='scrollBody'] { block-size: 120px !important; max-block-size: 120px !important; min-block-size: 0 !important; overflow-y: auto !important; }",
   })
 
-  const listBody = page.locator("aside[aria-label='건강식 검색 결과'] [class*='scrollBody']")
+  const listBody = page.locator("section[aria-label='건강식 검색 결과'] [class*='scrollBody']")
   await listBody.evaluate((element) => {
     element.scrollTop = Math.min(40, element.scrollHeight - element.clientHeight)
   })
