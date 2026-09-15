@@ -108,7 +108,11 @@ describe("initial discovery query", () => {
         query: vi
           .fn()
           .mockReturnValueOnce(pending.promise)
-          .mockResolvedValueOnce({ ...discoveryState(), data: emptyPlaces() }),
+          .mockImplementation((request) =>
+            request.cursor
+              ? Promise.reject(new DiscoveryReadError(kind))
+              : Promise.resolve({ ...discoveryState(), data: emptyPlaces() }),
+          ),
       })
       const reader = createCachedDiscoveryReader(client, "provider", {
         cache: new RecordingCache(),
@@ -127,7 +131,7 @@ describe("initial discovery query", () => {
         detail(),
       ])
       expect(client.getState).toHaveBeenCalledTimes(1)
-      expect(client.query).toHaveBeenCalledTimes(2)
+      expect(client.query).toHaveBeenCalledTimes(kind === "invalid_request" ? 3 : 2)
       expect(client.getPlace).toHaveBeenCalledTimes(1)
     },
   )

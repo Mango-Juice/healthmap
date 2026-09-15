@@ -159,17 +159,30 @@ export const createCachedDiscoveryReader = (
     })
   }
 
+  const finishInitialQuery = async (
+    pending: Promise<InitialQuery>,
+    receiveEnvelope: (envelope: QueryEnvelope) => void,
+  ): Promise<StateEntry> => {
+    try {
+      const result = await pending
+      receiveEnvelope(result.envelope)
+      return result.entry
+    } catch (error) {
+      // Older database deployments require explicit state. Fall back once to
+      // that supported protocol; a rejected explicit query is still surfaced.
+      if (error instanceof DiscoveryReadError && error.kind === "invalid_request")
+        return readState(false)
+      throw error
+    }
+  }
+
   const readQueryState = async (
     query: DiscoveryQuery,
     receiveEnvelope: (envelope: QueryEnvelope) => void,
   ): Promise<StateEntry> => {
     const request = createDiscoveryInitialQueryRequest(query)
     const key = JSON.stringify(request)
-    if (initialQuery?.key === key) {
-      const result = await initialQuery.promise
-      receiveEnvelope(result.envelope)
-      return result.entry
-    }
+    if (initialQuery?.key === key) return finishInitialQuery(initialQuery.promise, receiveEnvelope)
     if (stateEntry !== undefined || refreshPromise !== undefined) return readState(false)
 
     // The first query returns its state and data together. Shared callers keep the
@@ -197,9 +210,7 @@ export const createCachedDiscoveryReader = (
       if (refreshPromise === statePending) refreshPromise = undefined
     }
     statePending.then(clear, clear)
-    const result = await pending
-    receiveEnvelope(result.envelope)
-    return result.entry
+    return finishInitialQuery(pending, receiveEnvelope)
   }
 
   const queryAttempt = async (
