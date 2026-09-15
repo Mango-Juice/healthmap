@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef } from "react"
 
-import { captureProductAnalytics } from "../../lib/analytics/browser"
+import { captureProductAnalytics, getProductAnalyticsOptOut } from "../../lib/analytics/browser"
 import type { DiscoveryPlaceDto as DiscoveryPlace } from "../../lib/discovery/dto"
 import type { DiscoveryFilter } from "../../lib/discovery/menu-selection"
 import { normalizeDiscoveryQuery } from "../../lib/domain/discovery"
@@ -26,13 +26,16 @@ export function useFoodMapAnalytics() {
   const searchIntent = useRef("")
   const searchCaptured = useRef(false)
 
-  useEffect(() => {
-    if (viewed.current) return
+  const mapViewed = useCallback(() => {
+    if (viewed.current || getProductAnalyticsOptOut()) return
     viewed.current = true
     captureProductAnalytics({ event: "map_viewed", properties: { source: "direct" } })
   }, [])
 
+  useEffect(mapViewed, [mapViewed])
+
   return {
+    mapViewed,
     locationResolved: useCallback((outcome: DiscoveryLocationOutcome): void => {
       captureProductAnalytics({ event: "location_resolved", properties: { outcome } })
     }, []),

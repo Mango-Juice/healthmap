@@ -1,8 +1,7 @@
 // Temporarily unpublished: this filename is not a Next.js route.
 import type { Metadata } from "next"
-
+import { PrivacyPreference } from "../../components/analytics/privacy-preference"
 import { buildAbsoluteSiteUrl, getRuntimeSiteEnvironment } from "../../lib/share-links"
-import { PrivacyPreference } from "./privacy-preference"
 import "./privacy.css"
 
 const canonical = buildAbsoluteSiteUrl("privacy", getRuntimeSiteEnvironment())

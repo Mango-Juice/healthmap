@@ -1,4 +1,4 @@
-import { type BrowserContext, test as base, expect } from "@playwright/test"
+import { type BrowserContext, test as base, expect, type Page } from "@playwright/test"
 
 const NAVER_MAP_TEST_SDK = `(() => {
   const markerPosition = (map, point) => {
@@ -75,9 +75,29 @@ export const installMapTestRoutes = async (context: BrowserContext): Promise<voi
   await installMapSdkTestRoutes(context)
 }
 
-export const test = base.extend({
+// First-visit consent has dedicated UI coverage. Other discovery cases start
+// with a returning browser that already declined analytics.
+export const firstVisitTest = base.extend({
   page: async ({ context, page }, use) => {
     await installMapTestRoutes(context)
+    await use(page)
+  },
+})
+
+const installDeclinedAnalytics = async (page: Page): Promise<void> => {
+  await page.addInitScript(() => {
+    try {
+      const key = "healthmap.analytics.opt-out.v1"
+      if (localStorage.getItem(key) === null) localStorage.setItem(key, "true")
+    } catch {
+      // Storage-failure cases exercise the app's own recovery behavior.
+    }
+  })
+}
+
+export const test = firstVisitTest.extend({
+  page: async ({ page }, use) => {
+    await installDeclinedAnalytics(page)
     await use(page)
   },
 })
@@ -85,6 +105,7 @@ export const test = base.extend({
 export const serverTest = base.extend({
   page: async ({ context, page }, use) => {
     await installMapSdkTestRoutes(context)
+    await installDeclinedAnalytics(page)
     await use(page)
   },
 })
