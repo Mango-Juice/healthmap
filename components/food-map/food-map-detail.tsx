@@ -16,6 +16,7 @@ import { buildNaverRouteDirections } from "../../lib/domain/directions"
 import { fetchWithTransientRetry } from "../../lib/http/fetch-with-transient-retry"
 import { ArrowLeftIcon, ArrowUpRightIcon, NavigationIcon } from "../ui/health-map-icons"
 import { ActionButton } from "../ui/health-map-primitives"
+import { FoodMapStoreCategory } from "./food-map-category-tags"
 import styles from "./food-map-discovery.module.css"
 import { FoodMapLoadingStatus } from "./food-map-loading-status"
 import { FoodMapMenuList } from "./food-map-menu-list"
@@ -102,7 +103,8 @@ export function FoodMapDetail({
           {storeOnly ? (
             <p className={styles["storeSummary"]}>
               {place.storeDescription}
-              <span>메뉴 정보는 아직 확인되지 않았어요.</span>
+              <FoodMapStoreCategory brandId={place.brandId} />
+              <small>이 지점의 상세 메뉴는 아직 등록되지 않았어요.</small>
             </p>
           ) : null}
           {firstMenu ? (
