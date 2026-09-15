@@ -188,6 +188,10 @@
   word-break: keep-all;
 }
 
+.dialog p {
+  font-size: var(--hm-type-label);
+}
+
 .preference {
   border-block: var(--hm-border-width) solid var(--hm-border);
   margin-block: var(--hm-space-4);

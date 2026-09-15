@@ -9,18 +9,11 @@ import {
 } from "../../lib/discovery/menu-selection"
 import styles from "./food-map-discovery.module.css"
 
-function FoodMapCategoryTag({
-  category,
-  store = false,
-}: {
-  readonly category: DiscoveryTag
-  readonly store?: boolean
-}) {
+function FoodMapCategoryTag({ category }: { readonly category: DiscoveryTag }) {
   return (
     <span data-category={category}>
       <Image alt="" src={discoveryCategoryIcon(category)} width={16} height={20} />
       {DISCOVERY_LABELS[category]}
-      {store ? " 매장" : null}
     </span>
   )
 }
@@ -30,7 +23,7 @@ export function FoodMapStoreCategory({ brandId }: { readonly brandId: string | n
   if (category === "neutral") return null
   return (
     <span className={styles["tags"]}>
-      <FoodMapCategoryTag category={category} store />
+      <FoodMapCategoryTag category={category} />
     </span>
   )
 }
