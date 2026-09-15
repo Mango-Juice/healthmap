@@ -12,7 +12,7 @@ import { haversineDistanceMeters } from "../../lib/domain/distance"
 import type { GeoPoint } from "../../lib/domain/geo"
 import { ChevronRightIcon } from "../ui/health-map-icons"
 import { ActionButton } from "../ui/health-map-primitives"
-import { FoodMapCategoryTags } from "./food-map-category-tags"
+import { FoodMapCategoryTags, FoodMapStoreCategory } from "./food-map-category-tags"
 import styles from "./food-map-discovery.module.css"
 import { FoodMapLoadingStatus } from "./food-map-loading-status"
 import { FoodMapThumbnail } from "./food-map-thumbnail"
@@ -157,7 +157,8 @@ export function FoodMapResults({
                     {place.listingKind === "store_only" ? (
                       <span className={styles["cardSummary"]}>
                         <span className={styles["menuPreview"]}>{place.storeDescription}</span>
-                        <small>메뉴 정보 미확인</small>
+                        <FoodMapStoreCategory brandId={place.brandId} />
+                        <small>지점별 상세 메뉴 미등록</small>
                       </span>
                     ) : (
                       <span className={styles["cardSummary"]}>

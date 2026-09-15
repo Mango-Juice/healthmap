@@ -795,7 +795,7 @@
 }
 
 .quickMenu span,
-.storeSummary span,
+.storeSummary > small,
 .mapProvider {
   color: var(--hm-ink-muted);
   font-size: var(--hm-type-caption);

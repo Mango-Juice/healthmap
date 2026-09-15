@@ -57,6 +57,8 @@ for (const viewport of [
     page,
     request,
   }, testInfo) => {
+    const pageErrors: string[] = []
+    page.on("pageerror", (error) => pageErrors.push(error.message))
     // Given a schema-parsed store-only response rendered in the root FoodMap.
     await installSubwayScenario(page, request)
     expect((await request.get("/")).ok()).toBe(true)
@@ -79,6 +81,8 @@ for (const viewport of [
       path: testInfo.outputPath(`subway-marker-normal-${viewport.width}x${viewport.height}.png`),
     })
     await expect(result).toBeVisible()
+    await expect(result.locator('[data-category="salad_poke"]')).toHaveText("샐러드·포케 매장")
+    await expect(result).toContainText("지점별 상세 메뉴 미등록")
     await result.click()
     await expect(marker.locator("img[data-test-marker-icon]")).toHaveAttribute(
       "src",
@@ -86,7 +90,11 @@ for (const viewport of [
     )
     // Then the detail exposes store facts and navigation without a menu or health claim.
     const storeSummary = page.locator("p").filter({ hasText: "서브웨이 · 샌드위치·샐러드 매장" })
-    await expect(storeSummary).toContainText("메뉴 정보는 아직 확인되지 않았어요.")
+    await expect(storeSummary.locator('[data-category="salad_poke"]')).toHaveText(
+      "샐러드·포케 매장",
+    )
+    await expect(storeSummary).toContainText("이 지점의 상세 메뉴는 아직 등록되지 않았어요.")
+    await expect(page.getByLabel("조건에 맞는 메뉴")).toHaveCount(0)
     await expect(page.getByRole("link", { name: "장소 정보 보기" })).toHaveAttribute(
       "href",
       /^https:\/\/(?:www\.)?subway\.co\.kr\/storeDetail\?franchiseNo=\d+$/u,
@@ -106,6 +114,7 @@ for (const viewport of [
         name: viewport.width < 900 ? "장소 닫기" : "장소에서 돌아가기",
       })
       .click()
+    await expect(result).toBeFocused()
     await page.getByRole("button", { name: "샐러드·포케 필터" }).click()
     const drawerToggle = page.getByTestId("food-map-drawer-handle").getByRole("button").first()
     if (viewport.width < 900 && (await drawerToggle.getAttribute("aria-expanded")) === "false")
@@ -113,6 +122,8 @@ for (const viewport of [
 
     // Then the approved salad category includes Subway without menu facts.
     await expect(result).toBeVisible()
+    await expect(result.locator('[data-category="salad_poke"]')).toHaveText("샐러드·포케 매장")
+    await expect(result).toContainText("지점별 상세 메뉴 미등록")
     await expect(marker.locator("img[data-test-marker-icon]")).toHaveAttribute(
       "src",
       "/markers/food-map-salad_poke.svg",
@@ -120,14 +131,19 @@ for (const viewport of [
     await page.screenshot({
       path: testInfo.outputPath(`subway-salad-results-${viewport.width}x${viewport.height}.png`),
     })
-    await result.click()
+    if (viewport.width < 900) await drawerToggle.click()
+    await marker.click()
     await expect(marker.locator("img[data-test-marker-icon]")).toHaveAttribute(
       "src",
       "/markers/food-map-salad_poke-selected.svg",
     )
-    await expect(storeSummary).toContainText("메뉴 정보는 아직 확인되지 않았어요.")
+    await expect(storeSummary.locator('[data-category="salad_poke"]')).toHaveText(
+      "샐러드·포케 매장",
+    )
+    await expect(storeSummary).toContainText("이 지점의 상세 메뉴는 아직 등록되지 않았어요.")
     await page.screenshot({
       path: testInfo.outputPath(`subway-salad-detail-${viewport.width}x${viewport.height}.png`),
     })
+    expect(pageErrors).toEqual([])
   })
 }
