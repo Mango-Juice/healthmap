@@ -61,6 +61,7 @@ export const registerDiscoveryAnalyticsAdversarialTests = (): void => {
 
   test("pagination does not emit another completed first-page result", async ({ page }) => {
     const transport = await installAnalyticsInterceptor(page)
+    let expectedResultCount = 0
     await page.route("**/api/places?**", async (route) => {
       const url = new URL(route.request().url())
       if (url.searchParams.get("mode") !== "places" || url.searchParams.has("query"))
@@ -69,6 +70,7 @@ export const registerDiscoveryAnalyticsAdversarialTests = (): void => {
       upstreamUrl.searchParams.delete("cursor")
       const response = await route.fetch({ url: upstreamUrl.toString() })
       const pageResponse = DiscoveryPlacesResponseSchema.parse(await response.json())
+      expectedResultCount = pageResponse.results.length
       const paginated = url.searchParams.has("cursor")
         ? { ...pageResponse, results: pageResponse.results.slice(1), nextCursor: null }
         : { ...pageResponse, results: pageResponse.results.slice(0, 1), nextCursor: "qa-page-2" }
@@ -86,6 +88,9 @@ export const registerDiscoveryAnalyticsAdversarialTests = (): void => {
     ).length
 
     await page.getByRole("button", { name: "장소 더 보기" }).click()
+    // The button also disappears while loading. Wait for the appended results
+    // so the test cannot finish and dispose an in-flight route.fetch response.
+    await expect(page.locator("[data-food-map-place-id]")).toHaveCount(expectedResultCount)
     await expect(page.getByRole("button", { name: "장소 더 보기" })).toHaveCount(0)
 
     expect(transport.events.filter(({ event }) => event === "catalog_result_received").length).toBe(
