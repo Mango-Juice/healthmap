@@ -58,7 +58,6 @@ jobs:
         run: pnpm test:deployment
 
   browser-smoke:
-    needs: quality
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -77,8 +76,22 @@ jobs:
       - name: Install from lockfile
         run: pnpm install --frozen-lockfile
 
-      - name: Install Chromium
-        run: pnpm exec playwright install --with-deps chromium
+      - name: Read installed Playwright version
+        id: playwright-version
+        run: |
+          node -e 'require("node:fs").appendFileSync(process.env["GITHUB_OUTPUT"], `version=${require("@playwright/test/package.json").version}\n`)'
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-browsers-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.playwright-version.outputs.version }}
+
+      - name: Install Chromium system dependencies
+        run: pnpm exec playwright install-deps chromium
+
+      - name: Install headless Chromium
+        run: pnpm exec playwright install --only-shell chromium
 
       - name: Run browser smoke
         run: pnpm test:e2e

@@ -57,7 +57,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: isContinuousIntegration,
   retries: isContinuousIntegration ? 2 : 0,
-  workers: isContinuousIntegration ? 1 : "50%",
+  workers: isContinuousIntegration ? 2 : "50%",
   reporter: "line",
   use: {
     baseURL,
