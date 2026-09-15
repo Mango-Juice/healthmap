@@ -8,6 +8,7 @@ import {
 import type { DiscoveryFilter, DiscoveryIngredientFilter } from "../../lib/discovery/menu-selection"
 import { normalizeDiscoveryQuery } from "../../lib/domain/discovery"
 import type { ViewportBounds } from "../../lib/domain/viewport"
+import { fetchWithTransientRetry } from "../../lib/http/fetch-with-transient-retry"
 
 const REQUEST_TIMEOUT_MS = 10_000
 
@@ -103,7 +104,7 @@ export function useFoodMapQuery(input: Query) {
       setRegionsLoading(false)
       controller.abort()
     }, REQUEST_TIMEOUT_MS)
-    void fetch(regionRequest.url, { signal: controller.signal })
+    void fetchWithTransientRetry(regionRequest.url, controller.signal)
       .then(async (response) => {
         if (!response.ok) throw new TypeError("Discovery regions unavailable")
         const parsed = DiscoveryRegionsResponseSchema.parse(await response.json())
@@ -153,7 +154,7 @@ export function useFoodMapQuery(input: Query) {
       }
     }, REQUEST_TIMEOUT_MS)
     const url = `/api/places?${request.key}${requestCursor ? `&cursor=${encodeURIComponent(requestCursor)}` : ""}`
-    void fetch(url, { signal: controller.signal })
+    void fetchWithTransientRetry(url, controller.signal)
       .then(async (response) => {
         if (!response.ok) throw new DiscoveryQueryError("http")
         let payload: unknown

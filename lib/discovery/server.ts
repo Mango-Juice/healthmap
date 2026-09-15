@@ -13,10 +13,9 @@ import {
   type DiscoveryRpcClient,
   DiscoveryRpcErrorResponseSchema,
 } from "./contracts"
+import { reportDiscoveryFailure } from "./diagnostics"
 import type { DiscoveryQuery } from "./query-contract"
-
-const STATE_TIMEOUT_MILLISECONDS = 1_500
-const DATA_TIMEOUT_MILLISECONDS = 2_500
+import { DATA_TIMEOUT_MILLISECONDS, STATE_TIMEOUT_MILLISECONDS } from "./timeouts"
 
 export { DiscoveryReadError, type DiscoveryReader, type DiscoveryRpcClient } from "./contracts"
 
@@ -24,7 +23,7 @@ type PublicEndpoint = Readonly<{ readonly key: string; readonly url: string }>
 type PublicEnvironment = Readonly<Record<string, string | undefined>>
 type RpcRequest = Readonly<{
   readonly body: string
-  readonly path: string
+  readonly path: "get_discovery_state" | "query_discovery" | "get_discovery_place"
   readonly signal?: AbortSignal | undefined
   readonly timeoutMilliseconds: number
 }>
@@ -47,11 +46,12 @@ export const createSupabaseDiscoveryRpcClient = (
 ): DiscoveryRpcClient => {
   const request = async ({ body, path, signal, timeoutMilliseconds }: RpcRequest) => {
     if (signal?.aborted) throw new DiscoveryReadError("cancelled")
+    const startedAt = performance.now()
     const timeoutSignal = AbortSignal.timeout(timeoutMilliseconds)
     const combinedSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal
-    let response: Response
+    let status: number | undefined
     try {
-      response = await fetchImplementation(new URL(`/rest/v1/rpc/${path}`, endpoint.url), {
+      const response = await fetchImplementation(new URL(`/rest/v1/rpc/${path}`, endpoint.url), {
         body,
         cache: "no-store",
         headers: {
@@ -62,22 +62,39 @@ export const createSupabaseDiscoveryRpcClient = (
         method: "POST",
         signal: combinedSignal,
       })
+      status = response.status
+      let payload: unknown
+      try {
+        payload = await response.json()
+      } catch {
+        // An upstream gateway may return HTML instead of a JSON RPC error.
+        throw new DiscoveryReadError(response.ok ? "invalid_response" : "transport")
+      }
+      if (!response.ok) throw readRpcError(payload) ?? new DiscoveryReadError("transport")
+      return payload
     } catch (error) {
-      if (signal?.aborted) throw new DiscoveryReadError("cancelled")
-      if (timeoutSignal.aborted || (error instanceof DOMException && error.name === "TimeoutError"))
-        throw new DiscoveryReadError("timeout")
-      throw new DiscoveryReadError("transport")
+      const timedOut =
+        timeoutSignal.aborted ||
+        (signal?.aborted &&
+          signal.reason instanceof DOMException &&
+          signal.reason.name === "TimeoutError") ||
+        (error instanceof DOMException && error.name === "TimeoutError")
+      const failure = timedOut
+        ? new DiscoveryReadError("timeout")
+        : signal?.aborted
+          ? new DiscoveryReadError("cancelled")
+          : error instanceof DiscoveryReadError
+            ? error
+            : new DiscoveryReadError("transport")
+      const operation =
+        path === "get_discovery_state"
+          ? "state_rpc"
+          : path === "query_discovery"
+            ? "query_rpc"
+            : "detail_rpc"
+      reportDiscoveryFailure(operation, failure, startedAt, status)
+      throw failure
     }
-    let payload: unknown
-    try {
-      payload = await response.json()
-    } catch {
-      if (signal?.aborted) throw new DiscoveryReadError("cancelled")
-      if (timeoutSignal.aborted) throw new DiscoveryReadError("timeout")
-      throw new DiscoveryReadError("invalid_response")
-    }
-    if (!response.ok) throw readRpcError(payload) ?? new DiscoveryReadError("transport")
-    return payload
   }
 
   return {

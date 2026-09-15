@@ -36,15 +36,15 @@ test("search analytics waits for success and deduplicates retry, equivalent text
   page,
 }) => {
   const transport = await installAnalyticsInterceptor(page)
-  let failFirstSearch = true
+  let failedSearchRequests = 0
   await page.route("**/api/places?**", async (route) => {
     const url = new URL(route.request().url())
     if (
-      failFirstSearch &&
+      failedSearchRequests < 2 &&
       url.searchParams.get("mode") === "places" &&
       url.searchParams.get("query") === "무지개 한그릇 연구소"
     ) {
-      failFirstSearch = false
+      failedSearchRequests += 1
       return route.fulfill({ status: 503, json: { error: "catalog_unavailable", retry: true } })
     }
     return route.continue()
@@ -56,6 +56,7 @@ test("search analytics waits for success and deduplicates retry, equivalent text
   await search.fill("무")
   await search.fill("무지개 한그릇 연구소")
   await expect(page.getByRole("button", { name: "장소 다시 불러오기" })).toBeVisible()
+  expect(failedSearchRequests).toBe(2)
   expect(transport.events.filter(({ event }) => event === "search_used")).toHaveLength(0)
   await waitForEvent(transport.events, "catalog_request_failed", {
     query_kind: "search",

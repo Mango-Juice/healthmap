@@ -107,22 +107,27 @@ export const registerDiscoveryAnalyticsAdversarialTests = (): void => {
       if (url.searchParams.get("mode") !== "places" || url.searchParams.get("query") !== "실패")
         return route.continue()
       attempt += 1
-      if (attempt === 1) return route.fulfill({ status: 503, body: "unavailable" })
-      if (attempt === 2)
+      if (attempt <= 2) return route.fulfill({ status: 503, body: "unavailable" })
+      if (attempt === 3)
         return route.fulfill({ status: 200, contentType: "application/json", body: "{" })
-      if (attempt === 3) return route.abort("failed")
+      if (attempt <= 5) return route.abort("failed")
       return route.continue()
     })
     await page.goto("/")
     await expect(page.locator("[data-food-map-place-id]").first()).toBeAttached()
     await page.getByRole("searchbox", { name: "가게나 메뉴 검색" }).fill("실패")
 
-    for (const reason of ["http", "invalid_response", "network"] as const) {
+    for (const [reason, expectedAttempts] of [
+      ["http", 2],
+      ["invalid_response", 3],
+      ["network", 5],
+    ] as const) {
       await expect(page.getByRole("button", { name: "장소 다시 불러오기" })).toBeVisible()
       await waitForEvent(transport.events, "catalog_request_failed", {
         query_kind: "search",
         reason,
       })
+      expect(attempt).toBe(expectedAttempts)
       await page.getByRole("button", { name: "장소 다시 불러오기" }).click()
     }
     await expect(page.getByLabel("검색 결과 수")).toHaveText("0곳 중 0곳")
