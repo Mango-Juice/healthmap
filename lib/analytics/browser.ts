@@ -5,6 +5,7 @@ import PostHog from "posthog-js-lite"
 import { parsePlaywrightPublicEnvironment } from "../../app/public-environment.ts"
 import { type AnalyticsEvent, parseAnalyticsEvent } from "../domain/analytics"
 import {
+  ANALYTICS_OPT_OUT_STORAGE_KEY,
   createPrivacySafeAnalytics,
   type PrivacySafeAnalytics,
   sanitizeAnalyticsTransportEvent,
@@ -215,5 +216,9 @@ export const setProductAnalyticsOptOut = async (optedOut: boolean): Promise<void
   }
 }
 
-export const getProductAnalyticsOptOut = (): boolean =>
-  browserStorage.getItem("healthmap.analytics.opt-out.v1") !== "false"
+export const getProductAnalyticsConsent = (): "granted" | "denied" | null => {
+  const stored = browserStorage.getItem(ANALYTICS_OPT_OUT_STORAGE_KEY)
+  return stored === "false" ? "granted" : stored === "true" ? "denied" : null
+}
+
+export const getProductAnalyticsOptOut = (): boolean => getProductAnalyticsConsent() !== "granted"

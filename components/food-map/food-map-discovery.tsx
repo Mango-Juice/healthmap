@@ -12,6 +12,7 @@ import {
   markerIconForMenus,
   markerZIndex,
 } from "../../lib/discovery/menu-selection"
+import { AnalyticsSettings } from "../analytics/analytics-settings"
 import { ApplicationMasthead } from "../ui/application-masthead"
 import { PlusIcon } from "../ui/health-map-icons"
 import { FoodMapAreaRecovery } from "./food-map-area-recovery"
@@ -325,10 +326,13 @@ export function FoodMap({ clientId }: Properties) {
       <ApplicationMasthead
         compact
         action={
-          <Link className={styles["suggestAction"]} href="/suggest">
-            <PlusIcon />
-            <span>제안하기</span>
-          </Link>
+          <>
+            <AnalyticsSettings onOptIn={analytics.mapViewed} />
+            <Link className={styles["suggestAction"]} href="/suggest">
+              <PlusIcon />
+              <span>제안하기</span>
+            </Link>
+          </>
         }
         context="나를 위한 한 끼"
         description="잘 먹고 싶은 날, 가까운 곳부터 둘러봐요."

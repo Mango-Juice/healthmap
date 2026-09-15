@@ -208,6 +208,12 @@ All intentional space derives from 4px.
 - **Result hierarchy:** each populated result reads in decision order: place, available distance, matching menu, then category tags. Internal material stays private; the menu is never an unlabelled text fragment.
 - **Accessibility:** a keyboard-operable result list is always the alternative to provider markers. Result count and successful search updates use a concise status announcement; opening detail moves focus to its title, and explicit Back/Close plus Escape restore the stable invoking control.
 
+### Analytics consent
+
+- First visits show a compact rectangular card at the bottom of the viewport, with `허용`, `거부`, and `자세히`. It enters with a short upward motion, uses the existing surface and shadow tokens, and stays static with reduced motion enabled.
+- The card does not dim the map or take keyboard focus. Neither ignoring it nor opening its details grants consent. A saved choice dismisses it and persists across visits; a storage failure keeps the choice available with an error message.
+- A muted 16px settings icon in a 44px target remains in the masthead. It opens the same preference in a labelled native dialog, with Escape dismissal and focus returned to the invoking control.
+
 ### Action Button
 
 - **Structure:** native `button` → optional Lucide icon → stable label/status.
