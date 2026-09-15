@@ -35,7 +35,10 @@ const placesResponse = DiscoveryPlacesResponseSchema.parse({
   nextCursor: null,
 })
 beforeEach(() => vi.clearAllMocks())
-afterEach(() => vi.unstubAllEnvs())
+afterEach(() => {
+  vi.unstubAllEnvs()
+  vi.restoreAllMocks()
+})
 describe("place HTTP handlers", () => {
   it("rejects store fields that contradict the listing kind", () => {
     const menuDto = {
@@ -122,6 +125,7 @@ describe("place HTTP handlers", () => {
     expect(response.status).toBe(409)
   })
   it("returns 404 for absent detail and 503 for an unavailable reader", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined)
     vi.stubEnv("VERCEL_ENV", "preview")
     vi.mocked(getDiscoveryPlace).mockResolvedValue(null)
     expect(
@@ -136,5 +140,24 @@ describe("place HTTP handlers", () => {
     const unavailable = await getList(new Request("http://localhost/api/places"))
     expect(unavailable.status).toBe(503)
     expect(unavailable.headers.get("Cache-Control")).toBe("private, no-store")
+    expect(unavailable.headers.get("Retry-After")).toBe("1")
+    expect(log).toHaveBeenCalledWith("[discovery] read_failed", {
+      operation: "places",
+      kind: "timeout",
+      durationMs: expect.any(Number),
+    })
+  })
+
+  it("logs only fixed diagnostic fields when an unexpected error contains private data", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    vi.mocked(queryDiscovery).mockRejectedValue(new Error("private-source-and-credential"))
+    const response = await getList(new Request("http://localhost/api/places?query=private-search"))
+    expect(await response.json()).toEqual({ error: "catalog_unavailable", retry: true })
+    expect(log).toHaveBeenCalledWith("[discovery] read_failed", {
+      operation: "places",
+      kind: "unexpected",
+      durationMs: expect.any(Number),
+    })
+    expect(JSON.stringify(log.mock.calls)).not.toContain("private-")
   })
 })

@@ -58,29 +58,47 @@ export function useFoodMapSheetMotion({
   const panelRef = useRef<HTMLElement>(null)
   const activeDrag = useRef<SheetDrag | undefined>(undefined)
   const committedOffset = useRef(0)
+  const measuredGeometry = useRef<readonly number[] | undefined>(undefined)
   const suppressPointerClick = useRef(false)
 
-  const measure = useCallback((): void => {
+  const measure = useCallback((): boolean => {
     const stack = stackRef.current
     const panel = panelRef.current
     const content = panel?.lastElementChild
     const body = content?.firstElementChild
-    if (!stack || !panel || !content || !body) return
+    if (!stack || !panel || !content || !body) return false
 
     const style = getComputedStyle(panel)
-    const height = panel.getBoundingClientRect().height
+    const panelBounds = panel.getBoundingClientRect()
+    const contentBounds = content.getBoundingClientRect()
+    const bodyBounds = body.getBoundingClientRect()
+    const height = panelBounds.height
     const bar = panel.firstElementChild?.getBoundingClientRect().height ?? 0
     const border =
       Number.parseFloat(style.borderTopWidth) + Number.parseFloat(style.borderBottomWidth)
     const preview =
       selectedId !== undefined
-        ? bar + Math.min(content.clientHeight, body.getBoundingClientRect().height) + border
+        ? bar + Math.min(content.clientHeight, bodyBounds.height) + border
         : Number.parseFloat(style.getPropertyValue("--hm-food-map-sheet-peek"))
     const collapsedOffset = Math.max(0, height - preview)
+    const geometry = [
+      panelBounds.width,
+      height,
+      contentBounds.width,
+      contentBounds.height,
+      bodyBounds.width,
+      bodyBounds.height,
+      collapsedOffset,
+    ]
+    const changed =
+      measuredGeometry.current !== undefined &&
+      geometry.some((value, index) => value !== measuredGeometry.current?.[index])
+    measuredGeometry.current = geometry
     committedOffset.current = collapsedOffset
     if (activeDrag.current === undefined) {
       stack.style.setProperty("--hm-food-map-sheet-offset", `${expanded ? 0 : collapsedOffset}px`)
     }
+    return changed
   }, [expanded, selectedId])
 
   const restoreCommittedStop = useCallback((): void => {
@@ -101,8 +119,10 @@ export function useFoodMapSheetMotion({
     if (!panel || !content || !body) return
 
     const observer = new ResizeObserver(() => {
-      if (activeDrag.current !== undefined) restoreCommittedStop()
-      else measure()
+      // The initial notification can arrive after pointerdown without a resize.
+      // Cancel only if dimensions changed since the gesture's last measurement.
+      const resized = measure()
+      if (resized && activeDrag.current !== undefined) restoreCommittedStop()
     })
     observer.observe(panel)
     observer.observe(content)

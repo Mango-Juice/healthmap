@@ -15,10 +15,12 @@ import {
   DiscoveryStateSchema,
 } from "./contracts"
 import type { DiscoveryQuery } from "./query-contract"
+import {
+  DATA_TIMEOUT_MILLISECONDS,
+  STATE_TIMEOUT_MILLISECONDS,
+  TOTAL_TIMEOUT_MILLISECONDS,
+} from "./timeouts"
 
-const STATE_TIMEOUT_MILLISECONDS = 1_500
-const DATA_TIMEOUT_MILLISECONDS = 2_500
-const TOTAL_TIMEOUT_MILLISECONDS = 4_000
 const MAXIMUM_STATE_AGE_MILLISECONDS = 60_000
 
 export interface MonotonicClock {
