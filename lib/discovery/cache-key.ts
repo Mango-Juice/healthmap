@@ -2,6 +2,7 @@ import { createHash } from "node:crypto"
 import { normalizeDiscoveryQuery } from "../domain/discovery"
 import {
   DISCOVERY_SCHEMA_VERSION,
+  type DiscoveryInitialQueryRequest,
   DiscoveryPlacesEnvelopeSchema,
   type DiscoveryQueryRequest,
   DiscoveryReadError,
@@ -18,12 +19,9 @@ export const getDiscoveryProviderIdentity = (url: string, key: string): string =
   return createHash("sha256").update(`${normalized}\n${key}`).digest("hex")
 }
 
-export const createDiscoveryQueryRequest = (
-  state: DiscoveryState,
+export const createDiscoveryInitialQueryRequest = (
   query: DiscoveryQuery,
-): DiscoveryQueryRequest => ({
-  expectedRelease: state.releaseId,
-  expectedEpoch: state.eligibleEpoch,
+): DiscoveryInitialQueryRequest => ({
   mode: query.mode,
   query: normalizeDiscoveryQuery(query.query),
   filter: query.filter,
@@ -35,6 +33,15 @@ export const createDiscoveryQueryRequest = (
   east: query.east,
   limit: query.limit,
   cursor: query.cursor,
+})
+
+export const createDiscoveryQueryRequest = (
+  state: DiscoveryState,
+  query: DiscoveryQuery,
+): DiscoveryQueryRequest => ({
+  ...createDiscoveryInitialQueryRequest(query),
+  expectedRelease: state.releaseId,
+  expectedEpoch: state.eligibleEpoch,
 })
 
 const requestDigest = (request: DiscoveryQueryRequest): string =>
@@ -104,7 +111,10 @@ export const assertDiscoveryEnvelopeState = (
     throw new DiscoveryReadError("invalid_response")
 }
 
-export const parseDiscoveryQueryEnvelope = (value: unknown, request: DiscoveryQueryRequest) => {
+export const parseDiscoveryQueryEnvelope = (
+  value: unknown,
+  request: Pick<DiscoveryQueryRequest, "mode">,
+) => {
   switch (request.mode) {
     case "places": {
       const parsed = DiscoveryPlacesEnvelopeSchema.safeParse(value)

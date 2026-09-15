@@ -39,7 +39,6 @@ describe("bounded discovery reader", () => {
   it("Given a public endpoint, when querying, then it sends a canonical no-store RPC request", async () => {
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce(Response.json(state))
       .mockResolvedValueOnce(Response.json({ ...state, data: emptyPlaces }))
     const reader = createDiscoveryReader(
       createSupabaseDiscoveryRpcClient({ key: "publishable-test-key", url: "https://db.test" }),
@@ -47,7 +46,8 @@ describe("bounded discovery reader", () => {
 
     await reader.query(DiscoveryQuerySchema.parse({ query: "  Ａ  B  " }))
 
-    const request = fetchSpy.mock.calls[1]
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    const request = fetchSpy.mock.calls[0]
     expect(String(request?.[0])).toBe("https://db.test/rest/v1/rpc/query_discovery")
     expect(request?.[1]).toMatchObject({
       cache: "no-store",
@@ -60,8 +60,6 @@ describe("bounded discovery reader", () => {
     })
     expect(JSON.parse(String(request?.[1]?.body))).toEqual({
       p_request: {
-        expectedEpoch: eligibleEpoch,
-        expectedRelease: releaseId,
         filter: "all",
         ingredient: "all",
         limit: 50,
@@ -127,13 +125,13 @@ describe("bounded discovery reader", () => {
         ...freshState,
         data: { ...emptyPlaces, catalogVersion: freshState.releaseId },
       })
-    const getState = vi.fn().mockResolvedValueOnce(state).mockResolvedValueOnce(freshState)
+    const getState = vi.fn().mockResolvedValueOnce(freshState)
     const reader = createDiscoveryReader(client({ getState, query }))
 
     await expect(reader.query(DiscoveryQuerySchema.parse({}))).resolves.toMatchObject({
       catalogVersion: "pilot-fresh",
     })
-    expect(getState).toHaveBeenCalledTimes(2)
+    expect(getState).toHaveBeenCalledTimes(1)
     expect(query).toHaveBeenCalledTimes(2)
   })
 

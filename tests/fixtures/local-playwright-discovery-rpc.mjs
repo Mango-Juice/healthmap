@@ -201,8 +201,51 @@ const readJson = async (request) => {
 const hasExpectedState = (value) =>
   value !== null &&
   typeof value === "object" &&
+  !Array.isArray(value) &&
   value.expectedEpoch === state.eligibleEpoch &&
   value.expectedRelease === state.releaseId
+const queryRequestKeys = new Set([
+  "cursor",
+  "east",
+  "expectedEpoch",
+  "expectedRelease",
+  "filter",
+  "ingredient",
+  "limit",
+  "mode",
+  "north",
+  "query",
+  "region",
+  "south",
+  "west",
+])
+const prepareQueryRequest = (value) => {
+  if (value === null || typeof value !== "object" || Array.isArray(value))
+    return { kind: "invalid" }
+  if (Object.keys(value).some((key) => !queryRequestKeys.has(key))) return { kind: "invalid" }
+
+  const hasExpectedRelease = Object.hasOwn(value, "expectedRelease")
+  const hasExpectedEpoch = Object.hasOwn(value, "expectedEpoch")
+  if (hasExpectedRelease !== hasExpectedEpoch) return { kind: "invalid" }
+  if (!hasExpectedRelease) {
+    return {
+      kind: "ready",
+      value: {
+        ...value,
+        expectedEpoch: state.eligibleEpoch,
+        expectedRelease: state.releaseId,
+      },
+    }
+  }
+  if (
+    (typeof value.expectedRelease !== "string" && value.expectedRelease !== null) ||
+    typeof value.expectedEpoch !== "string" ||
+    value.expectedEpoch.length !== 64
+  )
+    return { kind: "invalid" }
+  if (!hasExpectedState(value)) return { kind: "stale" }
+  return { kind: "ready", value }
+}
 const matchesFilter = (menu, filter) =>
   filter === "all" ||
   (filter === "salad_poke" && menu.facts.form === "salad_poke") ||
@@ -302,19 +345,25 @@ const server = createServer(
       return
     }
     const requestBody = body?.p_request
-    if (!hasExpectedState(requestBody)) {
-      staleState(response)
-      return
-    }
     if (url.pathname === "/rest/v1/rpc/query_discovery") {
-      const result = queryCatalog(requestBody)
+      const preparedRequest = prepareQueryRequest(requestBody)
+      if (preparedRequest.kind === "invalid") {
+        invalidRequest(response)
+        return
+      }
+      if (preparedRequest.kind === "stale") {
+        staleState(response)
+        return
+      }
+      const result = queryCatalog(preparedRequest.value)
       if (result === "stale_cursor") staleCursor(response)
       else if (result === null) invalidRequest(response)
       else respond(response, 200, { ...state, data: result })
       return
     }
     if (url.pathname === "/rest/v1/rpc/get_discovery_place") {
-      if (typeof requestBody.id !== "string") invalidRequest(response)
+      if (!hasExpectedState(requestBody)) staleState(response)
+      else if (typeof requestBody.id !== "string") invalidRequest(response)
       else {
         const place = places.find((entry) => entry.id === requestBody.id)
         respond(response, 200, {
