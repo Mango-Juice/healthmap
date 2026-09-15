@@ -13,6 +13,7 @@ import { presentDiscoveryMenuName } from "../../lib/discovery/menu-selection"
 import { buildDiscoveryPlaceInfoUrl } from "../../lib/discovery/place-links"
 import { selectDiscoveryMedia } from "../../lib/discovery/projection"
 import { buildNaverRouteDirections } from "../../lib/domain/directions"
+import { fetchWithTransientRetry } from "../../lib/http/fetch-with-transient-retry"
 import { ArrowLeftIcon, ArrowUpRightIcon, NavigationIcon } from "../ui/health-map-icons"
 import { ActionButton } from "../ui/health-map-primitives"
 import styles from "./food-map-discovery.module.css"
@@ -49,7 +50,7 @@ export function FoodMapDetail({
       setDetailStatus("failed")
       controller.abort()
     }, 10_000)
-    void fetch(detailRequestUrl, { signal: controller.signal })
+    void fetchWithTransientRetry(detailRequestUrl, controller.signal)
       .then(async (response) => {
         if (!response.ok) throw new TypeError("Discovery detail unavailable")
         const parsed = DiscoveryDetailResponseSchema.safeParse(await response.json())
