@@ -98,9 +98,17 @@ export type DiscoveryDetailRequest = Readonly<{
   readonly id: z.infer<typeof PlaceIdSchema>
 }>
 
+export type DiscoveryInitialQueryRequest = Omit<
+  DiscoveryQueryRequest,
+  "expectedRelease" | "expectedEpoch"
+> & { readonly expectedRelease?: never; readonly expectedEpoch?: never }
+
 export interface DiscoveryRpcClient {
   getState(signal?: AbortSignal): Promise<unknown>
-  query(request: DiscoveryQueryRequest, signal?: AbortSignal): Promise<unknown>
+  query(
+    request: DiscoveryQueryRequest | DiscoveryInitialQueryRequest,
+    signal?: AbortSignal,
+  ): Promise<unknown>
   getPlace(request: DiscoveryDetailRequest, signal?: AbortSignal): Promise<unknown>
 }
 

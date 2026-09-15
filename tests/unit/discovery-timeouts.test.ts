@@ -54,21 +54,22 @@ const readerFor = (fetchImplementation: typeof fetch) =>
   )
 
 describe("cold discovery request budget", () => {
-  it("allows a cold state read above the old 1.5 second limit and a cold data read", async () => {
+  it("returns a cold query in one data roundtrip without waiting for a separate state read", async () => {
     useTimeoutClock()
     const fetchImplementation = delayedFetch(2_000, 2_700)
     const pending = readerFor(fetchImplementation).query(DiscoveryQuerySchema.parse({}))
 
-    await vi.advanceTimersByTimeAsync(4_700)
+    await vi.advanceTimersByTimeAsync(2_700)
 
     await expect(pending).resolves.toMatchObject({ total: 0 })
-    expect(fetchImplementation).toHaveBeenCalledTimes(2)
+    expect(fetchImplementation).toHaveBeenCalledTimes(1)
+    expect(String(vi.mocked(fetchImplementation).mock.calls[0]?.[0])).toContain("query_discovery")
   })
 
-  it("classifies a shared state deadline as timeout and allows the next request to recover", async () => {
+  it("classifies a shared initial query deadline as timeout and allows the next request to recover", async () => {
     useTimeoutClock()
     vi.spyOn(console, "error").mockImplementation(() => undefined)
-    const fetchImplementation = delayedFetch(3_100, 0)
+    const fetchImplementation = delayedFetch(0, 3_100)
     const reader = readerFor(fetchImplementation)
     const failed = expect(reader.query(DiscoveryQuerySchema.parse({}))).rejects.toMatchObject({
       kind: "timeout",

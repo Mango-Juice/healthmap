@@ -20,9 +20,9 @@ afterEach(() => {
 
 describe("bounded discovery cache freshness", () => {
   it.each([
-    { expectedStateReads: 1, time: 0 },
-    { expectedStateReads: 1, time: 59_999 },
-    { expectedStateReads: 2, time: 60_000 },
+    { expectedStateReads: 0, time: 0 },
+    { expectedStateReads: 0, time: 59_999 },
+    { expectedStateReads: 1, time: 60_000 },
   ])(
     "Given a 60 second state, when monotonic time is $time, then state reads equal $expectedStateReads",
     async ({ expectedStateReads, time }) => {
@@ -40,9 +40,9 @@ describe("bounded discovery cache freshness", () => {
   )
 
   it.each([
-    { expectedStateReads: 1, time: 9 },
-    { expectedStateReads: 2, time: 10 },
-    { expectedStateReads: 2, time: 11 },
+    { expectedStateReads: 0, time: 9 },
+    { expectedStateReads: 1, time: 10 },
+    { expectedStateReads: 1, time: 11 },
   ])(
     "Given a ten millisecond DB boundary, when reading at $time, then state reads equal $expectedStateReads",
     async ({ expectedStateReads, time }) => {
@@ -79,7 +79,10 @@ describe("bounded discovery cache freshness", () => {
       const reader = createCachedDiscoveryReader(
         rpcClient({
           getState,
-          query: vi.fn().mockResolvedValue({ ...state, data: emptyPlaces() }),
+          query: vi.fn().mockImplementation(async () => {
+            clock.milliseconds += 6
+            return { ...state, data: emptyPlaces() }
+          }),
         }),
         "provider-a",
         { cache: new RecordingCache(), clock },
@@ -89,7 +92,7 @@ describe("bounded discovery cache freshness", () => {
       clock.milliseconds = 10
       await reader.query(DiscoveryQuerySchema.parse({}))
 
-      expect(getState).toHaveBeenCalledTimes(2)
+      expect(getState).toHaveBeenCalledTimes(1)
     },
   )
 
@@ -108,12 +111,8 @@ describe("bounded discovery cache freshness", () => {
   })
 
   it("Given a stale SWR envelope and failed refresh, when queried, then old data is not returned", async () => {
-    const current = discoveryState()
     const stale = discoveryState({ eligibleEpoch: "b".repeat(64), releaseId: "old-release" })
-    const getState = vi
-      .fn()
-      .mockResolvedValueOnce(current)
-      .mockRejectedValueOnce(new DiscoveryReadError("transport"))
+    const getState = vi.fn().mockRejectedValueOnce(new DiscoveryReadError("transport"))
     const cache = {
       read: vi.fn().mockResolvedValue({ ...stale, data: emptyPlaces("old-release") }),
     }

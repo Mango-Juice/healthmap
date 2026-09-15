@@ -34,6 +34,7 @@ begin
   ) then raise exception 'discovery table without RLS'; end if;
   if has_schema_privilege('anon','discovery_admin','usage')
     or has_schema_privilege('authenticated','discovery_admin','usage')
+    or has_schema_privilege('discovery_reader','public','create')
     or has_table_privilege('anon','discovery_admin.source_records','select')
     or has_table_privilege('authenticated','discovery_admin.places','select') then
     raise exception 'public role received direct discovery access';
@@ -53,11 +54,22 @@ begin
   end if;
   if not has_function_privilege('anon','public.get_discovery_state()','execute')
     or not has_function_privilege('authenticated','public.query_discovery(jsonb)','execute')
+    or not has_function_privilege('anon','public.query_discovery(jsonb)','execute')
+    or not has_function_privilege('service_role','public.query_discovery(jsonb)','execute')
     or not has_function_privilege('service_role','public.get_discovery_place(jsonb)','execute')
     or has_function_privilege('anon',
       'public.activate_discovery_release(text,integer,integer,integer,text,text)','execute') then
     raise exception 'RPC grants differ from contract';
   end if;
+  if exists (
+    select 1
+    from pg_catalog.pg_proc as procedure
+    cross join lateral pg_catalog.aclexplode(
+      coalesce(procedure.proacl,pg_catalog.acldefault('f',procedure.proowner))
+    ) as privilege
+    where procedure.oid = pg_catalog.to_regprocedure('public.query_discovery(jsonb)')
+      and privilege.grantee = 0 and privilege.privilege_type = 'EXECUTE'
+  ) then raise exception 'query_discovery is executable by public'; end if;
   if not (
     select procedure.prosecdef
       and procedure.proowner = (select oid from pg_catalog.pg_roles where rolname='postgres')
@@ -275,6 +287,91 @@ returns text language sql immutable as $$
       repeat('=', (4 - char_length(p_cursor) % 4) % 4), 'base64'), 'UTF8')::jsonb,
     '{offset}', p_offset
   )::text,'UTF8'),'base64'), E'\n', ''),'+/','-_'), '=')
+$$;
+
+do $$
+declare
+  base_request constant jsonb :=
+    '{"mode":"places","query":"","filter":"all","ingredient":"all","limit":100}';
+  region_request constant jsonb :=
+    '{"mode":"regions","query":"","filter":"all","ingredient":"all","limit":100}';
+  current_state jsonb := public.get_discovery_state();
+  initial_places jsonb;
+  explicit_places jsonb;
+  initial_regions jsonb;
+  explicit_regions jsonb;
+  stale_cursor text;
+  malformed jsonb;
+  rejected boolean;
+  error_message text;
+begin
+  initial_places := public.query_discovery(base_request);
+  explicit_places := public.query_discovery(base_request || jsonb_build_object(
+    'expectedRelease',current_state->'releaseId',
+    'expectedEpoch',current_state->>'eligibleEpoch'
+  ));
+  if initial_places->'data' is distinct from explicit_places->'data'
+    or initial_places->>'releaseId' is distinct from current_state->>'releaseId'
+    or initial_places->>'eligibleEpoch' is distinct from current_state->>'eligibleEpoch'
+    or initial_places#>>'{data,total}' <> '1'
+    or initial_places#>>'{data,results,0,place,listingKind}' <> 'store_only' then
+    raise exception 'initial places request differs from explicit-state request';
+  end if;
+
+  initial_regions := public.query_discovery(region_request);
+  explicit_regions := public.query_discovery(region_request || jsonb_build_object(
+    'expectedRelease',current_state->'releaseId',
+    'expectedEpoch',current_state->>'eligibleEpoch'
+  ));
+  if initial_regions->'data' is distinct from explicit_regions->'data'
+    or initial_regions#>>'{data,total}' <> '1'
+    or jsonb_array_length(initial_regions#>'{data,regions}') <> 1 then
+    raise exception 'initial regions request differs from explicit-state request';
+  end if;
+
+  stale_cursor := pg_temp.request_at(
+    '{"mode":"places","query":"alpha","filter":"all","ingredient":"all","limit":1}',
+    '2026-01-10 11:59:59.999Z'
+  )#>>'{data,nextCursor}';
+  rejected := false;
+  begin
+    perform public.query_discovery(jsonb_build_object(
+      'mode','places','query','alpha','filter','all','ingredient','all','limit',1,
+      'cursor',stale_cursor
+    ));
+  exception when sqlstate 'PT409' then
+    get stacked diagnostics error_message = message_text;
+    rejected := error_message = '{"error":"stale_cursor","retry":true}';
+  end;
+  if not rejected then raise exception 'initial request accepted stale cursor'; end if;
+
+  foreach malformed in array array[
+    'null'::jsonb,
+    '[]'::jsonb,
+    '{"unknown":true}'::jsonb,
+    jsonb_build_object('expectedRelease',current_state->'releaseId'),
+    jsonb_build_object('expectedEpoch',current_state->>'eligibleEpoch')
+  ] loop
+    rejected := false;
+    begin perform public.query_discovery(malformed);
+    exception when sqlstate 'PT400' then rejected := true; end;
+    if not rejected then
+      raise exception 'malformed or partial initial request was accepted: %',malformed;
+    end if;
+  end loop;
+
+  rejected := false;
+  begin
+    perform public.query_discovery(jsonb_build_object(
+      'expectedRelease','stale',
+      'expectedEpoch','aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+    ));
+  exception when sqlstate 'PT409' then
+    get stacked diagnostics error_message = message_text;
+    rejected := error_message = '{"error":"stale_state","retry":true}';
+  end;
+  if not rejected then raise exception 'explicit stale state was accepted'; end if;
+end
 $$;
 
 do $$
@@ -660,6 +757,38 @@ end
 $$;
 
 do $$
+declare
+  place_request constant jsonb :=
+    '{"mode":"places","query":"","filter":"all","ingredient":"all","limit":100}';
+  region_request constant jsonb :=
+    '{"mode":"regions","query":"","filter":"all","ingredient":"all","limit":100}';
+  current_state jsonb := public.get_discovery_state();
+  initial_response jsonb;
+  explicit_response jsonb;
+begin
+  initial_response := public.query_discovery(place_request);
+  explicit_response := public.query_discovery(place_request || jsonb_build_object(
+    'expectedRelease',current_state->'releaseId',
+    'expectedEpoch',current_state->>'eligibleEpoch'
+  ));
+  if initial_response->'data' is distinct from explicit_response->'data'
+    or initial_response->>'releaseId' <> 'synthetic-empty-release'
+    or initial_response#>>'{data,catalogVersion}' <> 'synthetic-empty-release'
+    or initial_response#>>'{data,total}' <> '0'
+    or jsonb_array_length(initial_response#>'{data,results}') <> 0 then
+    raise exception 'initial places request failed for active empty release';
+  end if;
+
+  initial_response := public.query_discovery(region_request);
+  if initial_response->>'releaseId' <> 'synthetic-empty-release'
+    or initial_response#>>'{data,total}' <> '0'
+    or jsonb_array_length(initial_response#>'{data,regions}') <> 0 then
+    raise exception 'initial regions request failed for active empty release';
+  end if;
+end
+$$;
+
+do $$
 declare rejected boolean;
 begin
   rejected := false;
@@ -714,8 +843,6 @@ $$;
 set local role anon;
 select public.get_discovery_state();
 select public.query_discovery(jsonb_build_object(
-  'expectedRelease', public.get_discovery_state()->'releaseId',
-  'expectedEpoch', public.get_discovery_state()->>'eligibleEpoch',
   'mode','places','query','','filter','all','ingredient','all','limit',1
 ));
 select public.get_discovery_place(jsonb_build_object(
@@ -724,5 +851,41 @@ select public.get_discovery_place(jsonb_build_object(
   'id', 'bede62e8-6e4d-4d3b-8227-34b73451b302'
 ));
 reset role;
+
+do $$
+declare
+  place_request constant jsonb :=
+    '{"mode":"places","query":"","filter":"all","ingredient":"all","limit":100}';
+  region_request constant jsonb :=
+    '{"mode":"regions","query":"","filter":"all","ingredient":"all","limit":100}';
+  current_state jsonb;
+  initial_response jsonb;
+  explicit_response jsonb;
+begin
+  delete from discovery_admin.state where singleton;
+  current_state := public.get_discovery_state();
+  initial_response := public.query_discovery(place_request);
+  explicit_response := public.query_discovery(place_request || jsonb_build_object(
+    'expectedRelease',current_state->'releaseId',
+    'expectedEpoch',current_state->>'eligibleEpoch'
+  ));
+  if current_state->'releaseId' is distinct from 'null'::jsonb
+    or initial_response->'releaseId' is distinct from 'null'::jsonb
+    or initial_response->'data' is distinct from explicit_response->'data'
+    or initial_response#>>'{data,catalogVersion}' <> 'empty'
+    or initial_response#>>'{data,total}' <> '0'
+    or jsonb_array_length(initial_response#>'{data,results}') <> 0 then
+    raise exception 'initial places request failed for null release';
+  end if;
+
+  initial_response := public.query_discovery(region_request);
+  if initial_response->'releaseId' is distinct from 'null'::jsonb
+    or initial_response#>>'{data,catalogVersion}' <> 'empty'
+    or initial_response#>>'{data,total}' <> '0'
+    or jsonb_array_length(initial_response#>'{data,regions}') <> 0 then
+    raise exception 'initial regions request failed for null release';
+  end if;
+end
+$$;
 
 rollback;
