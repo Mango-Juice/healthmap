@@ -10,39 +10,49 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 # Healthmap contributor notes
 
-Healthmap is a Korean map-first healthy-food discovery app built with Next.js App Router, React,
-TypeScript, Zod, NAVER Maps, Supabase, PostHog Lite, Tailwind, and CSS Modules.
+Healthmap helps people in Korea find places and menu choices that fit their food preferences.
+Prioritize useful menu data and working filters. `package.json` is the source for runtime and dependency
+versions; use the existing Next.js App Router, TypeScript, Zod, and Biome conventions.
 
 ## Boundaries
 
-- Read the relevant guide under `node_modules/next/dist/docs/` before changing Next.js code.
-- Keep real records, source inputs, credentials, and operator material out of tracked source, tests, logs,
-  and browser payloads. `NEXT_PUBLIC_*` values are never secrets.
-- Use server-side bounded readers and public DTOs only. Do not add synthetic places, menus, basemaps, or
-  CSS-positioned product markers.
+- Keep raw/private records, source inputs, credentials, and operator material out of tracked source,
+  tests, logs, and browser payloads. Expose permitted catalog data only through bounded server readers
+  and public DTOs. `NEXT_PUBLIC_*` values are never secrets.
+- Do not invent production places, menus, health claims, or basemaps. Synthetic test fixtures belong
+  only in isolated tests. Use native NAVER SDK markers, not CSS-positioned product markers.
 - Do not edit applied migrations; use a forward migration or reviewed rollback. Keep `supabase/seed.sql`
   empty.
-- `DESIGN.md` is binding for UI work. Preserve accessible focus restoration, explicit loading/empty/error
-  states, and native SDK markers.
+- For UI changes, read `DESIGN.md` and preserve accessible focus restoration and explicit
+  loading/empty/error states.
 
 ## Working conventions
 
-- Use Node `>=22 <23`, pnpm `10.19.0`, strict TypeScript, and Biome.
+- Use Node `>=22 <23`, pnpm `10.19.0`, and strict TypeScript.
 - Prefer Server Components; use client components only for browser interaction boundaries.
 - Parse external input with Zod. Use relative imports and bracket notation for environment variables.
-- Keep unrelated worktree changes intact. Do not infer hosted configuration or deployment state from local
-  checks.
+- Read task-relevant files rather than the entire repository before each change. Continue through
+  implementation, relevant verification, and fixes within the authorized scope.
+- Keep unrelated worktree changes intact. Local checks do not establish hosted configuration,
+  deployment state, actual user adoption, or retention.
 
-## Checks
+## Verification
 
-```sh
-pnpm exec biome ci .
-pnpm typecheck
-pnpm deploy:validate
-pnpm test
-pnpm test:integration
-pnpm test:integration:local
-pnpm test:deployment
-pnpm test:e2e
-pnpm build
-```
+Choose checks for the changed behavior; this is a command reference, not a requirement to run every
+suite after every edit. Cover affected semantic categories and existing flows. Complete the CI checks
+required by `.github/workflows/ci.yml` when preparing a release or an explicitly requested full check.
+
+| Change | Relevant checks |
+| --- | --- |
+| Instructions or documentation only | Review the diff, links, and referenced commands. |
+| Application logic or types | `pnpm exec biome ci .`, `pnpm typecheck`, affected tests via `pnpm test` |
+| Reader/API contracts | `pnpm test:integration` and affected unit tests |
+| SQL, RLS, or migrations | `pnpm test:integration:local` |
+| User interaction | Affected cases via `pnpm test:e2e` and visual inspection of the changed flow |
+| Build or deployment behavior | `pnpm build`, `pnpm deploy:validate`, `pnpm test:deployment` |
+
+`test:integration:local` uses a disposable PostgreSQL container with no host port; run and repair those
+local checks without repeated approval. Local E2E uses fixtures when `E2E_BASE_URL` is unset; a set value
+targets that hosted origin, so check it before running. Missing local prerequisites are not a reason to
+switch to a production database. For an authorized hosted check, use
+`pnpm deploy:smoke --base-url <origin>` and verify the browser journey separately.
